@@ -72,6 +72,41 @@ class IntroPage extends StatelessWidget {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.only(
+              left: 10,
+              right: 10,
+              bottom: 0,
+              top: 20,
+            ),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 40, 50, 55),
+                borderRadius: BorderRadius.circular(16),
+
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color.fromARGB(255, 190, 155, 45),
+                    offset: Offset(0, 0), // (x, y) y = kebawah
+                    blurRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  "I ALREADY HAVE ACCOUNT",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
