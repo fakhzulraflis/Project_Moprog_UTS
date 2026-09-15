@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'understand_page.dart';
+
 class IntroPage extends StatelessWidget {
   const IntroPage({super.key});
 
@@ -51,41 +53,58 @@ class IntroPage extends StatelessWidget {
             ),
           ),
 
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 10,
-              bottom: 0,
-              top: 31,
-            ),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 30),
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 231, 194, 73),
-                borderRadius: BorderRadius.circular(16),
-
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color.fromARGB(255, 190, 155, 45),
-                    offset: Offset(0, 4), // (x, y) y = kebawah
-                    blurRadius: 0,
-                  ),
-                ],
+          // Get started Button.
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) {
+                  return const UnderstandPage();
+                },
               ),
-              child: Center(
-                child: Text(
-                  "GET STARTED",
-                  style: GoogleFonts.baloo2(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    letterSpacing: 0.7,
+            ),
+
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 10,
+                right: 10,
+                bottom: 0,
+                top: 31,
+              ),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 30,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 231, 194, 73),
+                  borderRadius: BorderRadius.circular(16),
+
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color.fromARGB(255, 190, 155, 45),
+                      offset: Offset(0, 4), // (x, y) y = kebawah
+                      blurRadius: 0,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    "GET STARTED",
+                    style: GoogleFonts.baloo2(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      letterSpacing: 0.7,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
+
+          // I already have account button
           Padding(
             padding: const EdgeInsets.only(
               left: 10,
