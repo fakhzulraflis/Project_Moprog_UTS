@@ -49,9 +49,9 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
       if (language == 'English') {
         _message = "English? Let's quack in English!";
       } else if (language == 'Japanese') {
-        _message = "Japanese? Sugoi! Let's start!";
+        _message = "Japanese? すごい! Let's start!";
       } else {
-        _message = 'Korean? Annyeong! Great pick!';
+        _message = 'Korean? 대박! Great pick!';
       }
     });
 
