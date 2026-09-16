@@ -30,18 +30,21 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
     _characterIndex = 0;
     _typedMessage = '';
 
-    _typingTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      if (!mounted) return;
+    _typingTimer = Timer.periodic(
+      const Duration(milliseconds: 50),
+      (timer) {
+        if (!mounted) return;
 
-      setState(() {
-        if (_characterIndex < _message.length) {
-          _characterIndex++;
-          _typedMessage = _message.substring(0, _characterIndex);
-        } else {
-          timer.cancel();
-        }
-      });
-    });
+        setState(() {
+          if (_characterIndex < _message.length) {
+            _characterIndex++;
+            _typedMessage = _message.substring(0, _characterIndex);
+          } else {
+            timer.cancel();
+          }
+        });
+      },
+    );
   }
 
   void _updateMessage(String language) {
@@ -89,7 +92,12 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
         ),
         child: Row(
           children: [
-            Image.asset(flagAsset, height: 36, width: 36, fit: BoxFit.contain),
+            Image.asset(
+              flagAsset,
+              height: 36,
+              width: 36,
+              fit: BoxFit.contain,
+            ),
             const SizedBox(width: 16),
             Text(
               language,
@@ -206,7 +214,9 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                   if (selectedLanguage == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Please choose a language first.'),
+                        content: Text(
+                          'Please choose a language first.',
+                        ),
                       ),
                     );
 
@@ -222,16 +232,31 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                   );
                 },
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 20, top: 12),
+                  padding: const EdgeInsets.only(
+                    bottom: 20,
+                    top: 12,
+                  ),
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 231, 194, 73),
+                      color: const Color.fromARGB(
+                        255,
+                        231,
+                        194,
+                        73,
+                      ),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: const [
                         BoxShadow(
-                          color: Color.fromARGB(255, 190, 155, 45),
+                          color: Color.fromARGB(
+                            255,
+                            190,
+                            155,
+                            45,
+                          ),
                           offset: Offset(0, 4),
                           blurRadius: 0,
                         ),
