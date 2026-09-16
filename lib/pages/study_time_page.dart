@@ -1,38 +1,31 @@
 import 'package:flutter/material.dart';
 
-import 'study_time_page.dart';
-
-class DailyGoalPage extends StatefulWidget {
-  final String selectedLanguage;
-
-  const DailyGoalPage({
-    super.key,
-    required this.selectedLanguage,
-  });
+class StudyTimePage extends StatefulWidget {
+  const StudyTimePage({super.key});
 
   @override
-  State<DailyGoalPage> createState() => _DailyGoalPageState();
+  State<StudyTimePage> createState() => _StudyTimePageState();
 }
 
-class _DailyGoalPageState extends State<DailyGoalPage> {
-  int? selectedGoal;
+class _StudyTimePageState extends State<StudyTimePage> {
+  String? selectedTime;
 
-  final List<Map<String, dynamic>> goals = [
+  final List<Map<String, String>> studyTimes = [
     {
-      'title': 'Casual',
-      'minutes': 5,
+      'title': 'Morning',
+      'time': '08:00',
     },
     {
-      'title': 'Regular',
-      'minutes': 10,
+      'title': 'Afternoon',
+      'time': '13:00',
     },
     {
-      'title': 'Serious',
-      'minutes': 15,
+      'title': 'Evening',
+      'time': '18:00',
     },
     {
-      'title': 'Intense',
-      'minutes': 20,
+      'title': 'Night',
+      'time': '20:00',
     },
   ];
 
@@ -53,7 +46,7 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Choose your daily goal',
+              'When would you like to study?',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 28,
@@ -63,9 +56,9 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
 
             const SizedBox(height: 8),
 
-            Text(
-              'Learning ${widget.selectedLanguage}',
-              style: const TextStyle(
+            const Text(
+              'Choose your preferred study time',
+              style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
               ),
@@ -75,17 +68,17 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
 
             Expanded(
               child: ListView.builder(
-                itemCount: goals.length,
+                itemCount: studyTimes.length,
                 itemBuilder: (context, index) {
-                  final goal = goals[index];
+                  final studyTime = studyTimes[index];
 
                   final bool isSelected =
-                      selectedGoal == goal['minutes'];
+                      selectedTime == studyTime['time'];
 
                   return GestureDetector(
                     onTap: () {
                       setState(() {
-                        selectedGoal = goal['minutes'];
+                        selectedTime = studyTime['time'];
                       });
                     },
                     child: Container(
@@ -102,7 +95,7 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
                             MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            goal['title'],
+                            studyTime['title']!,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -110,7 +103,7 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
                             ),
                           ),
                           Text(
-                            '${goal['minutes']} min/day',
+                            studyTime['time']!,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -127,21 +120,19 @@ class _DailyGoalPageState extends State<DailyGoalPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: selectedGoal == null
+                onPressed: selectedTime == null
                     ? null
                     : () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const StudyTimePage(),
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Study time set to $selectedTime',
+                            ),
                           ),
                         );
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE7C249),
-                  disabledBackgroundColor:
-                      const Color(0xFF555555),
                   padding: const EdgeInsets.symmetric(
                     vertical: 15,
                   ),
