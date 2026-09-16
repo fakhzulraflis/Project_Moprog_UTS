@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'daily_goal_page.dart';
+
 class LanguageSelectionPage extends StatefulWidget {
   const LanguageSelectionPage({super.key});
 
@@ -28,18 +30,21 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
     _characterIndex = 0;
     _typedMessage = '';
 
-    _typingTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      if (!mounted) return;
+    _typingTimer = Timer.periodic(
+      const Duration(milliseconds: 50),
+      (timer) {
+        if (!mounted) return;
 
-      setState(() {
-        if (_characterIndex < _message.length) {
-          _characterIndex++;
-          _typedMessage = _message.substring(0, _characterIndex);
-        } else {
-          timer.cancel();
-        }
-      });
-    });
+        setState(() {
+          if (_characterIndex < _message.length) {
+            _characterIndex++;
+            _typedMessage = _message.substring(0, _characterIndex);
+          } else {
+            timer.cancel();
+          }
+        });
+      },
+    );
   }
 
   void _updateMessage(String language) {
@@ -68,7 +73,7 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
     required String language,
     required String flagAsset,
   }) {
-    final isSelected = selectedLanguage == language;
+    final bool isSelected = selectedLanguage == language;
 
     return GestureDetector(
       onTap: () => _updateMessage(language),
@@ -87,7 +92,12 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
         ),
         child: Row(
           children: [
-            Image.asset(flagAsset, height: 36, width: 36, fit: BoxFit.contain),
+            Image.asset(
+              flagAsset,
+              height: 36,
+              width: 36,
+              fit: BoxFit.contain,
+            ),
             const SizedBox(width: 16),
             Text(
               language,
@@ -138,20 +148,9 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                   ],
                 ),
               ),
-              // BAR PROGRESS
-              // const SizedBox(height: 18),
-              // ClipRRect(
-              //   borderRadius: BorderRadius.circular(20),
-              //   child: const LinearProgressIndicator(
-              //     value: 0.35,
-              //     minHeight: 10,
-              //     backgroundColor: Color(0xFF20272B),
-              //     valueColor: AlwaysStoppedAnimation(
-              //       Color.fromARGB(255, 231, 194, 73),
-              //     ),
-              //   ),
-              // ),
+
               const SizedBox(height: 28),
+
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -188,7 +187,9 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 20),
+
               Expanded(
                 child: ListView(
                   children: [
@@ -207,30 +208,56 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                   ],
                 ),
               ),
+
               GestureDetector(
                 onTap: () {
                   if (selectedLanguage == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Please choose a language first.'),
+                        content: Text(
+                          'Please choose a language first.',
+                        ),
                       ),
                     );
+
                     return;
                   }
 
-                  print(selectedLanguage);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DailyGoalPage(
+                        selectedLanguage: selectedLanguage!,
+                      ),
+                    ),
+                  );
                 },
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 20, top: 12),
+                  padding: const EdgeInsets.only(
+                    bottom: 20,
+                    top: 12,
+                  ),
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 231, 194, 73),
+                      color: const Color.fromARGB(
+                        255,
+                        231,
+                        194,
+                        73,
+                      ),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: const [
                         BoxShadow(
-                          color: Color.fromARGB(255, 190, 155, 45),
+                          color: Color.fromARGB(
+                            255,
+                            190,
+                            155,
+                            45,
+                          ),
                           offset: Offset(0, 4),
                           blurRadius: 0,
                         ),
