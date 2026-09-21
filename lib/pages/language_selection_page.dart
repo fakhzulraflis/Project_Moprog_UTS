@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'daily_goal_page.dart';
+
 class LanguageSelectionPage extends StatefulWidget {
   const LanguageSelectionPage({super.key});
 
@@ -68,7 +70,7 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
     required String language,
     required String flagAsset,
   }) {
-    final isSelected = selectedLanguage == language;
+    final bool isSelected = selectedLanguage == language;
 
     return GestureDetector(
       onTap: () => _updateMessage(language),
@@ -138,20 +140,9 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                   ],
                 ),
               ),
-              // BAR PROGRESS
-              // const SizedBox(height: 18),
-              // ClipRRect(
-              //   borderRadius: BorderRadius.circular(20),
-              //   child: const LinearProgressIndicator(
-              //     value: 0.35,
-              //     minHeight: 10,
-              //     backgroundColor: Color(0xFF20272B),
-              //     valueColor: AlwaysStoppedAnimation(
-              //       Color.fromARGB(255, 231, 194, 73),
-              //     ),
-              //   ),
-              // ),
+
               const SizedBox(height: 28),
+
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -188,7 +179,9 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 20),
+
               Expanded(
                 child: ListView(
                   children: [
@@ -207,6 +200,7 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                   ],
                 ),
               ),
+
               GestureDetector(
                 onTap: () {
                   if (selectedLanguage == null) {
@@ -215,11 +209,17 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                         content: Text('Please choose a language first.'),
                       ),
                     );
+
                     return;
                   }
 
-                  // ignore: avoid_print
-                  print(selectedLanguage);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          DailyGoalPage(selectedLanguage: selectedLanguage!),
+                    ),
+                  );
                 },
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 20, top: 12),
