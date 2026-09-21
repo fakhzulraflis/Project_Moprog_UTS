@@ -218,6 +218,7 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
                     return;
                   }
 
+                  // ignore: avoid_print
                   print(selectedLanguage);
                 },
                 child: Padding(
