@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../tabs/home_page.dart';
 
 class StreakGoalPage extends StatefulWidget {
-  const StreakGoalPage({super.key});
+  final String selectedLanguage;
+
+  const StreakGoalPage({super.key, required this.selectedLanguage});
 
   @override
   State<StreakGoalPage> createState() => _StreakGoalPageState();
@@ -12,12 +14,7 @@ class StreakGoalPage extends StatefulWidget {
 class _StreakGoalPageState extends State<StreakGoalPage> {
   int? selectedStreak;
 
-  final List<int> streakGoals = [
-    3,
-    7,
-    14,
-    30,
-  ];
+  final List<int> streakGoals = [3, 7, 14, 30];
 
   @override
   Widget build(BuildContext context) {
@@ -26,9 +23,7 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF272F33),
         elevation: 0,
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -48,10 +43,7 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
 
             const Text(
               'How many days in a row do you want to study?',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
 
             const SizedBox(height: 25),
@@ -62,8 +54,7 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
                 itemBuilder: (context, index) {
                   final streak = streakGoals[index];
 
-                  final bool isSelected =
-                      selectedStreak == streak;
+                  final bool isSelected = selectedStreak == streak;
 
                   return GestureDetector(
                     onTap: () {
@@ -112,24 +103,20 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
                 onPressed: selectedStreak == null
                     ? null
                     : () {
-                        // Onboarding selesai. Semua halaman setup dibuang dari
-                        // tumpukan supaya tombol kembali tidak mengantar
-                        // pengguna balik ke layar pengaturan.
                         Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const HomePage(),
+                            builder: (context) => HomePage(
+                              selectedLanguage: widget.selectedLanguage,
+                            ),
                           ),
                           (route) => false,
                         );
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE7C249),
-                  disabledBackgroundColor:
-                      const Color(0xFF555555),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 15,
-                  ),
+                  disabledBackgroundColor: const Color(0xFF555555),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),

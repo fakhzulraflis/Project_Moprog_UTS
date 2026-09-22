@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'learn_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final String selectedLanguage;
+
+  const HomePage({super.key, required this.selectedLanguage});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -12,13 +14,20 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
 
-  final List<Widget> pages = const [
-    LearnPage(),
-    LearnPage(),
-    LearnPage(),
-    LearnPage(),
-    LearnPage(),
-  ];
+  late final List<Widget> pages;
+
+  @override
+  void initState() {
+    super.initState();
+
+    pages = [
+      LearnPage(selectedLanguage: widget.selectedLanguage),
+      LearnPage(selectedLanguage: widget.selectedLanguage),
+      LearnPage(selectedLanguage: widget.selectedLanguage),
+      LearnPage(selectedLanguage: widget.selectedLanguage),
+      LearnPage(selectedLanguage: widget.selectedLanguage),
+    ];
+  }
 
   void changeTab(int index) {
     setState(() {

@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'streak_goal_page.dart';
 
 class StudyTimePage extends StatefulWidget {
-  const StudyTimePage({super.key});
+  final String selectedLanguage;
+
+  const StudyTimePage({super.key, required this.selectedLanguage});
 
   @override
   State<StudyTimePage> createState() => _StudyTimePageState();
@@ -13,22 +15,10 @@ class _StudyTimePageState extends State<StudyTimePage> {
   String? selectedTime;
 
   final List<Map<String, String>> studyTimes = [
-    {
-      'title': 'Morning',
-      'time': '08:00',
-    },
-    {
-      'title': 'Afternoon',
-      'time': '13:00',
-    },
-    {
-      'title': 'Evening',
-      'time': '18:00',
-    },
-    {
-      'title': 'Night',
-      'time': '20:00',
-    },
+    {'title': 'Morning', 'time': '08:00'},
+    {'title': 'Afternoon', 'time': '13:00'},
+    {'title': 'Evening', 'time': '18:00'},
+    {'title': 'Night', 'time': '20:00'},
   ];
 
   @override
@@ -38,9 +28,7 @@ class _StudyTimePageState extends State<StudyTimePage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF272F33),
         elevation: 0,
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -60,10 +48,7 @@ class _StudyTimePageState extends State<StudyTimePage> {
 
             const Text(
               'Choose your preferred study time',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
 
             const SizedBox(height: 25),
@@ -74,8 +59,7 @@ class _StudyTimePageState extends State<StudyTimePage> {
                 itemBuilder: (context, index) {
                   final studyTime = studyTimes[index];
 
-                  final bool isSelected =
-                      selectedTime == studyTime['time'];
+                  final bool isSelected = selectedTime == studyTime['time'];
 
                   return GestureDetector(
                     onTap: () {
@@ -93,8 +77,7 @@ class _StudyTimePageState extends State<StudyTimePage> {
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             studyTime['title']!,
@@ -128,18 +111,16 @@ class _StudyTimePageState extends State<StudyTimePage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                const StreakGoalPage(),
+                            builder: (context) => StreakGoalPage(
+                              selectedLanguage: widget.selectedLanguage,
+                            ),
                           ),
                         );
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE7C249),
-                  disabledBackgroundColor:
-                      const Color(0xFF555555),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 15,
-                  ),
+                  disabledBackgroundColor: const Color(0xFF555555),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
