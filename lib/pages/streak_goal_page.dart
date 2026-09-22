@@ -1,34 +1,20 @@
 import 'package:flutter/material.dart';
 
-import 'streak_goal_page.dart';
-
-class StudyTimePage extends StatefulWidget {
-  const StudyTimePage({super.key});
+class StreakGoalPage extends StatefulWidget {
+  const StreakGoalPage({super.key});
 
   @override
-  State<StudyTimePage> createState() => _StudyTimePageState();
+  State<StreakGoalPage> createState() => _StreakGoalPageState();
 }
 
-class _StudyTimePageState extends State<StudyTimePage> {
-  String? selectedTime;
+class _StreakGoalPageState extends State<StreakGoalPage> {
+  int? selectedStreak;
 
-  final List<Map<String, String>> studyTimes = [
-    {
-      'title': 'Morning',
-      'time': '08:00',
-    },
-    {
-      'title': 'Afternoon',
-      'time': '13:00',
-    },
-    {
-      'title': 'Evening',
-      'time': '18:00',
-    },
-    {
-      'title': 'Night',
-      'time': '20:00',
-    },
+  final List<int> streakGoals = [
+    3,
+    7,
+    14,
+    30,
   ];
 
   @override
@@ -48,7 +34,7 @@ class _StudyTimePageState extends State<StudyTimePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'When would you like to study?',
+              'Set your streak goal',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 28,
@@ -59,7 +45,7 @@ class _StudyTimePageState extends State<StudyTimePage> {
             const SizedBox(height: 8),
 
             const Text(
-              'Choose your preferred study time',
+              'How many days in a row do you want to study?',
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -70,17 +56,17 @@ class _StudyTimePageState extends State<StudyTimePage> {
 
             Expanded(
               child: ListView.builder(
-                itemCount: studyTimes.length,
+                itemCount: streakGoals.length,
                 itemBuilder: (context, index) {
-                  final studyTime = studyTimes[index];
+                  final streak = streakGoals[index];
 
                   final bool isSelected =
-                      selectedTime == studyTime['time'];
+                      selectedStreak == streak;
 
                   return GestureDetector(
                     onTap: () {
                       setState(() {
-                        selectedTime = studyTime['time'];
+                        selectedStreak = streak;
                       });
                     },
                     child: Container(
@@ -93,22 +79,21 @@ class _StudyTimePageState extends State<StudyTimePage> {
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
                         children: [
+                          const Icon(
+                            Icons.local_fire_department,
+                            color: Colors.orange,
+                            size: 28,
+                          ),
+
+                          const SizedBox(width: 15),
+
                           Text(
-                            studyTime['title']!,
+                            '$streak Day Streak',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            studyTime['time']!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
                             ),
                           ),
                         ],
@@ -122,14 +107,14 @@ class _StudyTimePageState extends State<StudyTimePage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: selectedTime == null
+                onPressed: selectedStreak == null
                     ? null
                     : () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const StreakGoalPage(),
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Streak goal set to $selectedStreak days',
+                            ),
                           ),
                         );
                       },
