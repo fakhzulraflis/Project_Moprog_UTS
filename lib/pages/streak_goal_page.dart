@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'home_page.dart';
+
 class StreakGoalPage extends StatefulWidget {
   const StreakGoalPage({super.key});
 
@@ -110,12 +112,15 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
                 onPressed: selectedStreak == null
                     ? null
                     : () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Streak goal set to $selectedStreak days',
-                            ),
+                        // Onboarding selesai. Semua halaman setup dibuang dari
+                        // tumpukan supaya tombol kembali tidak mengantar
+                        // pengguna balik ke layar pengaturan.
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HomePage(),
                           ),
+                          (route) => false,
                         );
                       },
                 style: ElevatedButton.styleFrom(
