@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../tabs/home_page.dart';
+
 class StudyTimePage extends StatefulWidget {
   const StudyTimePage({super.key});
 
@@ -123,11 +125,10 @@ class _StudyTimePageState extends State<StudyTimePage> {
                 onPressed: selectedTime == null
                     ? null
                     : () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Study time set to $selectedTime',
-                            ),
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HomePage(),
                           ),
                         );
                       },
