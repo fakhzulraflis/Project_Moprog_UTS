@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'vocabulary_page.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -119,32 +121,65 @@ class _HomePageState extends State<HomePage> {
 
         const SizedBox(height: 25),
 
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF20272B),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          child: Row(
-            children: [
-              Image.asset(
-                'assets/icons/guidebook.png',
-                height: 36,
-                fit: BoxFit.contain,
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const VocabularyPage(),
               ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF20272B),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: const Color(0xFFE7C249),
+                width: 2,
+              ),
+            ),
+            child: Row(
+              children: [
+                Image.asset(
+                  'assets/icons/guidebook.png',
+                  height: 36,
+                  fit: BoxFit.contain,
+                ),
 
-              const SizedBox(width: 16),
+                const SizedBox(width: 16),
 
-              const Expanded(
-                child: Text(
-                  'Materi pelajaran sedang disiapkan.',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Kosakata',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Pelajari kata baru setiap hari',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white54,
+                ),
+              ],
+            ),
           ),
         ),
       ],
