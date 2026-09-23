@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'learn_page.dart';
 import 'leaderboard_page.dart';
+import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,7 +19,7 @@ class _HomePageState extends State<HomePage> {
     LearnPage(),
     LeaderboardPage(),
     LearnPage(),
-    LearnPage(),
+    ProfilePage(),
   ];
 
   void changeTab(int index) {
