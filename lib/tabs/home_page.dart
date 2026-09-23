@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'learn_page.dart';
+import 'leaderboard_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,7 +16,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> pages = const [
     LearnPage(),
     LearnPage(),
-    LearnPage(),
+    LeaderboardPage(),
     LearnPage(),
     LearnPage(),
   ];
