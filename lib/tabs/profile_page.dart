@@ -38,6 +38,10 @@ class ProfilePage extends StatelessWidget {
                 const SizedBox(height: 30),
 
                 _buildCompleteProfileCard(),
+
+                const SizedBox(height: 24),
+
+                _buildCurrentLanguageCard(),
               ],
             ),
           ),
@@ -154,6 +158,90 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
+  Widget _buildCurrentLanguageCard() {
+    final String currentLanguage = "Japanese";
+    final String currentFlag = "assets/flags/japan.png";
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF20272B),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Current Learning Language",
+            style: GoogleFonts.pixelifySans(
+              color: Colors.white54,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(currentFlag, fit: BoxFit.contain),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      currentLanguage,
+                      style: GoogleFonts.baloo2(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Beginner Level",
+                      style: GoogleFonts.pixelifySans(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () {},
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white24),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Center(
+                child: Text(
+                  "CONTINUE LEARNING",
+                  style: GoogleFonts.baloo2(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCompleteProfileCard() {
     return Container(
       width: double.infinity,
@@ -194,10 +282,11 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
 
-              Image.asset('assets/app/qua.gif', 
-              height: 100,
-              width: 80,
-              fit: BoxFit.cover,
+              Image.asset(
+                'assets/app/qua.gif',
+                height: 100,
+                width: 80,
+                fit: BoxFit.cover,
               ),
             ],
           ),
