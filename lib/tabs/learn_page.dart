@@ -139,16 +139,14 @@ class _LearnPageState extends State<LearnPage> {
               // =========================
               // CIRCLE 1
               // FOOD VOCABULARY
+              // lessonId = 1
               // =========================
               GestureDetector(
                 onTap: () async {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => LessonPage(
-                        selectedLanguage: widget.selectedLanguage,
-                        circleTitle: 'Food Vocabulary',
-                      ),
+                      builder: (context) => const LessonPage(lessonId: 1),
                     ),
                   );
 
@@ -158,7 +156,6 @@ class _LearnPageState extends State<LearnPage> {
                     circle1Completed = true;
                   });
                 },
-
                 child: _lessonCircle(
                   icon: Icons.restaurant,
                   color: const Color(0xFFE7C249),
@@ -171,6 +168,7 @@ class _LearnPageState extends State<LearnPage> {
               // =========================
               // CIRCLE 2
               // DRINK VOCABULARY
+              // lessonId = 2
               // =========================
               GestureDetector(
                 onTap: circle1Completed
@@ -178,15 +176,11 @@ class _LearnPageState extends State<LearnPage> {
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => LessonPage(
-                              selectedLanguage: widget.selectedLanguage,
-                              circleTitle: 'Drinks Vocabulary',
-                            ),
+                            builder: (context) => const LessonPage(lessonId: 2),
                           ),
                         );
                       }
                     : null,
-
                 child: _lessonCircle(
                   icon: Icons.local_cafe,
                   color: circle1Completed
@@ -201,6 +195,7 @@ class _LearnPageState extends State<LearnPage> {
               // =========================
               // CIRCLE 3
               // ORDERING FOOD
+              // lessonId = 3
               // =========================
               _lessonCircle(
                 icon: Icons.restaurant_menu,
@@ -213,6 +208,7 @@ class _LearnPageState extends State<LearnPage> {
               // =========================
               // CIRCLE 4
               // ORDERING DRINKS
+              // lessonId = 4
               // =========================
               _lessonCircle(
                 icon: Icons.local_drink,
@@ -225,6 +221,7 @@ class _LearnPageState extends State<LearnPage> {
               // =========================
               // CIRCLE 5
               // REVIEW
+              // lessonId = 5
               // =========================
               _lessonCircle(icon: Icons.star, color: Colors.grey, locked: true),
 
@@ -285,9 +282,7 @@ class _LearnPageState extends State<LearnPage> {
             : completed
             ? Icons.check
             : icon,
-
         color: locked ? Colors.white54 : Colors.black,
-
         size: 32,
       ),
     );
