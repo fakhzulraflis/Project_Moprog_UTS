@@ -42,6 +42,10 @@ class ProfilePage extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 _buildCurrentLanguageCard(),
+
+                const SizedBox(height: 24),
+
+                _buildAccountInformationCard(),
               ],
             ),
           ),
@@ -154,6 +158,104 @@ class ProfilePage extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAccountInformationCard() {
+    final String username = "@username";
+    final String memberSince = "2026";
+    final String currentLanguage = "Japanese";
+    final String currentFlag = "assets/flags/japan.png";
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF20272B),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Account Information",
+            style: GoogleFonts.baloo2(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Username",
+                      style: GoogleFonts.pixelifySans(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                    Text(
+                      username,
+                      style: GoogleFonts.baloo2(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Member Since",
+                      style: GoogleFonts.pixelifySans(color: Colors.white54),
+                    ),
+                    Text(
+                      memberSince,
+                      style: GoogleFonts.baloo2(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Learning Language",
+                      style: GoogleFonts.pixelifySans(color: Colors.white54),
+                    ),
+                    Row(
+                      children: [
+                        Image.asset(
+                          currentFlag,
+                          width: 20,
+                          height: 20,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          currentLanguage,
+                          style: GoogleFonts.baloo2(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Image.asset(
+                'assets/app/avatar.png',
+                height: 110,
+                fit: BoxFit.contain,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
