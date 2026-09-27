@@ -19,21 +19,21 @@ class ProfilePage extends StatelessWidget {
               children: [
                 _buildHeader(),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
 
-                _buildAvatar(),
+                _buildProfileIdentity(),
 
-                const SizedBox(height: 25),
+                const SizedBox(height: 4),
 
                 _buildProfileInfo(),
 
-                const SizedBox(height: 25),
+                const SizedBox(height: 24),
 
                 _buildStats(),
 
                 const SizedBox(height: 30),
 
-                _buildEditButton(),
+                _buildProfileDivider(),
 
                 const SizedBox(height: 30),
 
@@ -55,116 +55,296 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _buildHeader() {
-    return Text(
-      "USERNAME",
-      style: GoogleFonts.baloo2(
-        color: Colors.white,
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
+    return AspectRatio(
+      aspectRatio: 1.6,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF0A8),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Positioned.fill(child: _buildAvatar()),
+            Positioned(top: 14, right: 14, child: _buildEditButton()),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildAvatar() {
-    return Center(
-      child: Container(
-        width: 170,
-        height: 170,
-        decoration: BoxDecoration(
-          color: const Color(0xFF20272B),
-          borderRadius: BorderRadius.circular(100),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(100),
-          child: Image.asset('assets/app/avatar.png', fit: BoxFit.cover),
-        ),
-      ),
+    return Image.asset(
+      'assets/app/avatar.png',
+      fit: BoxFit.contain,
+      alignment: Alignment.bottomCenter,
     );
   }
 
   Widget _buildProfileInfo() {
-    return Column(
-      children: [
-        Text(
-          "@username",
-          style: GoogleFonts.baloo2(color: Colors.white70, fontSize: 18),
-        ),
-
-        const SizedBox(height: 8),
-
-        Text(
-          "Joined 2026",
-          style: GoogleFonts.baloo2(color: Colors.white38, fontSize: 14),
-        ),
-      ],
+    return Text(
+      "Joined August 2026",
+      style: GoogleFonts.baloo2(color: Colors.white70, fontSize: 16),
     );
   }
 
   Widget _buildStats() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _statItem("1", "Courses"),
-        _statItem("0", "Following"),
-        _statItem("0", "Followers"),
+        Expanded(child: _statItem("0", "Following")),
+        Expanded(child: _statItem("0", "Followers")),
+        Expanded(child: _buildCoursesStatItem()),
       ],
     );
   }
 
   Widget _statItem(String value, String title) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           value,
           style: GoogleFonts.baloo2(
-            color: Colors.white,
-            fontSize: 30,
+            color: const Color(0xFF55B6E8),
+            fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
         ),
-
-        Text(title, style: GoogleFonts.pixelifySans(color: Colors.white70)),
+        Text(
+          title,
+          style: GoogleFonts.pixelifySans(
+            color: const Color(0xFF55B6E8),
+            fontSize: 14,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildEditButton() {
     return Container(
-      width: double.infinity,
-
-      padding: const EdgeInsets.symmetric(vertical: 14),
-
+      width: 54,
+      height: 54,
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 231, 194, 73),
-
+        color: const Color(0xFFFFF0A8),
+        border: Border.all(color: const Color(0xFFB7A85E), width: 2),
         borderRadius: BorderRadius.circular(16),
-
-        boxShadow: const [
-          BoxShadow(
-            color: Color.fromARGB(255, 190, 155, 45),
-            offset: Offset(0, 4),
-            blurRadius: 0,
-          ),
-        ],
       ),
+      child: IconButton(
+        tooltip: "Edit profile",
+        onPressed: () {},
+        icon: const Icon(Icons.edit_rounded),
+        color: const Color(0xFF343A37),
+        iconSize: 24,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.expand(),
+      ),
+    );
+  }
 
-      child: Center(
-        child: Text(
-          "EDIT PROFILE",
+  Widget _buildProfileIdentity() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "FAKHZUL RAFLI S",
           style: GoogleFonts.baloo2(
             color: Colors.white,
-            fontSize: 18,
+            fontSize: 30,
             fontWeight: FontWeight.bold,
           ),
         ),
+        Text(
+          "zupazuu_",
+          style: GoogleFonts.baloo2(color: Colors.white54, fontSize: 18),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCoursesStatItem() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Image.asset(
+          'assets/flags/japan.png',
+          width: 35,
+          height: 35,
+          fit: BoxFit.contain,
+        ),
+        Text(
+          "Courses",
+          style: GoogleFonts.pixelifySans(
+            color: const Color(0xFF55B6E8),
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompleteProfileCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF20272B),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Complete your profile!",
+                      style: GoogleFonts.baloo2(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "1 STEP LEFT",
+                      style: GoogleFonts.pixelifySans(
+                        color: Colors.white54,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Image.asset(
+                'assets/app/qua.gif',
+                height: 100,
+                width: 80,
+                fit: BoxFit.cover,
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF55B6E8),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xFF3895C5),
+                  offset: Offset(0, 4),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                "CONTINUE",
+                style: GoogleFonts.baloo2(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrentLanguageCard() {
+    final String currentLanguage = "Japanese";
+    final String currentFlag = "assets/flags/japan.png";
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF20272B),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Current Learning Language",
+            style: GoogleFonts.pixelifySans(
+              color: Colors.white54,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(currentFlag, fit: BoxFit.contain),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      currentLanguage,
+                      style: GoogleFonts.baloo2(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Beginner Level",
+                      style: GoogleFonts.pixelifySans(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () {},
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white24),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Center(
+                child: Text(
+                  "CONTINUE LEARNING",
+                  style: GoogleFonts.baloo2(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildAccountInformationCard() {
-    final String username = "@username";
-    final String memberSince = "2026";
+    final String username = "zupazuu_";
+    final String memberSince = "August 2026";
     final String currentLanguage = "Japanese";
     final String currentFlag = "assets/flags/japan.png";
 
@@ -260,173 +440,11 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildCurrentLanguageCard() {
-    final String currentLanguage = "Japanese";
-    final String currentFlag = "assets/flags/japan.png";
-
+  Widget _buildProfileDivider() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF20272B),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Current Learning Language",
-            style: GoogleFonts.pixelifySans(
-              color: Colors.white54,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(currentFlag, fit: BoxFit.contain),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      currentLanguage,
-                      style: GoogleFonts.baloo2(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      "Beginner Level",
-                      style: GoogleFonts.pixelifySans(color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white24),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Center(
-                child: Text(
-                  "CONTINUE LEARNING",
-                  style: GoogleFonts.baloo2(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompleteProfileCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-
-      decoration: BoxDecoration(
-        color: const Color(0xFF20272B),
-        borderRadius: BorderRadius.circular(24),
-      ),
-
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Complete your profile!",
-                      style: GoogleFonts.baloo2(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    Text(
-                      "1 STEP LEFT",
-                      style: GoogleFonts.pixelifySans(
-                        color: Colors.white54,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Image.asset(
-                'assets/app/qua.gif',
-                height: 100,
-                width: 80,
-                fit: BoxFit.cover,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 15),
-
-          Container(
-            width: double.infinity,
-
-            padding: const EdgeInsets.symmetric(vertical: 12),
-
-            decoration: BoxDecoration(
-              color: const Color(0xFF55B6E8),
-
-              borderRadius: BorderRadius.circular(16),
-
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0xFF3895C5),
-                  offset: Offset(0, 4),
-                  blurRadius: 0,
-                ),
-              ],
-            ),
-
-            child: Center(
-              child: Text(
-                "CONTINUE",
-                style: GoogleFonts.baloo2(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      height: 2,
+      color: const Color(0xFF38474C),
     );
   }
 }
