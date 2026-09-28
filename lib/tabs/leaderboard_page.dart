@@ -47,8 +47,9 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                 final isLoading = leagueSnapshot.connectionState !=
                         ConnectionState.done ||
                     usersSnapshot.connectionState != ConnectionState.done;
+                final hasData = leagueSnapshot.hasData && usersSnapshot.hasData;
 
-                if (isLoading) {
+                if (isLoading && !hasData) {
                   return const Center(
                     child: CircularProgressIndicator(color: Color(0xFF1CB0F6)),
                   );
@@ -134,7 +135,7 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Row(
         children: [
-          Image.asset(league.iconAsset, height: 56),
+          _LeagueBadge(league: league, size: 56),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -150,7 +151,9 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Top ${league.promotionZoneSize} naik ke league berikutnya',
+                  league.nextLeague == null
+                      ? 'Kamu di liga tertinggi, pertahankan posisimu!'
+                      : 'Top ${league.promotionZoneSize} naik ke ${league.nextLeague!.name}',
                   style: GoogleFonts.nunito(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 13,
@@ -166,6 +169,18 @@ class _Header extends StatelessWidget {
   }
 }
 
+class _LeagueBadge extends StatelessWidget {
+  final League league;
+  final double size;
+
+  const _LeagueBadge({required this.league, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(league.iconAsset, height: size);
+  }
+}
+
 class _LeaderboardList extends StatelessWidget {
   final League league;
   final List<LeaderboardUser> users;
@@ -178,6 +193,7 @@ class _LeaderboardList extends StatelessWidget {
     final demotionStartRank = totalUsers - league.demotionZoneSize + 1;
 
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       itemCount: users.length,
       separatorBuilder: (context, index) {
@@ -201,7 +217,7 @@ class _LeaderboardList extends StatelessWidget {
             icon: Icons.arrow_downward_rounded,
           );
         }
-        return const SizedBox(height: 6);
+        return const SizedBox.shrink();
       },
       itemBuilder: (context, index) => _LeaderboardTile(user: users[index]),
     );
