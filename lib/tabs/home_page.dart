@@ -5,7 +5,9 @@ import 'leaderboard_page.dart';
 import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final String selectedLanguage;
+
+  const HomePage({super.key, required this.selectedLanguage});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -14,13 +16,20 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
 
-  final List<Widget> pages = const [
-    LearnPage(),
-    LearnPage(),
-    LeaderboardPage(),
-    LearnPage(),
-    ProfilePage(),
-  ];
+  late final List<Widget> pages;
+
+  @override
+  void initState() {
+    super.initState();
+
+    pages = [
+      LearnPage(selectedLanguage: widget.selectedLanguage),
+      LearnPage(selectedLanguage: widget.selectedLanguage),
+      LeaderboardPage(),
+      LearnPage(selectedLanguage: widget.selectedLanguage),
+      ProfilePage(selectedLanguage: widget.selectedLanguage),
+    ];
+  }
 
   void changeTab(int index) {
     setState(() {

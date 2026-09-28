@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+  final String selectedLanguage;
+
+  const ProfilePage({super.key, required this.selectedLanguage});
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +170,7 @@ class ProfilePage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Image.asset(
-          'assets/flags/japan.png',
+          _getCurrentLanguageFlag(),
           width: 35,
           height: 35,
           fit: BoxFit.contain,
@@ -182,6 +184,21 @@ class ProfilePage extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _getCurrentLanguageFlag() {
+    switch (selectedLanguage.toLowerCase()) {
+      case 'japanese':
+      case 'jepang':
+        return 'assets/flags/japan.png';
+      case 'korean':
+      case 'korea':
+        return 'assets/flags/korea.png';
+      case 'english':
+      case 'inggris':
+      default:
+        return 'assets/flags/inggris.png';
+    }
   }
 
   Widget _buildCompleteProfileCard() {
@@ -259,8 +276,8 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _buildCurrentLanguageCard() {
-    final String currentLanguage = "Japanese";
-    final String currentFlag = "assets/flags/japan.png";
+    final String currentLanguage = selectedLanguage;
+    final String currentFlag = _getCurrentLanguageFlag();
 
     return Container(
       width: double.infinity,
@@ -345,8 +362,8 @@ class ProfilePage extends StatelessWidget {
   Widget _buildAccountInformationCard() {
     final String username = "zupazuu_";
     final String memberSince = "August 2026";
-    final String currentLanguage = "Japanese";
-    final String currentFlag = "assets/flags/japan.png";
+    final String currentLanguage = selectedLanguage;
+    final String currentFlag = _getCurrentLanguageFlag();
 
     return Container(
       width: double.infinity,
