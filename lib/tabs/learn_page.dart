@@ -143,7 +143,7 @@ class _LearnPageState extends State<LearnPage> {
               // =========================
               GestureDetector(
                 onTap: () async {
-                  await Navigator.push(
+                  final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const LessonPage(lessonId: 1),
@@ -152,9 +152,11 @@ class _LearnPageState extends State<LearnPage> {
 
                   if (!mounted) return;
 
-                  setState(() {
-                    circle1Completed = true;
-                  });
+                  if (result == true) {
+                    setState(() {
+                      circle1Completed = true;
+                    });
+                  }
                 },
                 child: _lessonCircle(
                   icon: Icons.restaurant,

@@ -10,6 +10,11 @@ class QuestionSeeder extends Seeder
     public function run(): void
     {
         $questions = [
+            /*
+            |--------------------------------------------------------------------------
+            | 1. MULTIPLE CHOICE
+            |--------------------------------------------------------------------------
+            */
             [
                 'lesson_id' => 1,
                 'type' => 'multiple_choice',
@@ -18,12 +23,17 @@ class QuestionSeeder extends Seeder
                 'options' => [
                     'rice',
                     'bread',
-                    'meat',
                     'fish',
+                    'meat',
                 ],
                 'order' => 1,
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | 2. MULTIPLE CHOICE
+            |--------------------------------------------------------------------------
+            */
             [
                 'lesson_id' => 1,
                 'type' => 'multiple_choice',
@@ -38,6 +48,11 @@ class QuestionSeeder extends Seeder
                 'order' => 2,
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | 3. TRANSLATION
+            |--------------------------------------------------------------------------
+            */
             [
                 'lesson_id' => 1,
                 'type' => 'translation',
@@ -47,15 +62,50 @@ class QuestionSeeder extends Seeder
                 'order' => 3,
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | 4. WORD BANK
+            |--------------------------------------------------------------------------
+            */
             [
                 'lesson_id' => 1,
-                'type' => 'translation',
+                'type' => 'word_bank',
                 'prompt' => 'Saya makan ayam.',
                 'correct_answer' => 'I eat chicken.',
-                'options' => null,
+                'options' => [
+                    'chicken',
+                    'I',
+                    'eat',
+                    'rice',
+                    'you',
+                ],
                 'order' => 4,
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | 5. FILL IN THE BLANK
+            |--------------------------------------------------------------------------
+            */
+            [
+                'lesson_id' => 1,
+                'type' => 'fill_blank',
+                'prompt' => 'I ___ rice.',
+                'correct_answer' => 'eat',
+                'options' => [
+                    'eat',
+                    'eats',
+                    'eating',
+                    'ate',
+                ],
+                'order' => 5,
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | 6. MULTIPLE CHOICE
+            |--------------------------------------------------------------------------
+            */
             [
                 'lesson_id' => 1,
                 'type' => 'multiple_choice',
@@ -67,46 +117,62 @@ class QuestionSeeder extends Seeder
                     'soup',
                     'bread',
                 ],
-                'order' => 5,
-            ],
-
-            [
-                'lesson_id' => 1,
-                'type' => 'multiple_choice',
-                'prompt' => 'Apa bahasa Inggris dari "telur"?',
-                'correct_answer' => 'egg',
-                'options' => [
-                    'apple',
-                    'egg',
-                    'banana',
-                    'vegetable',
-                ],
                 'order' => 6,
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | 7. WORD BANK
+            |--------------------------------------------------------------------------
+            */
             [
                 'lesson_id' => 1,
-                'type' => 'translation',
+                'type' => 'word_bank',
                 'prompt' => 'Saya makan telur.',
                 'correct_answer' => 'I eat an egg.',
-                'options' => null,
+                'options' => [
+                    'I',
+                    'eat',
+                    'an',
+                    'egg',
+                    'rice',
+                    'chicken',
+                ],
                 'order' => 7,
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | 8. MATCHING
+            |--------------------------------------------------------------------------
+            */
             [
                 'lesson_id' => 1,
-                'type' => 'multiple_choice',
-                'prompt' => 'Apa bahasa Inggris dari "apel"?',
-                'correct_answer' => 'apple',
+                'type' => 'matching',
+                'prompt' => 'Cocokkan kata bahasa Indonesia dengan bahasa Inggris.',
+                'correct_answer' => 'nasi=rice,ayam=chicken,ikan=fish',
                 'options' => [
-                    'banana',
-                    'apple',
-                    'orange',
-                    'bread',
+                    [
+                        'left' => 'nasi',
+                        'right' => 'rice',
+                    ],
+                    [
+                        'left' => 'ayam',
+                        'right' => 'chicken',
+                    ],
+                    [
+                        'left' => 'ikan',
+                        'right' => 'fish',
+                    ],
                 ],
                 'order' => 8,
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | 9. TRANSLATION
+            |--------------------------------------------------------------------------
+            */
             [
                 'lesson_id' => 1,
                 'type' => 'translation',
@@ -116,6 +182,11 @@ class QuestionSeeder extends Seeder
                 'order' => 9,
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | 10. MULTIPLE CHOICE
+            |--------------------------------------------------------------------------
+            */
             [
                 'lesson_id' => 1,
                 'type' => 'multiple_choice',
