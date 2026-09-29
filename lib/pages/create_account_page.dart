@@ -364,10 +364,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 120,
-                height: 120,
-              ),
+              SizedBox(width: 120, height: 120),
               const SizedBox(height: 12),
               Text(
                 'Account Created Successfully',
