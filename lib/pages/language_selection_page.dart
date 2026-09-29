@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../services/language_asset_service.dart';
 import 'daily_goal_page.dart';
 
 class LanguageSelectionPage extends StatefulWidget {
@@ -61,16 +62,7 @@ class _LanguageSelectionPageState extends State<LanguageSelectionPage> {
   }
 
   String _getCharacterAsset() {
-    switch (selectedLanguage) {
-      case 'English':
-        return 'assets/app/english.gif';
-      case 'Japanese':
-        return 'assets/app/japanese.gif';
-      case 'Korean':
-        return 'assets/app/korean.gif';
-      default:
-        return 'assets/app/wavingduck.gif';
-    }
+    return LanguageAssetService.avatarFor(selectedLanguage);
   }
 
   @override
