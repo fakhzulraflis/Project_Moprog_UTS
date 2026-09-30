@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/question.dart';
 import '../services/api_service.dart';
+import '../services/player_progress.dart';
 
 class LessonPage extends StatefulWidget {
   final int lessonId;
@@ -48,10 +49,14 @@ class _LessonPageState extends State<LessonPage> {
     try {
       final result = await ApiService.getQuestions(widget.lessonId);
 
+      // Hati tambahan dari peti quest atau toko dipakai di lesson ini
+      final bonusHearts = await PlayerProgress.instance.takeBonusHearts();
+
       if (!mounted) return;
 
       setState(() {
         questions = result;
+        hearts += bonusHearts;
         isLoading = false;
       });
     } catch (e) {
@@ -132,6 +137,8 @@ class _LessonPageState extends State<LessonPage> {
 
     final correct = userAnswer == correctAnswer;
 
+    if (correct) PlayerProgress.instance.recordCorrectAnswer();
+
     setState(() {
       hasChecked = true;
       isCorrect = correct;
@@ -155,6 +162,8 @@ class _LessonPageState extends State<LessonPage> {
     final pairs = currentQuestion.matchingOptions;
 
     final correct = matchedPairs.length == pairs.length;
+
+    if (correct) PlayerProgress.instance.recordCorrectAnswer();
 
     setState(() {
       hasChecked = true;
@@ -198,7 +207,12 @@ class _LessonPageState extends State<LessonPage> {
     }
   }
 
-  void showLessonComplete() {
+  Future<void> showLessonComplete() async {
+    // Catat ke progress quest. XP bisa 2x lipat kalau XP Boost aktif.
+    final xpEarned = await PlayerProgress.instance.completeLesson();
+
+    if (!mounted) return;
+
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
@@ -207,6 +221,7 @@ class _LessonPageState extends State<LessonPage> {
       pageBuilder: (context, animation, secondaryAnimation) {
         return LessonCompleteScreen(
           totalQuestions: questions.length,
+          xpEarned: xpEarned,
           onContinue: () {
             Navigator.pop(context);
             Navigator.pop(context, true);
@@ -1118,11 +1133,13 @@ class OutOfHeartsScreen extends StatelessWidget {
 
 class LessonCompleteScreen extends StatelessWidget {
   final int totalQuestions;
+  final int xpEarned;
   final VoidCallback onContinue;
 
   const LessonCompleteScreen({
     super.key,
     required this.totalQuestions,
+    required this.xpEarned,
     required this.onContinue,
   });
 
@@ -1221,7 +1238,7 @@ class LessonCompleteScreen extends StatelessWidget {
           child: buildStatCard(
             icon: Icons.bolt_rounded,
             iconColor: goldColor,
-            title: '+10',
+            title: '+$xpEarned',
             subtitle: 'XP',
           ),
         ),

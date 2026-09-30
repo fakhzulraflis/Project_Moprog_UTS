@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'learn_page.dart';
+import 'quests_page.dart';
 import 'leaderboard_page.dart';
+import 'practice_page.dart';
 
 class HomePage extends StatefulWidget {
   final String selectedLanguage;
@@ -23,9 +25,9 @@ class _HomePageState extends State<HomePage> {
 
     pages = [
       LearnPage(selectedLanguage: widget.selectedLanguage),
-      LearnPage(selectedLanguage: widget.selectedLanguage),
+      PracticePage(selectedLanguage: widget.selectedLanguage),
       LeaderboardPage(),
-      LearnPage(selectedLanguage: widget.selectedLanguage),
+      QuestsPage(),
       LearnPage(selectedLanguage: widget.selectedLanguage),
     ];
   }
