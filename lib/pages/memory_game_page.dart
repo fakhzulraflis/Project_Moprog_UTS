@@ -569,7 +569,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
           color: Colors.white,
         ),
         title: const Text(
-          'Memory Game',
+          'Permainan Mengingat',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,

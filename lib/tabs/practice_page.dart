@@ -21,7 +21,7 @@ class PracticePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Practice',
+                'Latihan',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 30,
@@ -32,7 +32,7 @@ class PracticePage extends StatelessWidget {
               const SizedBox(height: 8),
 
               const Text(
-                'Train what you have learned!',
+                'Latih kembali apa yang sudah kamu pelajari!',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 16,
@@ -79,7 +79,7 @@ class PracticePage extends StatelessWidget {
                               CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Memory Game',
+                              'Permainan Mengingat',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 21,
@@ -90,7 +90,7 @@ class PracticePage extends StatelessWidget {
                             SizedBox(height: 5),
 
                             Text(
-                              'Find and match hidden word pairs',
+                              'Temukan dan cocokkan pasangan kata yang tersembunyi',
                               style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 14,
