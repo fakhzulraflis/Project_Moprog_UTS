@@ -357,36 +357,44 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
         backgroundColor: const Color(0xFF20272B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(width: 120, height: 120),
-              const SizedBox(height: 12),
-              Text(
-                'Account Created Successfully',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  'Account Created\nSuccessfully',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    height: 1.05,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Welcome to Quacko! Your account is ready.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.baloo2(color: Colors.white70),
-              ),
-              const SizedBox(height: 24),
-              _buildPrimaryButton(
-                label: 'CONTINUE',
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  'Welcome to Quacko! Your account is ready.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(
+                    color: Colors.white70,
+                    fontSize: 16,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildPrimaryButton(
+                  label: 'CONTINUE',
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -394,10 +402,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
 
     if (shouldContinue == true && mounted) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) =>
-              LoginPage(selectedLanguage: widget.selectedLanguage),
-        ),
+        MaterialPageRoute(builder: (context) => const LoginPage()),
       );
     }
   }
@@ -589,6 +594,51 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                           return null;
                         },
                       ),
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          checkboxTheme: CheckboxThemeData(
+                            fillColor: WidgetStateProperty.resolveWith((
+                              states,
+                            ) {
+                              if (states.contains(WidgetState.selected)) {
+                                return const Color(0xFFE7C249);
+                              }
+                              return Colors.white12;
+                            }),
+                            side: const BorderSide(color: Colors.white54),
+                          ),
+                        ),
+                        child: CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          value: _termsAccepted,
+                          onChanged: (value) {
+                            setState(() {
+                              _termsAccepted = value ?? false;
+                              _showTermsError = false;
+                            });
+                          },
+                          title: Text(
+                            'I agree to the terms and conditions.',
+                            style: GoogleFonts.baloo2(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                          activeColor: const Color(0xFFE7C249),
+                        ),
+                      ),
+                      if (_showTermsError && !_termsAccepted)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            'Please accept the terms and conditions.',
+                            style: GoogleFonts.baloo2(
+                              color: Colors.redAccent,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
                       _buildPrimaryButton(
                         label: _isSubmitting
                             ? 'CREATING ACCOUNT...'

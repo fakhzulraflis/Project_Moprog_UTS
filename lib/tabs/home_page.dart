@@ -7,7 +7,7 @@ import 'profile_page.dart';
 class HomePage extends StatefulWidget {
   final String selectedLanguage;
 
-  const HomePage({super.key, required this.selectedLanguage});
+  const HomePage({super.key, this.selectedLanguage = 'English'});
 
   @override
   State<HomePage> createState() => _HomePageState();

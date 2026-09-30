@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'login_page.dart';
 import 'understand_page.dart';
 
 class IntroPage extends StatelessWidget {
@@ -63,7 +64,6 @@ class IntroPage extends StatelessWidget {
                 },
               ),
             ),
-
             child: Padding(
               padding: const EdgeInsets.only(
                 left: 10,
@@ -80,11 +80,10 @@ class IntroPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color.fromARGB(255, 231, 194, 73),
                   borderRadius: BorderRadius.circular(16),
-
                   boxShadow: const [
                     BoxShadow(
                       color: Color.fromARGB(255, 190, 155, 45),
-                      offset: Offset(0, 4), // (x, y) y = kebawah
+                      offset: Offset(0, 4),
                       blurRadius: 0,
                     ),
                   ],
@@ -105,36 +104,41 @@ class IntroPage extends StatelessWidget {
           ),
 
           // I already have account button
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 10,
-              bottom: 0,
-              top: 20,
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
             ),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 40, 50, 55),
-                borderRadius: BorderRadius.circular(16),
-
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color.fromARGB(255, 190, 155, 45),
-                    offset: Offset(0, 0), // (x, y) y = kebawah
-                    blurRadius: 2,
-                  ),
-                ],
+            child: Padding(
+              padding: const EdgeInsets.only(
+                left: 10,
+                right: 10,
+                bottom: 0,
+                top: 20,
               ),
-              child: Center(
-                child: Text(
-                  "I ALREADY HAVE ACCOUNT",
-                  style: GoogleFonts.baloo2(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    letterSpacing: 0.7,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 40, 50, 55),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color.fromARGB(255, 190, 155, 45),
+                      offset: Offset(0, 0),
+                      blurRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    "I ALREADY HAVE ACCOUNT",
+                    style: GoogleFonts.baloo2(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      letterSpacing: 0.7,
+                    ),
                   ),
                 ),
               ),

@@ -42,6 +42,29 @@ class AccountRegistrationTest extends TestCase
         $response->assertUnprocessable()->assertJsonValidationErrors('password');
     }
 
+    public function test_user_can_login_with_username_or_email(): void
+    {
+        $this->postJson('/api/register', $this->validPayload());
+
+        $response = $this->postJson('/api/login', [
+            'username_or_email' => 'fakhzulrafli',
+            'password' => 'securepass123',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('message', 'Login successful.')
+            ->assertJsonPath('user.username', 'fakhzulrafli');
+
+        $invalidResponse = $this->postJson('/api/login', [
+            'username_or_email' => 'fakhzul@example.com',
+            'password' => 'wrong-password',
+        ]);
+
+        $invalidResponse->assertUnauthorized()
+            ->assertJsonPath('message', 'Invalid username/email or password.');
+    }
+
     private function validPayload(): array
     {
         return [

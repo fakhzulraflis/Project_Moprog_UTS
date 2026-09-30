@@ -64,6 +64,51 @@ class ApiService {
     throw Exception(message);
   }
 
+  static Future<Map<String, dynamic>> login({
+    required String usernameOrEmail,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/login'),
+      headers: const {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'username_or_email': usernameOrEmail,
+        'password': password,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final decodedBody = jsonDecode(response.body);
+      if (decodedBody is Map<String, dynamic>) {
+        return decodedBody;
+      }
+      throw const FormatException('Invalid login response.');
+    }
+
+    var message = 'Invalid username/email or password.';
+    try {
+      final Object? responseBody = jsonDecode(response.body);
+      if (responseBody is Map<String, dynamic>) {
+        final errors = responseBody['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final firstError = errors.values.first;
+          if (firstError is List && firstError.isNotEmpty) {
+            message = firstError.first.toString();
+          }
+        } else if (responseBody['message'] is String) {
+          message = responseBody['message'] as String;
+        }
+      }
+    } on FormatException {
+      message = 'Could not connect to the account service.';
+    }
+
+    throw Exception(message);
+  }
+
   static Future<List<Question>> getQuestions(int lessonId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/lessons/$lessonId/questions'),
