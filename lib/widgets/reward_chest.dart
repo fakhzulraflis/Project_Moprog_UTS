@@ -190,7 +190,10 @@ class ChestPainter extends CustomPainter {
 
       // Bibir depan peti
       paint.color = c.dark;
-      canvas.drawRect(Rect.fromLTRB(w * 0.06, h * 0.60, w * 0.94, h * 0.65), paint);
+      canvas.drawRect(
+        Rect.fromLTRB(w * 0.06, h * 0.60, w * 0.94, h * 0.65),
+        paint,
+      );
     } else {
       // Tutup peti
       final lid = RRect.fromRectAndCorners(
@@ -215,14 +218,20 @@ class ChestPainter extends CustomPainter {
 
       // Garis sambungan tutup dan badan
       paint.color = c.dark;
-      canvas.drawRect(Rect.fromLTRB(w * 0.06, h * 0.45, w * 0.94, h * 0.50), paint);
+      canvas.drawRect(
+        Rect.fromLTRB(w * 0.06, h * 0.45, w * 0.94, h * 0.50),
+        paint,
+      );
     }
 
     // Dua sabuk logam kiri dan kanan
     paint.color = c.dark;
     final strapTop = isOpen ? h * 0.60 : h * 0.12;
     for (final x in [w * 0.20, w * 0.70]) {
-      canvas.drawRect(Rect.fromLTRB(x, strapTop, x + w * 0.10, h * 0.94), paint);
+      canvas.drawRect(
+        Rect.fromLTRB(x, strapTop, x + w * 0.10, h * 0.94),
+        paint,
+      );
     }
 
     // Gembok di tengah (hanya kalau peti masih tertutup)
@@ -331,9 +340,8 @@ class _RewardChestState extends State<RewardChest>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: ChestColors.of(widget.tier).light.withValues(
-                    alpha: 0.45,
-                  ),
+                  color: ChestColors.of(widget.tier).light
+                      .withValues(alpha: 0.45),
                   blurRadius: 16,
                   spreadRadius: 1,
                 ),
@@ -403,9 +411,7 @@ class _ChestOpeningScreenState extends State<ChestOpeningScreen>
             final opened = t >= openAt;
 
             // Goyangan makin kencang menjelang terbuka
-            final shake = opened
-                ? 0.0
-                : sin(t * 60) * 0.12 * (t / openAt);
+            final shake = opened ? 0.0 : sin(t * 60) * 0.12 * (t / openAt);
 
             final lootProgress = opened
                 ? Curves.elasticOut.transform((t - openAt) / (1 - openAt))
