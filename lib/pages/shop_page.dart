@@ -33,10 +33,7 @@ class _ShopPageState extends State<ShopPage> {
   void initState() {
     super.initState();
     progress.load();
-    clock = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) => setState(() {}),
-    );
+    clock = Timer.periodic(const Duration(seconds: 30), (_) => setState(() {}));
   }
 
   @override
@@ -151,7 +148,8 @@ class _ShopPageState extends State<ShopPage> {
                   painter: ChestPainter(tier: ChestTier.silver),
                 ),
                 title: 'Mystery Chest',
-                description: 'Peti perak berisi gem, XP, atau hati. '
+                description:
+                    'Peti perak berisi gem, XP, atau hati. '
                     'Isinya acak!',
                 price: mysteryChestPrice,
                 onBuy: buyMysteryChest,
