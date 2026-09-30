@@ -3,9 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../pages/daily_spin_page.dart';
+import '../pages/pet_page.dart';
 import '../pages/shop_page.dart';
+import '../services/duck_pet.dart';
 import '../services/player_progress.dart';
+import '../widgets/duck_painter.dart';
 import '../widgets/reward_chest.dart';
+import '../widgets/spin_wheel.dart';
 
 class QuestsPage extends StatefulWidget {
   const QuestsPage({super.key});
@@ -16,6 +21,7 @@ class QuestsPage extends StatefulWidget {
 
 class _QuestsPageState extends State<QuestsPage> {
   final progress = PlayerProgress.instance;
+  final pet = DuckPet.instance;
 
   // Memperbarui hitung mundur dan me-reset quest tepat tengah malam.
   Timer? clock;
@@ -39,6 +45,7 @@ class _QuestsPageState extends State<QuestsPage> {
   void initState() {
     super.initState();
     progress.load();
+    pet.load();
     clock = Timer.periodic(const Duration(seconds: 30), (_) {
       progress.refresh();
       setState(() {});
@@ -83,12 +90,20 @@ class _QuestsPageState extends State<QuestsPage> {
     await progress.claimMonthly(loot);
   }
 
-  void openShop() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const ShopPage()),
-    );
+  // Sisa hari sampai quest mingguan di-reset (Senin), termasuk hari ini.
+  int get weeklyDaysLeft => 8 - DateTime.now().weekday;
+
+  Future<void> openWeeklyChest() async {
+    final loot = await showChestOpening(context, ChestTier.silver);
+    if (loot == null) return;
+    await progress.claimWeekly(loot);
   }
+
+  void openPage(Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+  }
+
+  void openShop() => openPage(const ShopPage());
 
   @override
   Widget build(BuildContext context) {
@@ -96,9 +111,9 @@ class _QuestsPageState extends State<QuestsPage> {
       backgroundColor: const Color(0xFF272F33),
       body: SafeArea(
         child: ListenableBuilder(
-          listenable: progress,
+          listenable: Listenable.merge([progress, pet]),
           builder: (context, _) {
-            if (!progress.isLoaded) {
+            if (!progress.isLoaded || !pet.isLoaded) {
               return const Center(
                 child: CircularProgressIndicator(color: Color(0xFFE7C249)),
               );
@@ -132,6 +147,20 @@ class _QuestsPageState extends State<QuestsPage> {
 
                 const SizedBox(height: 15),
 
+                Row(
+                  children: [
+                    Expanded(child: buildPetCard()),
+                    const SizedBox(width: 12),
+                    Expanded(child: buildSpinCard()),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                buildStreakCard(),
+
+                const SizedBox(height: 30),
+
                 buildMonthlyChallenge(),
 
                 const SizedBox(height: 30),
@@ -163,15 +192,161 @@ class _QuestsPageState extends State<QuestsPage> {
 
                 const SizedBox(height: 30),
 
-                buildSectionHeader('Flock Quest', 'NEXT IN 2 DAYS'),
+                buildSectionHeader(
+                  'Weekly Quest',
+                  weeklyDaysLeft == 1 ? '1 DAY' : '$weeklyDaysLeft DAYS',
+                ),
 
                 const SizedBox(height: 12),
 
-                buildFlockQuest(),
+                buildWeeklyQuest(),
               ],
             );
           },
         ),
+      ),
+    );
+  }
+
+  // Kartu kecil berisi Quacko. Ditekan untuk membuka halaman pet.
+  Widget buildPetCard() {
+    return buildShortcutCard(
+      onTap: () => openPage(const PetPage()),
+      highlight: pet.mood == DuckMood.hungry || pet.mood == DuckMood.sad,
+      preview: CustomPaint(
+        size: const Size(64, 64),
+        painter: DuckPainter(mood: pet.mood, accessories: pet.equipped),
+      ),
+      title: pet.name,
+      subtitle: switch (pet.mood) {
+        DuckMood.happy => 'Very happy',
+        DuckMood.normal => 'Chilling',
+        DuckMood.hungry => 'Hungry!',
+        DuckMood.sad => 'Misses you',
+        DuckMood.sleeping => 'Sleeping',
+      },
+    );
+  }
+
+  Widget buildSpinCard() {
+    return buildShortcutCard(
+      onTap: () => openPage(const DailySpinPage()),
+      highlight: progress.canSpin,
+      preview: const SpinWheel(size: 64),
+      title: 'Daily Spin',
+      subtitle: progress.canSpin ? 'Ready to spin!' : 'Come back tomorrow',
+    );
+  }
+
+  // [highlight] memberi garis kuning, tanda ada yang perlu dilakukan.
+  Widget buildShortcutCard({
+    required VoidCallback onTap,
+    required bool highlight,
+    required Widget preview,
+    required String title,
+    required String subtitle,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 132,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF20272B),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: highlight ? const Color(0xFFE7C249) : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Column(
+          children: [
+            preview,
+            const Spacer(),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: highlight ? const Color(0xFFE7C249) : Colors.white54,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Streak harian dan progress menuju target dari halaman Streak Goal.
+  Widget buildStreakCard() {
+    final streak = progress.streak;
+    final goal = progress.streakGoal;
+    final studied = progress.studiedToday;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF20272B),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Opacity(
+            opacity: studied ? 1 : 0.4,
+            child: Image.asset('assets/icons/streak.png', height: 44),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '$streak day streak',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Best: ${progress.bestStreak}',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                buildProgressBar(streak.clamp(0, goal), goal),
+                const SizedBox(height: 6),
+                Text(
+                  studied
+                      ? 'You studied today. Nice work!'
+                      : 'Finish 1 lesson today to keep your streak.',
+                  style: TextStyle(
+                    color: studied ? const Color(0xFF58CC02) : Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -365,11 +540,7 @@ class _QuestsPageState extends State<QuestsPage> {
         ),
         Row(
           children: [
-            const Icon(
-              Icons.access_time,
-              color: Color(0xFFE7C249),
-              size: 16,
-            ),
+            const Icon(Icons.access_time, color: Color(0xFFE7C249), size: 16),
             const SizedBox(width: 5),
             Text(
               timeLeft,
@@ -390,7 +561,10 @@ class _QuestsPageState extends State<QuestsPage> {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          Image.asset(quest.icon, height: 40, fit: BoxFit.contain),
+          SizedBox(
+            width: 44,
+            child: Image.asset(quest.icon, height: 40, fit: BoxFit.contain),
+          ),
 
           const SizedBox(width: 16),
 
@@ -425,7 +599,7 @@ class _QuestsPageState extends State<QuestsPage> {
     );
   }
 
-  Widget buildFlockQuest() {
+  Widget buildWeeklyQuest() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -436,7 +610,7 @@ class _QuestsPageState extends State<QuestsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Complete 20 lessons with your flock',
+            'Complete ${PlayerProgress.weeklyTarget} lessons this week',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -445,23 +619,27 @@ class _QuestsPageState extends State<QuestsPage> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Team up with a friend and open a silver chest together.',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
+            'Resets every Monday. Finish it to open a silver chest.',
+            style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: buildProgressBar(0, 20)),
+              Expanded(
+                child: buildProgressBar(
+                  progress.lessonsThisWeek.clamp(
+                    0,
+                    PlayerProgress.weeklyTarget,
+                  ),
+                  PlayerProgress.weeklyTarget,
+                ),
+              ),
               const SizedBox(width: 12),
-              // Flock quest belum tersambung ke data teman, jadi petinya
-              // selalu terkunci.
-              const RewardChest(
+              RewardChest(
                 tier: ChestTier.silver,
                 size: 40,
-                state: ChestState.locked,
+                state: progress.weeklyChestState,
+                onTap: openWeeklyChest,
               ),
             ],
           ),
