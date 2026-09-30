@@ -1,88 +1,234 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class QuestsPage extends StatelessWidget {
+import '../pages/shop_page.dart';
+import '../services/player_progress.dart';
+import '../widgets/reward_chest.dart';
+
+class QuestsPage extends StatefulWidget {
   const QuestsPage({super.key});
 
-  // Data sementara. Nanti diganti dengan data asli dari backend.
-  static const List<Map<String, dynamic>> dailyQuests = [
-    {
-      'title': 'Earn 50 XP',
-      'icon': 'assets/icons/xp.png',
-      'progress': 20,
-      'target': 50,
-    },
-    {
-      'title': 'Complete 3 lessons',
-      'icon': 'assets/icons/guidebook.png',
-      'progress': 1,
-      'target': 3,
-    },
-    {
-      'title': 'Practice 5 times',
-      'icon': 'assets/icons/dumbell.png',
-      'progress': 0,
-      'target': 5,
-    },
+  @override
+  State<QuestsPage> createState() => _QuestsPageState();
+}
+
+class _QuestsPageState extends State<QuestsPage> {
+  final progress = PlayerProgress.instance;
+
+  // Memperbarui hitung mundur dan me-reset quest tepat tengah malam.
+  Timer? clock;
+
+  static const List<String> monthNames = [
+    'JANUARY',
+    'FEBRUARY',
+    'MARCH',
+    'APRIL',
+    'MAY',
+    'JUNE',
+    'JULY',
+    'AUGUST',
+    'SEPTEMBER',
+    'OCTOBER',
+    'NOVEMBER',
+    'DECEMBER',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    progress.load();
+    clock = Timer.periodic(const Duration(seconds: 30), (_) {
+      progress.refresh();
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    clock?.cancel();
+    super.dispose();
+  }
+
+  // Sisa waktu sampai quest harian di-reset (tengah malam).
+  String get dailyTimeLeft {
+    final now = DateTime.now();
+    final midnight = DateTime(now.year, now.month, now.day + 1);
+    final left = midnight.difference(now);
+
+    if (left.inHours >= 1) {
+      return '${left.inHours} ${left.inHours == 1 ? 'HOUR' : 'HOURS'}';
+    }
+    final minutes = left.inMinutes < 1 ? 1 : left.inMinutes;
+    return '$minutes ${minutes == 1 ? 'MINUTE' : 'MINUTES'}';
+  }
+
+  // Sisa hari sampai challenge bulanan berakhir, termasuk hari ini.
+  int get monthlyDaysLeft {
+    final now = DateTime.now();
+    final lastDay = DateTime(now.year, now.month + 1, 0).day;
+    return lastDay - now.day + 1;
+  }
+
+  Future<void> openQuestChest(DailyQuest quest) async {
+    final loot = await showChestOpening(context, quest.tier);
+    if (loot == null) return;
+    await progress.claimQuest(quest, loot);
+  }
+
+  Future<void> openMonthlyChest() async {
+    final loot = await showChestOpening(context, ChestTier.gold);
+    if (loot == null) return;
+    await progress.claimMonthly(loot);
+  }
+
+  void openShop() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ShopPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF272F33),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
+        child: ListenableBuilder(
+          listenable: progress,
+          builder: (context, _) {
+            if (!progress.isLoaded) {
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFFE7C249)),
+              );
+            }
+
+            final quests = PlayerProgress.dailyQuests;
+
+            return ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Quests',
+                        style: GoogleFonts.baloo2(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    buildGemButton(),
+                  ],
+                ),
+
+                if (progress.isXpBoostActive) ...[
+                  const SizedBox(height: 10),
+                  buildBoostBanner(),
+                ],
+
+                const SizedBox(height: 15),
+
+                buildMonthlyChallenge(),
+
+                const SizedBox(height: 30),
+
+                buildSectionHeader('Daily Quests', dailyTimeLeft),
+
+                const SizedBox(height: 12),
+
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF20272B),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Column(
+                    children: [
+                      for (int i = 0; i < quests.length; i++) ...[
+                        buildQuestItem(quests[i]),
+
+                        // Garis pemisah di antara quest, kecuali setelah yang terakhir
+                        if (i < quests.length - 1)
+                          const Divider(
+                            height: 1,
+                            color: Color.fromARGB(30, 255, 255, 255),
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                buildSectionHeader('Flock Quest', 'NEXT IN 2 DAYS'),
+
+                const SizedBox(height: 12),
+
+                buildFlockQuest(),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // Saldo gem di pojok kanan atas. Ditekan untuk membuka toko.
+  Widget buildGemButton() {
+    return GestureDetector(
+      onTap: openShop,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF20272B),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color.fromARGB(40, 255, 255, 255)),
+        ),
+        child: Row(
           children: [
+            Image.asset('assets/icons/gems.png', height: 20),
+            const SizedBox(width: 6),
             Text(
-              'Quests',
-              style: GoogleFonts.baloo2(
-                color: Colors.white,
-                fontSize: 28,
+              '${progress.gems}',
+              style: const TextStyle(
+                color: Color(0xFF1CB0F6),
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
               ),
             ),
-
-            const SizedBox(height: 15),
-
-            buildMonthlyChallenge(),
-
-            const SizedBox(height: 30),
-
-            buildSectionHeader('Daily Quests', '14 HOURS'),
-
-            const SizedBox(height: 12),
-
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF20272B),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Column(
-                children: [
-                  for (int i = 0; i < dailyQuests.length; i++) ...[
-                    buildQuestItem(dailyQuests[i]),
-
-                    // Garis pemisah di antara quest, kecuali setelah yang terakhir
-                    if (i < dailyQuests.length - 1)
-                      const Divider(
-                        height: 1,
-                        color: Color.fromARGB(30, 255, 255, 255),
-                      ),
-                  ],
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            buildSectionHeader('Flock Quest', 'NEXT IN 2 DAYS'),
-
-            const SizedBox(height: 12),
-
-            buildFlockQuest(),
+            const SizedBox(width: 8),
+            const Icon(Icons.storefront, color: Colors.white70, size: 20),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget buildBoostBanner() {
+    final minutes = progress.xpBoostLeft.inMinutes + 1;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3B2F5C),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Image.asset('assets/icons/xp.png', height: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'XP Boost active: 2x XP, $minutes min left',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -105,7 +251,7 @@ class QuestsPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'SEPTEMBER CHALLENGE',
+                        '${monthNames[DateTime.now().month - 1]} CHALLENGE',
                         style: GoogleFonts.baloo2(
                           color: Colors.white70,
                           fontSize: 12,
@@ -123,17 +269,19 @@ class QuestsPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      const Row(
+                      Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.access_time,
                             color: Colors.white70,
                             size: 16,
                           ),
-                          SizedBox(width: 5),
+                          const SizedBox(width: 5),
                           Text(
-                            '8 DAYS',
-                            style: TextStyle(
+                            monthlyDaysLeft == 1
+                                ? '1 DAY'
+                                : '$monthlyDaysLeft DAYS',
+                            style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -167,7 +315,7 @@ class QuestsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Complete 30 quests',
+                  'Complete ${PlayerProgress.monthlyTarget} quests',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -177,9 +325,22 @@ class QuestsPage extends StatelessWidget {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Expanded(child: buildProgressBar(8, 30)),
+                    Expanded(
+                      child: buildProgressBar(
+                        progress.questsThisMonth.clamp(
+                          0,
+                          PlayerProgress.monthlyTarget,
+                        ),
+                        PlayerProgress.monthlyTarget,
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    buildGoldenEgg(34),
+                    RewardChest(
+                      tier: ChestTier.gold,
+                      size: 46,
+                      state: progress.monthlyChestState,
+                      onTap: openMonthlyChest,
+                    ),
                   ],
                 ),
               ],
@@ -224,12 +385,12 @@ class QuestsPage extends StatelessWidget {
     );
   }
 
-  Widget buildQuestItem(Map<String, dynamic> quest) {
+  Widget buildQuestItem(DailyQuest quest) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          Image.asset(quest['icon'], height: 40, fit: BoxFit.contain),
+          Image.asset(quest.icon, height: 40, fit: BoxFit.contain),
 
           const SizedBox(width: 16),
 
@@ -238,7 +399,7 @@ class QuestsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  quest['title'],
+                  quest.title,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -246,14 +407,19 @@ class QuestsPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                buildProgressBar(quest['progress'], quest['target']),
+                buildProgressBar(progress.progressOf(quest), quest.target),
               ],
             ),
           ),
 
           const SizedBox(width: 12),
 
-          buildGoldenEgg(28),
+          RewardChest(
+            tier: quest.tier,
+            size: 40,
+            state: progress.chestStateOf(quest),
+            onTap: () => openQuestChest(quest),
+          ),
         ],
       ),
     );
@@ -279,7 +445,7 @@ class QuestsPage extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Team up with a friend and earn a golden egg together.',
+            'Team up with a friend and open a silver chest together.',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 13,
@@ -290,7 +456,13 @@ class QuestsPage extends StatelessWidget {
             children: [
               Expanded(child: buildProgressBar(0, 20)),
               const SizedBox(width: 12),
-              buildGoldenEgg(28),
+              // Flock quest belum tersambung ke data teman, jadi petinya
+              // selalu terkunci.
+              const RewardChest(
+                tier: ChestTier.silver,
+                size: 40,
+                state: ChestState.locked,
+              ),
             ],
           ),
         ],
@@ -321,31 +493,6 @@ class QuestsPage extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  // Ikon telur emas sebagai hadiah quest. Digambar pakai Container supaya
-  // tidak perlu file gambar baru. Bagian atas dibuat lebih lancip dari bagian
-  // bawah supaya bentuknya mirip telur.
-  Widget buildGoldenEgg(double size) {
-    return Container(
-      width: size * 0.78,
-      height: size,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFFE680),
-            Color(0xFFE7C249),
-            Color(0xFFB8860B),
-          ],
-        ),
-        borderRadius: BorderRadius.vertical(
-          top: Radius.elliptical(size * 0.39, size * 0.6),
-          bottom: Radius.elliptical(size * 0.39, size * 0.4),
-        ),
-      ),
     );
   }
 }
