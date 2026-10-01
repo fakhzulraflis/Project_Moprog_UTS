@@ -1,32 +1,15 @@
 import '../models/leaderboard_user.dart';
 import '../models/league.dart';
 
-/// Data source contract for the leaderboard feature.
-///
-/// The UI (LeaderboardPage) only ever talks to this abstract class, never
-/// to a concrete implementation. Swap `LeaderboardService.instance` below
-/// to point at a real API/Firestore/SQL implementation later and nothing
-/// in lib/tabs/leaderboard_page.dart needs to change.
 abstract class LeaderboardService {
-  /// Currently backed by [_DummyLeaderboardService]. Once a real backend
-  /// exists, replace this with e.g. `ApiLeaderboardService()` or
-  /// `FirestoreLeaderboardService()`.
   static LeaderboardService instance = _DummyLeaderboardService();
-
-  /// Returns the league the current user is in.
   Future<League> getCurrentLeague();
-
-  /// Returns this week's leaderboard, sorted by rank ascending (1 = top).
   Future<List<LeaderboardUser>> getWeeklyLeaderboard();
 }
 
-/// Placeholder implementation using in-memory fake data.
-///
-/// Mimics network latency with a short delay and returns data already
-/// shaped exactly like [LeaderboardUser.fromJson] would, so replacing this
-/// class with a real HTTP/Firestore call later is a drop-in swap.
 class _DummyLeaderboardService implements LeaderboardService {
   static const _currentUserId = 'u7';
+  static const _currentLeague = League.bronze;
 
   static final List<Map<String, dynamic>> _rawUsers = [
     {'id': 'u1', 'rank': 1, 'name': 'Aditya', 'xp': 420},
@@ -39,17 +22,32 @@ class _DummyLeaderboardService implements LeaderboardService {
     {'id': 'u8', 'rank': 8, 'name': 'Gita', 'xp': 210},
     {'id': 'u9', 'rank': 9, 'name': 'Hadi', 'xp': 190},
     {'id': 'u10', 'rank': 10, 'name': 'Indah', 'xp': 175},
-    {'id': 'u11', 'rank': 11, 'name': 'Joko', 'xp': 140},
-    {'id': 'u12', 'rank': 12, 'name': 'Kirana', 'xp': 120},
-    {'id': 'u13', 'rank': 13, 'name': 'Lestari', 'xp': 95},
-    {'id': 'u14', 'rank': 14, 'name': 'Made', 'xp': 60},
-    {'id': 'u15', 'rank': 15, 'name': 'Nadia', 'xp': 30},
+    {'id': 'u11', 'rank': 11, 'name': 'Joko', 'xp': 160},
+    {'id': 'u12', 'rank': 12, 'name': 'Kirana', 'xp': 150},
+    {'id': 'u13', 'rank': 13, 'name': 'Lestari', 'xp': 140},
+    {'id': 'u14', 'rank': 14, 'name': 'Made', 'xp': 130},
+    {'id': 'u15', 'rank': 15, 'name': 'Nadia', 'xp': 120},
+    {'id': 'u16', 'rank': 16, 'name': 'Oscar', 'xp': 110},
+    {'id': 'u17', 'rank': 17, 'name': 'Putri', 'xp': 100},
+    {'id': 'u18', 'rank': 18, 'name': 'Qori', 'xp': 92},
+    {'id': 'u19', 'rank': 19, 'name': 'Rizky', 'xp': 85},
+    {'id': 'u20', 'rank': 20, 'name': 'Sari', 'xp': 78},
+    {'id': 'u21', 'rank': 21, 'name': 'Tono', 'xp': 70},
+    {'id': 'u22', 'rank': 22, 'name': 'Umar', 'xp': 62},
+    {'id': 'u23', 'rank': 23, 'name': 'Vina', 'xp': 55},
+    {'id': 'u24', 'rank': 24, 'name': 'Wawan', 'xp': 48},
+    {'id': 'u25', 'rank': 25, 'name': 'Xena', 'xp': 40},
+    {'id': 'u26', 'rank': 26, 'name': 'Yudi', 'xp': 33},
+    {'id': 'u27', 'rank': 27, 'name': 'Zahra', 'xp': 26},
+    {'id': 'u28', 'rank': 28, 'name': 'Andi', 'xp': 20},
+    {'id': 'u29', 'rank': 29, 'name': 'Bagas', 'xp': 14},
+    {'id': 'u30', 'rank': 30, 'name': 'Cindy', 'xp': 8},
   ];
 
   @override
   Future<League> getCurrentLeague() async {
     await Future.delayed(const Duration(milliseconds: 200));
-    return League.silver;
+    return _currentLeague;
   }
 
   @override
