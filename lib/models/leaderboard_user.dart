@@ -1,15 +1,10 @@
-/// Represents a single row in the weekly leaderboard.
-///
-/// Kept intentionally simple and decoupled from any backend so it can be
-/// built either from local dummy data (now) or from an API/Firestore/SQL
-/// response later without touching the UI layer.
 class LeaderboardUser {
   final String id;
   final int rank;
   final String name;
   final int xp;
   final bool isMe;
-  final String? avatarUrl; // null while we don't have real avatars yet
+  final String? avatarUrl;
 
   const LeaderboardUser({
     required this.id,
@@ -20,21 +15,18 @@ class LeaderboardUser {
     this.avatarUrl,
   });
 
-  /// Build from a JSON map, e.g. once a REST API or Firestore doc is wired
-  /// up. `currentUserId` is passed in separately so the service/repository
-  /// decides who "isMe" is, rather than trusting the payload blindly.
   factory LeaderboardUser.fromJson(
     Map<String, dynamic> json, {
     String? currentUserId,
   }) {
-    final id = json['id'] as String;
+    final id = json['id'].toString();
     return LeaderboardUser(
       id: id,
-      rank: json['rank'] as int,
+      rank: (json['rank'] as num).toInt(),
       name: json['name'] as String,
-      xp: json['xp'] as int,
+      xp: (json['xp'] as num).toInt(),
       isMe: currentUserId != null && currentUserId == id,
-      avatarUrl: json['avatarUrl'] as String?,
+      avatarUrl: (json['avatarUrl'] ?? json['avatar_url']) as String?,
     );
   }
 

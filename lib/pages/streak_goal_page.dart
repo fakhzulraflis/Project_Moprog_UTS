@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/player_progress.dart';
 import '../tabs/home_page.dart';
 
 class StreakGoalPage extends StatefulWidget {
@@ -103,6 +104,10 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
                 onPressed: selectedStreak == null
                     ? null
                     : () {
+                        // Target disimpan, lalu dipakai di kartu streak
+                        // pada halaman Quests
+                        PlayerProgress.instance.setStreakGoal(selectedStreak!);
+
                         Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(

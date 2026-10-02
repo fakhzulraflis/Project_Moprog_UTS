@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/question.dart';
 import '../services/api_service.dart';
+import '../services/player_progress.dart';
 
 class LessonPage extends StatefulWidget {
   final int lessonId;
@@ -64,10 +65,14 @@ class _LessonPageState extends State<LessonPage>
     try {
       final result = await ApiService.getQuestions(widget.lessonId);
 
+      // Hati tambahan dari peti quest atau toko dipakai di lesson ini
+      final bonusHearts = await PlayerProgress.instance.takeBonusHearts();
+
       if (!mounted) return;
 
       setState(() {
         questions = result;
+        hearts += bonusHearts;
         isLoading = false;
       });
     } catch (e) {
@@ -154,6 +159,8 @@ class _LessonPageState extends State<LessonPage>
 
     final correct = userAnswer == correctAnswer;
 
+    if (correct) PlayerProgress.instance.recordCorrectAnswer();
+
     setState(() {
       hasChecked = true;
       isCorrect = correct;
@@ -176,6 +183,8 @@ class _LessonPageState extends State<LessonPage>
     final pairs = currentQuestion.matchingOptions;
 
     final correct = matchedPairs.length == pairs.length;
+
+    if (correct) PlayerProgress.instance.recordCorrectAnswer();
 
     setState(() {
       hasChecked = true;
@@ -218,15 +227,21 @@ class _LessonPageState extends State<LessonPage>
     }
   }
 
-  void showLessonComplete() {
+  Future<void> showLessonComplete() async {
+    // Catat ke progress quest. XP bisa 2x lipat kalau XP Boost aktif.
+    final xpEarned = await PlayerProgress.instance.completeLesson();
+
+    if (!mounted) return;
+
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.75),
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
         return LessonCompleteScreen(
           totalQuestions: questions.length,
+          xpEarned: xpEarned,
           onContinue: () {
             Navigator.pop(context);
             Navigator.pop(context, true);
@@ -450,17 +465,17 @@ class _LessonPageState extends State<LessonPage>
         Color border = Colors.white24;
 
         if (isSelected) {
-          background = Colors.white.withOpacity(0.10);
+          background = Colors.white.withValues(alpha: 0.10);
           border = Colors.white;
         }
 
         if (hasChecked && option == question.correctAnswer) {
-          background = yellowColor.withOpacity(0.18);
+          background = yellowColor.withValues(alpha: 0.18);
           border = yellowColor;
         }
 
         if (hasChecked && isSelected && !isCorrect) {
-          background = redColor.withOpacity(0.18);
+          background = redColor.withValues(alpha: 0.18);
           border = redColor;
         }
 
@@ -518,7 +533,7 @@ class _LessonPageState extends State<LessonPage>
         hintText: 'Ketik terjemahan...',
         hintStyle: const TextStyle(color: Colors.white38),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Colors.white24),
@@ -555,7 +570,7 @@ class _LessonPageState extends State<LessonPage>
           fontWeight: FontWeight.normal,
         ),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Colors.white24),
@@ -960,7 +975,7 @@ class _LessonPageState extends State<LessonPage>
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.75),
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
         return OutOfHeartsScreen(
@@ -1175,9 +1190,9 @@ class OutOfHeartsScreen extends StatelessWidget {
       width: 120,
       height: 120,
       decoration: BoxDecoration(
-        color: redColor.withOpacity(0.12),
+        color: redColor.withValues(alpha: 0.12),
         shape: BoxShape.circle,
-        border: Border.all(color: redColor.withOpacity(0.35), width: 2),
+        border: Border.all(color: redColor.withValues(alpha: 0.35), width: 2),
       ),
       child: const Center(
         child: Icon(Icons.heart_broken_rounded, color: redColor, size: 65),
@@ -1189,7 +1204,7 @@ class OutOfHeartsScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 15),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white12),
       ),
@@ -1274,11 +1289,13 @@ class OutOfHeartsScreen extends StatelessWidget {
 
 class LessonCompleteScreen extends StatelessWidget {
   final int totalQuestions;
+  final int xpEarned;
   final VoidCallback onContinue;
 
   const LessonCompleteScreen({
     super.key,
     required this.totalQuestions,
+    required this.xpEarned,
     required this.onContinue,
   });
 
@@ -1353,12 +1370,12 @@ class LessonCompleteScreen extends StatelessWidget {
       width: 130,
       height: 130,
       decoration: BoxDecoration(
-        color: goldColor.withOpacity(0.12),
+        color: goldColor.withValues(alpha: 0.12),
         shape: BoxShape.circle,
-        border: Border.all(color: goldColor.withOpacity(0.4), width: 2),
+        border: Border.all(color: goldColor.withValues(alpha: 0.4), width: 2),
         boxShadow: [
           BoxShadow(
-            color: goldColor.withOpacity(0.15),
+            color: goldColor.withValues(alpha: 0.15),
             blurRadius: 30,
             spreadRadius: 5,
           ),
@@ -1377,7 +1394,7 @@ class LessonCompleteScreen extends StatelessWidget {
           child: buildStatCard(
             icon: Icons.bolt_rounded,
             iconColor: goldColor,
-            title: '+10',
+            title: '+$xpEarned',
             subtitle: 'XP',
           ),
         ),
@@ -1405,7 +1422,7 @@ class LessonCompleteScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white12),
       ),
