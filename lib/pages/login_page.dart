@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../tabs/home_page.dart';
 
+import 'forgot_password_page.dart';
+import 'understand_page.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -258,7 +261,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       _buildTextField(
                         label: 'Username or Email',
-                        helperText: 'Example: fakhzulrafli or name@email.com',
+                        helperText: 'Example: shyang or name@email.com',
                         controller: _usernameOrEmailController,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -294,7 +297,12 @@ class _LoginPageState extends State<LoginPage> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: GestureDetector(
-                          onTap: () {},
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ForgotPasswordPage(),
+                            ),
+                          ),
                           child: Text(
                             'Forgot password?',
                             style: GoogleFonts.baloo2(
@@ -332,7 +340,12 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(width: 6),
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const UnderstandPage(),
+                      ),
+                    ),
                     child: Text(
                       'CREATE ONE',
                       style: GoogleFonts.baloo2(

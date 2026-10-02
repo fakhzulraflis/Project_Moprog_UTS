@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\PasswordResetCodeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class AccountRegistrationTest extends TestCase
@@ -63,6 +65,43 @@ class AccountRegistrationTest extends TestCase
 
         $invalidResponse->assertUnauthorized()
             ->assertJsonPath('message', 'Invalid username/email or password.');
+    }
+
+    public function test_user_can_reset_password_with_email_reset_code(): void
+    {
+        $this->postJson('/api/register', $this->validPayload());
+        Notification::fake();
+
+        $user = User::where('username', 'fakhzulrafli')->firstOrFail();
+
+        $this->postJson('/api/forgot-password', [
+            'username_or_email' => 'fakhzulrafli',
+        ])
+            ->assertOk()
+            ->assertJsonPath('message', 'If the account exists, a reset code has been sent to its email.');
+
+        $token = null;
+        Notification::assertSentTo(
+            $user,
+            PasswordResetCodeNotification::class,
+            function (PasswordResetCodeNotification $notification) use (&$token): bool {
+                $token = $notification->token;
+
+                return true;
+            },
+        );
+
+        $this->postJson('/api/reset-password', [
+            'username_or_email' => 'fakhzulrafli',
+            'token' => $token,
+            'password' => 'newsecurepass123',
+            'password_confirmation' => 'newsecurepass123',
+        ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Password changed successfully.');
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('newsecurepass123', $user->password));
     }
 
     private function validPayload(): array
