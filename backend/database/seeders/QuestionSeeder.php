@@ -200,6 +200,148 @@ class QuestionSeeder extends Seeder
                 ],
                 'order' => 10,
             ],
+
+            [
+                'lesson_id' => 2,
+                'type' => 'multiple_choice',
+                'prompt' => 'Apa bahasa Inggris dari "air"?',
+                'correct_answer' => 'water',
+                'options' => [
+                    'water',
+                    'milk',
+                    'tea',
+                    'juice',
+                ],
+                'order' => 1,
+            ],
+
+            [
+                'lesson_id' => 2,
+                'type' => 'multiple_choice',
+                'prompt' => 'Apa bahasa Inggris dari "kopi"?',
+                'correct_answer' => 'coffee',
+                'options' => [
+                    'tea',
+                    'coffee',
+                    'water',
+                    'milk',
+                ],
+                'order' => 2,
+            ],
+
+            [
+                'lesson_id' => 2,
+                'type' => 'translation',
+                'prompt' => 'Saya minum air.',
+                'correct_answer' => 'I drink water.',
+                'options' => null,
+                'order' => 3,
+            ],
+
+            [
+                'lesson_id' => 2,
+                'type' => 'word_bank',
+                'prompt' => 'Saya minum kopi.',
+                'correct_answer' => 'I drink coffee.',
+                'options' => [
+                    'coffee',
+                    'I',
+                    'drink',
+                    'water',
+                    'eat',
+                    'tea',
+                ],
+                'order' => 4,
+            ],
+
+            [
+                'lesson_id' => 2,
+                'type' => 'fill_blank',
+                'prompt' => 'I ___ tea.',
+                'correct_answer' => 'drink',
+                'options' => [
+                    'drink',
+                    'drinks',
+                    'drinking',
+                    'drank',
+                ],
+                'order' => 5,
+            ],
+
+            [
+                'lesson_id' => 2,
+                'type' => 'multiple_choice',
+                'prompt' => 'Apa bahasa Inggris dari "susu"?',
+                'correct_answer' => 'milk',
+                'options' => [
+                    'milk',
+                    'juice',
+                    'coffee',
+                    'water',
+                ],
+                'order' => 6,
+            ],
+
+            [
+                'lesson_id' => 2,
+                'type' => 'word_bank',
+                'prompt' => 'Saya minum susu.',
+                'correct_answer' => 'I drink milk.',
+                'options' => [
+                    'I',
+                    'drink',
+                    'milk',
+                    'water',
+                    'eat',
+                    'coffee',
+                ],
+                'order' => 7,
+            ],
+
+            [
+                'lesson_id' => 2,
+                'type' => 'matching',
+                'prompt' => 'Cocokkan kata bahasa Indonesia dengan bahasa Inggris.',
+                'correct_answer' => 'air=water,kopi=coffee,teh=tea',
+                'options' => [
+                    [
+                        'left' => 'air',
+                        'right' => 'water',
+                    ],
+                    [
+                        'left' => 'kopi',
+                        'right' => 'coffee',
+                    ],
+                    [
+                        'left' => 'teh',
+                        'right' => 'tea',
+                    ],
+                ],
+                'order' => 8,
+            ],
+
+            [
+                'lesson_id' => 2,
+                'type' => 'translation',
+                'prompt' => 'Saya minum jus.',
+                'correct_answer' => 'I drink juice.',
+                'options' => null,
+                'order' => 9,
+            ],
+
+            [
+                'lesson_id' => 2,
+                'type' => 'multiple_choice',
+                'prompt' => 'Apa bahasa Inggris dari "jus"?',
+                'correct_answer' => 'juice',
+                'options' => [
+                    'juice',
+                    'milk',
+                    'tea',
+                    'coffee',
+                ],
+                'order' => 10,
+            ],
         ];
 
         foreach ($questions as $question) {

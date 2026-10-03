@@ -65,7 +65,7 @@ flutter:
     - assets/icons/
     - assets/flags/
     - assets/app/
-    - assets/icons/
+    - assets/path/
     - assets/landing/
     - assets/
 

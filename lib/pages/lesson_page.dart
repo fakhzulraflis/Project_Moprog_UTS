@@ -13,7 +13,8 @@ class LessonPage extends StatefulWidget {
   State<LessonPage> createState() => _LessonPageState();
 }
 
-class _LessonPageState extends State<LessonPage> {
+class _LessonPageState extends State<LessonPage>
+    with SingleTickerProviderStateMixin {
   static const Color backgroundColor = Color(0xFF272F33);
   static const Color yellowColor = Color(0xFFFCCF10);
   static const Color redColor = Color(0xFFFF4B4B);
@@ -39,10 +40,25 @@ class _LessonPageState extends State<LessonPage> {
   bool hasChecked = false;
   bool isCorrect = false;
 
+  // CHECK button animation
+  late final AnimationController _checkAnimationController;
+
   @override
   void initState() {
     super.initState();
+
+    _checkAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
     loadQuestions();
+  }
+
+  @override
+  void dispose() {
+    _checkAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> loadQuestions() async {
@@ -103,8 +119,14 @@ class _LessonPageState extends State<LessonPage> {
         .replaceAll(RegExp(r'\s+'), ' ');
   }
 
+  void animateCheckButton() {
+    _checkAnimationController.forward(from: 0);
+  }
+
   void checkAnswer() {
     if (hasChecked) return;
+
+    animateCheckButton();
 
     final question = currentQuestion;
 
@@ -148,7 +170,6 @@ class _LessonPageState extends State<LessonPage> {
       }
     });
 
-    // Kalau jawaban salah dan heart sudah habis
     if (!correct && hearts == 0) {
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) {
@@ -174,7 +195,6 @@ class _LessonPageState extends State<LessonPage> {
       }
     });
 
-    // Kalau matching salah dan heart sudah habis
     if (!correct && hearts == 0) {
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) {
@@ -323,7 +343,9 @@ class _LessonPageState extends State<LessonPage> {
           Row(
             children: [
               const Icon(Icons.favorite, color: Colors.redAccent, size: 22),
+
               const SizedBox(width: 5),
+
               Text(
                 '$hearts',
                 style: const TextStyle(
@@ -440,7 +462,6 @@ class _LessonPageState extends State<LessonPage> {
         final isSelected = selectedAnswer == option;
 
         Color background = Colors.transparent;
-
         Color border = Colors.white24;
 
         if (isSelected) {
@@ -458,32 +479,37 @@ class _LessonPageState extends State<LessonPage> {
           border = redColor;
         }
 
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: OutlinedButton(
-            onPressed: hasChecked
-                ? null
-                : () {
-                    setState(() {
-                      selectedAnswer = option;
-                    });
-                  },
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-              alignment: Alignment.centerLeft,
-              side: BorderSide(color: border, width: 2),
-              backgroundColor: background,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+        return PressableButton(
+          enabled: !hasChecked,
+          onTap: () {
+            setState(() {
+              selectedAnswer = option;
+            });
+          },
+          child: Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            child: OutlinedButton(
+              onPressed: null,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 18,
+                ),
+                alignment: Alignment.centerLeft,
+                side: BorderSide(color: border, width: 2),
+                backgroundColor: background,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-            ),
-            child: Text(
-              option,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
+              child: Text(
+                option,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -610,19 +636,23 @@ class _LessonPageState extends State<LessonPage> {
         if (selectedWords.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 20),
-            child: TextButton(
-              onPressed: hasChecked
-                  ? null
-                  : () {
-                      setState(() {
-                        selectedWords.clear();
-
-                        selectedWordIndexes.clear();
-                      });
-                    },
-              child: const Text(
-                'Reset',
-                style: TextStyle(color: Colors.white54),
+            child: PressableButton(
+              enabled: !hasChecked,
+              onTap: () {
+                setState(() {
+                  selectedWords.clear();
+                  selectedWordIndexes.clear();
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: const Text(
+                  'Reset',
+                  style: TextStyle(color: Colors.white54),
+                ),
               ),
             ),
           ),
@@ -635,7 +665,8 @@ class _LessonPageState extends State<LessonPage> {
     required bool selected,
     required VoidCallback? onTap,
   }) {
-    return GestureDetector(
+    return PressableButton(
+      enabled: onTap != null,
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -645,7 +676,7 @@ class _LessonPageState extends State<LessonPage> {
           border: Border.all(color: Colors.white24),
           boxShadow: selected
               ? []
-              : [const BoxShadow(color: Colors.black26, offset: Offset(0, 3))],
+              : const [BoxShadow(color: Colors.black26, offset: Offset(0, 3))],
         ),
         child: Text(
           word,
@@ -735,37 +766,41 @@ class _LessonPageState extends State<LessonPage> {
     required bool matched,
     required VoidCallback? onTap,
   }) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      child: OutlinedButton(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 8),
-          side: BorderSide(
-            color: matched
-                ? yellowColor
+    return PressableButton(
+      enabled: onTap != null,
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 12),
+        child: OutlinedButton(
+          onPressed: null,
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 8),
+            side: BorderSide(
+              color: matched
+                  ? yellowColor
+                  : selected
+                  ? Colors.white
+                  : Colors.white24,
+              width: 2,
+            ),
+            backgroundColor: matched
+                ? yellowColor.withOpacity(0.15)
                 : selected
-                ? Colors.white
-                : Colors.white24,
-            width: 2,
+                ? Colors.white10
+                : Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-          backgroundColor: matched
-              ? yellowColor.withValues(alpha: 0.15)
-              : selected
-              ? Colors.white10
-              : Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -800,27 +835,47 @@ class _LessonPageState extends State<LessonPage> {
           color: backgroundColor,
           border: Border(top: BorderSide(color: Colors.white10)),
         ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: canCheck ? checkAnswer : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: yellowColor,
-              disabledBackgroundColor: Colors.white12,
-              foregroundColor: Colors.white,
-              disabledForegroundColor: Colors.white30,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
+        child: AnimatedBuilder(
+          animation: _checkAnimationController,
+          builder: (context, child) {
+            final value = _checkAnimationController.value;
+
+            // Membuat efek lompat:
+            // 0 -> naik -> turun -> 0
+            double offset;
+
+            if (value < 0.35) {
+              final progress = value / 0.35;
+
+              offset = -12 * Curves.easeOut.transform(progress);
+            } else {
+              final progress = (value - 0.35) / 0.65;
+
+              offset = -12 + (12 * Curves.bounceOut.transform(progress));
+            }
+
+            return Transform.translate(offset: Offset(0, offset), child: child);
+          },
+          child: PressableButton(
+            enabled: canCheck,
+            onTap: checkAnswer,
+            pressedOffset: 4,
+            child: Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                color: canCheck ? yellowColor : Colors.white12,
                 borderRadius: BorderRadius.circular(14),
               ),
-            ),
-            child: const Text(
-              'CHECK',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                letterSpacing: 1,
+              alignment: Alignment.center,
+              child: Text(
+                'CHECK',
+                style: TextStyle(
+                  color: canCheck ? Colors.white : Colors.white30,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  letterSpacing: 1,
+                ),
               ),
             ),
           ),
@@ -885,25 +940,28 @@ class _LessonPageState extends State<LessonPage> {
 
             const SizedBox(width: 10),
 
-            SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: continueQuestion,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isCorrect ? yellowColor : redColor,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+            PressableButton(
+              enabled: hearts > 0,
+              onTap: continueQuestion,
+              pressedOffset: 4,
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                decoration: BoxDecoration(
+                  color: isCorrect ? yellowColor : redColor,
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                alignment: Alignment.center,
                 child: Text(
                   isCorrect
                       ? 'CONTINUE'
                       : hearts == 0
                       ? 'SELESAI'
                       : 'TRY AGAIN',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -947,6 +1005,97 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 }
+
+// ============================================================
+// PRESSABLE BUTTON
+// ============================================================
+
+class PressableButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final bool enabled;
+  final double pressedOffset;
+
+  const PressableButton({
+    super.key,
+    required this.child,
+    required this.onTap,
+    this.enabled = true,
+    this.pressedOffset = 4,
+  });
+
+  @override
+  State<PressableButton> createState() => _PressableButtonState();
+}
+
+class _PressableButtonState extends State<PressableButton> {
+  bool isPressed = false;
+
+  void pressDown() {
+    if (!widget.enabled || widget.onTap == null) {
+      return;
+    }
+
+    setState(() {
+      isPressed = true;
+    });
+  }
+
+  void pressUp() {
+    if (!widget.enabled || widget.onTap == null) {
+      return;
+    }
+
+    setState(() {
+      isPressed = false;
+    });
+  }
+
+  void handleTap() {
+    if (!widget.enabled || widget.onTap == null) {
+      return;
+    }
+
+    widget.onTap!();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+
+      onTapDown: (_) {
+        pressDown();
+      },
+
+      onTapUp: (_) {
+        pressUp();
+        handleTap();
+      },
+
+      onTapCancel: () {
+        pressUp();
+      },
+
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        curve: Curves.easeOut,
+
+        transform: Matrix4.translationValues(
+          0,
+          isPressed ? widget.pressedOffset : 0,
+          0,
+        ),
+
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+// ============================================================
+// OUT OF HEARTS SCREEN
+// ============================================================
 
 class OutOfHeartsScreen extends StatelessWidget {
   final VoidCallback onRetry;
@@ -1084,22 +1233,22 @@ class OutOfHeartsScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
       child: Column(
         children: [
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: yellowColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+          PressableButton(
+            enabled: true,
+            onTap: onRetry,
+            pressedOffset: 4,
+            child: Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                color: yellowColor,
+                borderRadius: BorderRadius.circular(14),
               ),
+              alignment: Alignment.center,
               child: const Text(
                 'COBA LAGI',
                 style: TextStyle(
+                  color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.5,
@@ -1110,11 +1259,14 @@ class OutOfHeartsScreen extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: TextButton(
-              onPressed: onExit,
+          PressableButton(
+            enabled: true,
+            onTap: onExit,
+            pressedOffset: 3,
+            child: Container(
+              width: double.infinity,
+              height: 50,
+              alignment: Alignment.center,
               child: const Text(
                 'KELUAR',
                 style: TextStyle(
@@ -1130,6 +1282,10 @@ class OutOfHeartsScreen extends StatelessWidget {
     );
   }
 }
+
+// ============================================================
+// LESSON COMPLETE SCREEN
+// ============================================================
 
 class LessonCompleteScreen extends StatelessWidget {
   final int totalQuestions;
@@ -1304,22 +1460,22 @@ class LessonCompleteScreen extends StatelessWidget {
   Widget buildContinueButton() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: onContinue,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: yellowColor,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
+      child: PressableButton(
+        enabled: true,
+        onTap: onContinue,
+        pressedOffset: 4,
+        child: Container(
+          width: double.infinity,
+          height: 56,
+          decoration: BoxDecoration(
+            color: yellowColor,
+            borderRadius: BorderRadius.circular(14),
           ),
+          alignment: Alignment.center,
           child: const Text(
             'LANJUTKAN',
             style: TextStyle(
+              color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w900,
               letterSpacing: 0.5,
