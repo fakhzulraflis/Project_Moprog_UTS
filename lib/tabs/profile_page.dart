@@ -77,7 +77,7 @@ class ProfilePage extends StatelessWidget {
 
   Widget _buildAvatar() {
     return Image.asset(
-      'assets/app/avatar.png',
+      'assets/avatar/japduck.png',
       fit: BoxFit.contain,
       alignment: Alignment.bottomCenter,
     );
@@ -446,7 +446,7 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
               Image.asset(
-                'assets/app/avatar.png',
+                'assets/avatar/japduck.png',
                 height: 110,
                 fit: BoxFit.contain,
               ),
