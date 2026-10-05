@@ -7,6 +7,11 @@ class Question {
   final dynamic options;
   final int order;
 
+  // Opsional: boleh null kalau backend belum mengirim
+  final String? audioText; // teks yang dibacakan (bahasa target)
+  final String? romanization; // romaji / cara baca, tampil di atas prompt
+  final String? meaning; // arti, tampil di panel "Benar! Artinya: ..."
+
   Question({
     required this.id,
     required this.lessonId,
@@ -15,6 +20,9 @@ class Question {
     required this.correctAnswer,
     required this.options,
     required this.order,
+    this.audioText,
+    this.romanization,
+    this.meaning,
   });
 
   factory Question.fromJson(Map<String, dynamic> json) {
@@ -26,6 +34,9 @@ class Question {
       correctAnswer: json['correct_answer'],
       options: json['options'],
       order: json['order'],
+      audioText: json['audio_text']?.toString(),
+      romanization: json['romanization']?.toString(),
+      meaning: json['meaning']?.toString(),
     );
   }
 
@@ -37,7 +48,7 @@ class Question {
     return [];
   }
 
-  List<Map<String, dynamic>> get matchingOptions {
+  List<Map<String, dynamic>> get _mapOptions {
     if (options is List) {
       return List<Map<String, dynamic>>.from(
         options.map((item) => Map<String, dynamic>.from(item)),
@@ -46,4 +57,10 @@ class Question {
 
     return [];
   }
+
+  // matching: [{"left": "...", "right": "..."}]
+  List<Map<String, dynamic>> get matchingOptions => _mapOptions;
+
+  // image_choice: [{"label": "sushi", "image": "https://... atau assets/..."}]
+  List<Map<String, dynamic>> get imageOptions => _mapOptions;
 }

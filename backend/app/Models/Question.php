@@ -13,6 +13,9 @@ class Question extends Model
         'prompt',
         'correct_answer',
         'options',
+        'audio_text',
+        'romanization',
+        'meaning',
         'order',
     ];
 

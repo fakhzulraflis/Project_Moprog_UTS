@@ -4,9 +4,31 @@ import 'package:flutter/material.dart';
 
 import '../models/unit_data.dart';
 import '../pages/lesson_page.dart';
+import '../widgets/chest_node.dart';
+import '../widgets/gem_burst.dart';
 import '../widgets/lesson_node.dart';
 import '../widgets/lesson_popup.dart';
 import '../widgets/unit_header.dart';
+
+// Satu slot di jalur: pelajaran atau peti
+class _Slot {
+  final int unit;
+  final int index; // urutan di dalam unit (pelajaran + peti)
+  final int order; // urutan global (untuk zigzag)
+  final bool isChest;
+  final int
+  lessonId; // pelajaran: id-nya sendiri; peti: id pelajaran sebelumnya
+  final int lessonIndex; // pelajaran: indeks di unit (0-based); peti: -1
+
+  const _Slot({
+    required this.unit,
+    required this.index,
+    required this.order,
+    required this.isChest,
+    required this.lessonId,
+    required this.lessonIndex,
+  });
+}
 
 class LearnPage extends StatefulWidget {
   final String selectedLanguage;
@@ -19,16 +41,27 @@ class LearnPage extends StatefulWidget {
 
 class _LearnPageState extends State<LearnPage> {
   final ScrollController _scroll = ScrollController();
+  final GlobalKey _gemsKey = GlobalKey(); // target animasi gems
 
   int completedLessons = 0;
   int? selectedLessonId; // node yang sedang menampilkan popup
   int headerIndex = 0; // unit yang sedang tampil di header
 
+  int gems = 0;
+  bool gemPulse = false;
+  final Set<int> openedChests =
+      {}; // diidentifikasi lewat id pelajaran sebelumnya
+
   // =========================
   // ZOOM HALAMAN
-  // 1.0 = ukuran asli, makin kecil = makin "zoom out"
   // =========================
   static const double zoom = 0.85;
+
+  // =========================
+  // HADIAH PETI
+  // =========================
+  static const int chestParticles = 10; // jumlah gems yang beterbangan
+  static const int gemsPerParticle = 2; // total hadiah = 10 x 2 = 20
 
   // =========================
   // DATA UNIT (contoh, ganti sesuai materimu)
@@ -38,7 +71,7 @@ class _LearnPageState extends State<LearnPage> {
       section: 1,
       unit: 1,
       title: 'Memesan Makanan & Minuman',
-      color: Color(0xFF3B8C5A),
+      color: Color(0xFFFCCF10),
       nodeColor: Color(0xFFFCCF10),
       lessonTitles: [
         'Memesan Makanan',
@@ -47,6 +80,7 @@ class _LearnPageState extends State<LearnPage> {
         'Memesan Minuman',
         'Tantangan Unit',
       ],
+      chestAfter: [2], // peti setelah pelajaran ke-2
     ),
     UnitData(
       section: 1,
@@ -60,6 +94,7 @@ class _LearnPageState extends State<LearnPage> {
         'Naik Transportasi',
         'Tantangan Unit',
       ],
+      chestAfter: [3], // peti setelah pelajaran ke-3
     ),
   ];
 
@@ -69,13 +104,14 @@ class _LearnPageState extends State<LearnPage> {
   static const double slotHeight = 150; // tinggi tiap slot node
   static const double topPad = 40; // ruang di atas node pertama tiap unit
   static const double dividerHeight = 70; // pemisah antar unit
-  static const double popupSpace =
-      200; // ruang bawah jika popup di node terakhir
+  static const double popupSpace = 200; // perkiraan tinggi popup
   static const double headerSwitchOffset =
       60; // kapan header berganti saat scroll
 
   static const Color backgroundColor = Color(0xFF272F33);
   static const Color dividerColor = Color(0xFF52656D);
+
+  late final List<_Slot> _slots = _buildSlots();
 
   @override
   void initState() {
@@ -89,11 +125,52 @@ class _LearnPageState extends State<LearnPage> {
     super.dispose();
   }
 
-  // ---------- helper hitung posisi ----------
-  int get totalLessons => units.fold<int>(0, (sum, u) => sum + u.lessonCount);
+  // ---------- susun slot (pelajaran + peti) ----------
+  List<_Slot> _buildSlots() {
+    final out = <_Slot>[];
+    int lessonId = 0;
+    int order = 0;
 
+    for (int u = 0; u < units.length; u++) {
+      final unit = units[u];
+      int idx = 0;
+
+      for (int j = 0; j < unit.lessonCount; j++) {
+        lessonId++;
+        out.add(
+          _Slot(
+            unit: u,
+            index: idx++,
+            order: order++,
+            isChest: false,
+            lessonId: lessonId,
+            lessonIndex: j,
+          ),
+        );
+
+        if (unit.chestAfter.contains(j + 1)) {
+          out.add(
+            _Slot(
+              unit: u,
+              index: idx++,
+              order: order++,
+              isChest: true,
+              lessonId: lessonId,
+              lessonIndex: -1,
+            ),
+          );
+        }
+      }
+    }
+    return out;
+  }
+
+  _Slot _lessonSlot(int lessonId) =>
+      _slots.firstWhere((s) => !s.isChest && s.lessonId == lessonId);
+
+  // ---------- helper hitung posisi ----------
   double _unitHeight(int u) =>
-      (u > 0 ? dividerHeight : 0) + topPad + units[u].lessonCount * slotHeight;
+      (u > 0 ? dividerHeight : 0) + topPad + units[u].slotCount * slotHeight;
 
   double _unitStart(int u) {
     double y = 0;
@@ -103,26 +180,13 @@ class _LearnPageState extends State<LearnPage> {
     return y;
   }
 
-  double _nodeTop(int u, int j) =>
-      _unitStart(u) + (u > 0 ? dividerHeight : 0) + topPad + j * slotHeight;
+  double _slotTop(_Slot s) =>
+      _unitStart(s.unit) +
+      (s.unit > 0 ? dividerHeight : 0) +
+      topPad +
+      s.index * slotHeight;
 
-  int _firstLessonId(int u) {
-    int id = 1;
-    for (int i = 0; i < u; i++) {
-      id += units[i].lessonCount;
-    }
-    return id;
-  }
-
-  int _unitIndexOf(int lessonId) {
-    for (int u = 0; u < units.length; u++) {
-      final first = _firstLessonId(u);
-      if (lessonId >= first && lessonId < first + units[u].lessonCount) {
-        return u;
-      }
-    }
-    return units.length - 1;
-  }
+  double _popupTop(_Slot s) => _slotTop(s) + slotHeight - 4;
 
   // ---------- header berganti saat scroll ----------
   void _onScroll() {
@@ -205,21 +269,29 @@ class _LearnPageState extends State<LearnPage> {
                     ),
                   ),
                   const SizedBox(width: 18),
-                  Image.asset(
-                    'assets/icons/gems.png',
-                    width: 24,
-                    height: 24,
-                    fit: BoxFit.contain,
+
+                  // ikon gems = tujuan animasi, ikut "berdenyut" saat gem tiba
+                  AnimatedScale(
+                    key: _gemsKey,
+                    scale: gemPulse ? 1.3 : 1.0,
+                    duration: const Duration(milliseconds: 120),
+                    child: Image.asset(
+                      'assets/icons/gems.png',
+                      width: 24,
+                      height: 24,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                   const SizedBox(width: 5),
-                  const Text(
-                    '0',
-                    style: TextStyle(
+                  Text(
+                    '$gems',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(width: 18),
+
                   Image.asset(
                     'assets/icons/hearts.png',
                     width: 24,
@@ -275,18 +347,24 @@ class _LearnPageState extends State<LearnPage> {
   // JALUR: satu Stack untuk semua unit
   // =========================
   Widget _buildPath() {
-    final extraBottom = selectedLessonId == totalLessons ? popupSpace : 0.0;
-    final totalHeight = _unitStart(units.length) + extraBottom;
+    final baseHeight = _unitStart(units.length);
+    double totalHeight = baseHeight;
+
+    // beri ruang ekstra bila popup mencapai dasar jalur
+    if (selectedLessonId != null) {
+      final popupBottom =
+          _popupTop(_lessonSlot(selectedLessonId!)) + popupSpace;
+      totalHeight = math.max(baseHeight, popupBottom);
+    }
 
     final children = <Widget>[];
-    int g = 0; // indeks pelajaran global (0-based)
 
-    for (int u = 0; u < units.length; u++) {
-      if (u > 0) children.add(_buildDivider(u));
-      for (int j = 0; j < units[u].lessonCount; j++) {
-        children.add(_buildNodeSlot(u, j, g));
-        g++;
-      }
+    for (int u = 1; u < units.length; u++) {
+      children.add(_buildDivider(u));
+    }
+
+    for (final s in _slots) {
+      children.add(s.isChest ? _buildChestSlot(s) : _buildLessonSlot(s));
     }
 
     // popup paling akhir = paling atas, tidak menggeser apa pun
@@ -330,11 +408,12 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
-  Widget _buildNodeSlot(int u, int j, int g) {
-    final unit = units[u];
-    final id = g + 1;
+  // ---------- slot pelajaran ----------
+  Widget _buildLessonSlot(_Slot s) {
+    final unit = units[s.unit];
+    final id = s.lessonId;
     final state = _stateOf(id);
-    final isLast = j == unit.lessonCount - 1;
+    final isLast = s.lessonIndex == unit.lessonCount - 1;
     final isSelected = selectedLessonId == id;
 
     // Piala tetap piala (abu/putih), centang hanya untuk node bintang
@@ -345,7 +424,7 @@ class _LearnPageState extends State<LearnPage> {
         : NodeType.star;
 
     return Positioned(
-      top: _nodeTop(u, j),
+      top: _slotTop(s),
       left: 0,
       right: 0,
       height: slotHeight,
@@ -356,7 +435,7 @@ class _LearnPageState extends State<LearnPage> {
         minHeight: 0,
         maxHeight: double.infinity,
         child: Transform.translate(
-          offset: Offset(_dxOf(g), 0),
+          offset: Offset(_dxOf(s.order), 0),
           child: LessonNode(
             state: state,
             type: type,
@@ -369,29 +448,51 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
+  // ---------- slot peti ----------
+  Widget _buildChestSlot(_Slot s) {
+    return Positioned(
+      top: _slotTop(s),
+      left: 0,
+      right: 0,
+      height: slotHeight,
+      child: OverflowBox(
+        alignment: Alignment.bottomCenter,
+        minWidth: 0,
+        maxWidth: double.infinity,
+        minHeight: 0,
+        maxHeight: double.infinity,
+        child: Transform.translate(
+          offset: Offset(_dxOf(s.order), 0),
+          child: ChestNode(
+            state: _chestStateOf(s.lessonId),
+            onOpen: (origin) => _openChest(s.lessonId, origin),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPopup(int id) {
-    final u = _unitIndexOf(id);
-    final unit = units[u];
-    final j = id - _firstLessonId(u);
-    final g = id - 1;
+    final s = _lessonSlot(id);
+    final unit = units[s.unit];
     final state = _stateOf(id);
 
     return Positioned(
-      top: _nodeTop(u, j) + slotHeight - 4,
+      top: _popupTop(s),
       left: 24,
       right: 24,
       // GestureDetector kosong: ketuk badan popup tidak menutupnya
       child: GestureDetector(
         onTap: () {},
         child: LessonPopup(
-          title: unit.lessonTitles[j],
-          subtitle: 'Pelajaran ${j + 1} dari ${unit.lessonCount}',
+          title: unit.lessonTitles[s.lessonIndex],
+          subtitle: 'Pelajaran ${s.lessonIndex + 1} dari ${unit.lessonCount}',
           buttonLabel: state == NodeState.completed
               ? 'LATIH LAGI +5 XP'
               : 'MULAI +10 XP',
           color: unit.nodeColor,
           textColor: _popupTextColor(unit.nodeColor),
-          pointerDx: _dxOf(g),
+          pointerDx: _dxOf(s.order),
           onStart: () => _startLesson(id),
         ),
       ),
@@ -404,13 +505,70 @@ class _LearnPageState extends State<LearnPage> {
     return hsl.withLightness(0.14).toColor();
   }
 
-  // zigzag berlanjut antar unit: 0, +50, 0, -50, 0 ...
-  double _dxOf(int g) => math.sin(g * math.pi / 2) * 50;
+  // zigzag berlanjut antar slot (pelajaran & peti): 0, +50, 0, -50, 0 ...
+  double _dxOf(int order) => math.sin(order * math.pi / 2) * 50;
 
   NodeState _stateOf(int lessonId) {
     if (lessonId <= completedLessons) return NodeState.completed;
     if (lessonId == completedLessons + 1) return NodeState.current;
     return NodeState.locked;
+  }
+
+  // Peti: terkunci sampai pelajaran sebelumnya selesai
+  ChestState _chestStateOf(int afterLessonId) {
+    if (openedChests.contains(afterLessonId)) return ChestState.opened;
+    if (completedLessons >= afterLessonId) return ChestState.ready;
+    return ChestState.locked;
+  }
+
+  // =========================
+  // BUKA PETI + ANIMASI GEMS
+  // =========================
+  Offset? _gemsTarget() {
+    final box = _gemsKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(box.size.center(Offset.zero));
+  }
+
+  void _openChest(int afterLessonId, Offset origin) {
+    if (openedChests.contains(afterLessonId)) return;
+
+    setState(() {
+      openedChests.add(afterLessonId);
+      selectedLessonId = null;
+    });
+
+    final target = _gemsTarget();
+
+    // cadangan: tujuan tidak ditemukan -> langsung tambahkan hadiah
+    if (target == null) {
+      setState(() => gems += chestParticles * gemsPerParticle);
+      return;
+    }
+
+    GemBurst.play(
+      context: context,
+      from: origin,
+      to: target,
+      asset: 'assets/icons/gems.png',
+      count: chestParticles,
+      size: 24,
+      onGemArrive: _onGemArrive,
+    );
+  }
+
+  // Tiap gem yang sampai: tambah angka + ikon gems berdenyut sebentar
+  void _onGemArrive() {
+    if (!mounted) return;
+
+    setState(() {
+      gems += gemsPerParticle;
+      gemPulse = true;
+    });
+
+    Future.delayed(const Duration(milliseconds: 120), () {
+      if (mounted) setState(() => gemPulse = false);
+    });
   }
 
   // Tekan node: buka/tutup popup (node terkunci tidak memanggil ini)
