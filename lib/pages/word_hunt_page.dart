@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../models/vocabulary.dart';
@@ -16,7 +18,13 @@ class WordHuntPage extends StatefulWidget {
 }
 
 class _WordHuntPageState extends State<WordHuntPage> {
+  static const int gridSize = 12;
+
+  final Random random = Random();
+
   List<Vocabulary> vocabularies = [];
+
+  List<List<String>> letterGrid = [];
 
   bool isLoading = true;
 
@@ -44,6 +52,15 @@ class _WordHuntPageState extends State<WordHuntPage> {
     }
   }
 
+  // Membersihkan kata sebelum dimasukkan ke grid
+  String cleanWord(String word) {
+    return word
+        .trim()
+        .replaceAll(' ', '')
+        .replaceAll('-', '')
+        .toUpperCase();
+  }
+
   Future<void> loadVocabularies() async {
     setState(() {
       isLoading = true;
@@ -55,17 +72,17 @@ class _WordHuntPageState extends State<WordHuntPage> {
 
       if (!mounted) return;
 
-      // Acak vocabulary dari backend
       final shuffled = List<Vocabulary>.from(result)
         ..shuffle();
 
-      // Untuk Perburuan Kata kita gunakan maksimal 8 kata
       final selected = shuffled.length > 8
           ? shuffled.sublist(0, 8)
           : shuffled;
 
       setState(() {
         vocabularies = selected;
+
+        generateGrid();
 
         isLoading = false;
       });
@@ -83,10 +100,257 @@ class _WordHuntPageState extends State<WordHuntPage> {
     }
   }
 
+  // Membuat grid kosong
+  List<List<String>> createEmptyGrid() {
+    return List.generate(
+      gridSize,
+      (_) => List.generate(
+        gridSize,
+        (_) => '',
+      ),
+    );
+  }
+
+  // Membuat kumpulan karakter untuk mengisi kotak kosong
+  List<String> createFillerCharacters() {
+    final List<String> characters = [];
+
+    for (final vocabulary in vocabularies) {
+      final word = cleanWord(
+        getTranslation(vocabulary),
+      );
+
+      characters.addAll(
+        word.split(''),
+      );
+    }
+
+    // Fallback kalau tidak ada karakter
+    if (characters.isEmpty) {
+      characters.addAll(
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
+      );
+    }
+
+    return characters;
+  }
+
+  // Membuat seluruh grid permainan
+  void generateGrid() {
+    final grid = createEmptyGrid();
+
+    for (final vocabulary in vocabularies) {
+      final word = cleanWord(
+        getTranslation(vocabulary),
+      );
+
+      if (word.isEmpty || word.length > gridSize) {
+        continue;
+      }
+
+      placeWord(grid, word);
+    }
+
+    fillEmptyCells(grid);
+
+    letterGrid = grid;
+  }
+
+  // Mencoba memasukkan satu kata ke dalam grid
+  void placeWord(
+    List<List<String>> grid,
+    String word,
+  ) {
+    // Arah:
+    // horizontal
+    // vertical
+    // diagonal kanan bawah
+    final directions = [
+      [0, 1],
+      [1, 0],
+      [1, 1],
+    ];
+
+    for (int attempt = 0; attempt < 100; attempt++) {
+      final direction =
+          directions[random.nextInt(directions.length)];
+
+      final rowDirection = direction[0];
+      final columnDirection = direction[1];
+
+      final startRow = random.nextInt(gridSize);
+      final startColumn = random.nextInt(gridSize);
+
+      final endRow =
+          startRow + (word.length - 1) * rowDirection;
+
+      final endColumn =
+          startColumn + (word.length - 1) * columnDirection;
+
+      // Pastikan kata tidak keluar grid
+      if (endRow >= gridSize ||
+          endColumn >= gridSize) {
+        continue;
+      }
+
+      bool canPlace = true;
+
+      for (int i = 0; i < word.length; i++) {
+        final row =
+            startRow + i * rowDirection;
+
+        final column =
+            startColumn + i * columnDirection;
+
+        final existingCharacter =
+            grid[row][column];
+
+        final newCharacter = word[i];
+
+        // Boleh menumpuk kalau hurufnya sama
+        if (existingCharacter.isNotEmpty &&
+            existingCharacter != newCharacter) {
+          canPlace = false;
+          break;
+        }
+      }
+
+      if (!canPlace) {
+        continue;
+      }
+
+      // Masukkan kata ke grid
+      for (int i = 0; i < word.length; i++) {
+        final row =
+            startRow + i * rowDirection;
+
+        final column =
+            startColumn + i * columnDirection;
+
+        grid[row][column] = word[i];
+      }
+
+      return;
+    }
+
+    debugPrint(
+      'Tidak berhasil menempatkan kata: $word',
+    );
+  }
+
+  // Mengisi kotak kosong dengan karakter acak
+  void fillEmptyCells(
+    List<List<String>> grid,
+  ) {
+    final fillerCharacters =
+        createFillerCharacters();
+
+    for (int row = 0;
+        row < gridSize;
+        row++) {
+      for (int column = 0;
+          column < gridSize;
+          column++) {
+        if (grid[row][column].isEmpty) {
+          grid[row][column] =
+              fillerCharacters[
+                  random.nextInt(
+                    fillerCharacters.length,
+                  )
+              ];
+        }
+      }
+    }
+  }
+
+  // Membuat tampilan grid 12 x 12
+  Widget buildLetterGrid() {
+    if (letterGrid.isEmpty) {
+      return const SizedBox();
+    }
+
+    return AspectRatio(
+      aspectRatio: 1,
+      child: GridView.builder(
+        physics:
+            const NeverScrollableScrollPhysics(),
+        itemCount: gridSize * gridSize,
+        gridDelegate:
+            const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: gridSize,
+          crossAxisSpacing: 3,
+          mainAxisSpacing: 3,
+        ),
+        itemBuilder: (context, index) {
+          final row = index ~/ gridSize;
+          final column = index % gridSize;
+
+          final character =
+              letterGrid[row][column];
+
+          return Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF20272B),
+              borderRadius:
+                  BorderRadius.circular(5),
+              border: Border.all(
+                color: const Color.fromARGB(
+                  35,
+                  255,
+                  255,
+                  255,
+                ),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                character,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget buildTargetWords() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: vocabularies.map((vocabulary) {
+        return Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFF20272B),
+            borderRadius:
+                BorderRadius.circular(12),
+          ),
+          child: Text(
+            vocabulary.indonesian,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget buildLoading() {
     return const Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment:
+            MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
             color: Color(0xFFE7C249),
@@ -120,7 +384,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
       child: Padding(
         padding: const EdgeInsets.all(25),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment:
+              MainAxisAlignment.center,
           children: [
             const Icon(
               Icons.cloud_off_rounded,
@@ -131,7 +396,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
             const SizedBox(height: 20),
 
             Text(
-              errorMessage ?? 'Terjadi kesalahan.',
+              errorMessage ??
+                  'Terjadi kesalahan.',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
@@ -151,16 +417,17 @@ class _WordHuntPageState extends State<WordHuntPage> {
     );
   }
 
-  Widget buildVocabularyPreview() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
+  Widget buildGame() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(18),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
           Text(
             'Bahasa: ${widget.selectedLanguage}',
             style: const TextStyle(
-              color: Colors.white70,
+              color: Colors.white54,
               fontSize: 14,
             ),
           ),
@@ -168,100 +435,51 @@ class _WordHuntPageState extends State<WordHuntPage> {
           const SizedBox(height: 8),
 
           const Text(
-            'Kosakata Permainan',
+            'Temukan Kata!',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 24,
+              fontSize: 25,
               fontWeight: FontWeight.bold,
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 5),
 
-          Text(
-            '${vocabularies.length} kata berhasil dimuat dari server.',
-            style: const TextStyle(
+          const Text(
+            'Cari kosakata yang tersembunyi di dalam susunan huruf.',
+            style: TextStyle(
               color: Colors.white70,
-              fontSize: 15,
+              fontSize: 14,
             ),
           ),
+
+          const SizedBox(height: 22),
+
+          buildLetterGrid(),
+
+          const SizedBox(height: 25),
+
+          const Text(
+            'Kata yang dicari',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          buildTargetWords(),
 
           const SizedBox(height: 20),
 
-          Expanded(
-            child: ListView.separated(
-              itemCount: vocabularies.length,
-              separatorBuilder: (context, index) {
-                return const SizedBox(height: 10);
-              },
-              itemBuilder: (context, index) {
-                final vocabulary = vocabularies[index];
-
-                final translation =
-                    getTranslation(vocabulary);
-
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF20272B),
-                    borderRadius:
-                        BorderRadius.circular(14),
-                    border: Border.all(
-                      color: const Color.fromARGB(
-                        40,
-                        255,
-                        255,
-                        255,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          vocabulary.indonesian,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-
-                      const Icon(
-                        Icons.arrow_forward_rounded,
-                        color: Colors.white38,
-                      ),
-
-                      const SizedBox(width: 15),
-
-                      Expanded(
-                        child: Text(
-                          translation,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
-                            color: Color(0xFFE7C249),
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
           const Center(
             child: Text(
-              'Grid permainan akan ditambahkan selanjutnya.',
+              'Pemilihan kata akan ditambahkan selanjutnya.',
               style: TextStyle(
                 color: Colors.white38,
-                fontSize: 13,
+                fontSize: 12,
               ),
             ),
           ),
@@ -273,9 +491,11 @@ class _WordHuntPageState extends State<WordHuntPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF272F33),
+      backgroundColor:
+          const Color(0xFF272F33),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF272F33),
+        backgroundColor:
+            const Color(0xFF272F33),
         elevation: 0,
         iconTheme: const IconThemeData(
           color: Colors.white,
@@ -301,7 +521,7 @@ class _WordHuntPageState extends State<WordHuntPage> {
             ? buildLoading()
             : errorMessage != null
                 ? buildError()
-                : buildVocabularyPreview(),
+                : buildGame(),
       ),
     );
   }
