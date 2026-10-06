@@ -17,18 +17,58 @@ class WordHuntPage extends StatefulWidget {
   State<WordHuntPage> createState() => _WordHuntPageState();
 }
 
+class _GridPosition {
+  final int row;
+  final int column;
+
+  const _GridPosition({
+    required this.row,
+    required this.column,
+  });
+
+  @override
+  bool operator ==(Object other) {
+    return other is _GridPosition &&
+        other.row == row &&
+        other.column == column;
+  }
+
+  @override
+  int get hashCode => Object.hash(row, column);
+}
+
+class _PlacedWord {
+  final Vocabulary vocabulary;
+  final String word;
+  final List<_GridPosition> positions;
+
+  _PlacedWord({
+    required this.vocabulary,
+    required this.word,
+    required this.positions,
+  });
+}
+
 class _WordHuntPageState extends State<WordHuntPage> {
   static const int gridSize = 12;
 
   final Random random = Random();
 
   List<Vocabulary> vocabularies = [];
-
   List<List<String>> letterGrid = [];
+
+  final List<_PlacedWord> placedWords = [];
+
+  final Set<String> foundWords = {};
+  final Set<_GridPosition> foundPositions = {};
+
+  _GridPosition? firstSelectedPosition;
 
   bool isLoading = true;
 
   String? errorMessage;
+
+  String feedback = 'Pilih huruf awal dan huruf akhir dari sebuah kata.';
 
   @override
   void initState() {
@@ -37,7 +77,6 @@ class _WordHuntPageState extends State<WordHuntPage> {
     loadVocabularies();
   }
 
-  // Mengambil terjemahan sesuai bahasa yang dipilih user
   String getTranslation(Vocabulary vocabulary) {
     switch (widget.selectedLanguage) {
       case 'Japanese':
@@ -52,7 +91,6 @@ class _WordHuntPageState extends State<WordHuntPage> {
     }
   }
 
-  // Membersihkan kata sebelum dimasukkan ke grid
   String cleanWord(String word) {
     return word
         .trim()
@@ -65,6 +103,14 @@ class _WordHuntPageState extends State<WordHuntPage> {
     setState(() {
       isLoading = true;
       errorMessage = null;
+
+      firstSelectedPosition = null;
+
+      foundWords.clear();
+      foundPositions.clear();
+
+      feedback =
+          'Pilih huruf awal dan huruf akhir dari sebuah kata.';
     });
 
     try {
@@ -100,7 +146,6 @@ class _WordHuntPageState extends State<WordHuntPage> {
     }
   }
 
-  // Membuat grid kosong
   List<List<String>> createEmptyGrid() {
     return List.generate(
       gridSize,
@@ -111,7 +156,6 @@ class _WordHuntPageState extends State<WordHuntPage> {
     );
   }
 
-  // Membuat kumpulan karakter untuk mengisi kotak kosong
   List<String> createFillerCharacters() {
     final List<String> characters = [];
 
@@ -125,7 +169,6 @@ class _WordHuntPageState extends State<WordHuntPage> {
       );
     }
 
-    // Fallback kalau tidak ada karakter
     if (characters.isEmpty) {
       characters.addAll(
         'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
@@ -135,9 +178,10 @@ class _WordHuntPageState extends State<WordHuntPage> {
     return characters;
   }
 
-  // Membuat seluruh grid permainan
   void generateGrid() {
     final grid = createEmptyGrid();
+
+    placedWords.clear();
 
     for (final vocabulary in vocabularies) {
       final word = cleanWord(
@@ -148,7 +192,11 @@ class _WordHuntPageState extends State<WordHuntPage> {
         continue;
       }
 
-      placeWord(grid, word);
+      placeWord(
+        grid,
+        word,
+        vocabulary,
+      );
     }
 
     fillEmptyCells(grid);
@@ -156,19 +204,15 @@ class _WordHuntPageState extends State<WordHuntPage> {
     letterGrid = grid;
   }
 
-  // Mencoba memasukkan satu kata ke dalam grid
-  void placeWord(
+  bool placeWord(
     List<List<String>> grid,
     String word,
+    Vocabulary vocabulary,
   ) {
-    // Arah:
-    // horizontal
-    // vertical
-    // diagonal kanan bawah
     final directions = [
-      [0, 1],
-      [1, 0],
-      [1, 1],
+      [0, 1], // horizontal
+      [1, 0], // vertikal
+      [1, 1], // diagonal
     ];
 
     for (int attempt = 0; attempt < 100; attempt++) {
@@ -187,13 +231,14 @@ class _WordHuntPageState extends State<WordHuntPage> {
       final endColumn =
           startColumn + (word.length - 1) * columnDirection;
 
-      // Pastikan kata tidak keluar grid
       if (endRow >= gridSize ||
           endColumn >= gridSize) {
         continue;
       }
 
       bool canPlace = true;
+
+      final List<_GridPosition> positions = [];
 
       for (int i = 0; i < word.length; i++) {
         final row =
@@ -207,38 +252,49 @@ class _WordHuntPageState extends State<WordHuntPage> {
 
         final newCharacter = word[i];
 
-        // Boleh menumpuk kalau hurufnya sama
         if (existingCharacter.isNotEmpty &&
             existingCharacter != newCharacter) {
           canPlace = false;
           break;
         }
+
+        positions.add(
+          _GridPosition(
+            row: row,
+            column: column,
+          ),
+        );
       }
 
       if (!canPlace) {
         continue;
       }
 
-      // Masukkan kata ke grid
       for (int i = 0; i < word.length; i++) {
-        final row =
-            startRow + i * rowDirection;
+        final position = positions[i];
 
-        final column =
-            startColumn + i * columnDirection;
-
-        grid[row][column] = word[i];
+        grid[position.row][position.column] =
+            word[i];
       }
 
-      return;
+      placedWords.add(
+        _PlacedWord(
+          vocabulary: vocabulary,
+          word: word,
+          positions: positions,
+        ),
+      );
+
+      return true;
     }
 
     debugPrint(
       'Tidak berhasil menempatkan kata: $word',
     );
+
+    return false;
   }
 
-  // Mengisi kotak kosong dengan karakter acak
   void fillEmptyCells(
     List<List<String>> grid,
   ) {
@@ -263,7 +319,168 @@ class _WordHuntPageState extends State<WordHuntPage> {
     }
   }
 
-  // Membuat tampilan grid 12 x 12
+  void selectCell(int row, int column) {
+    final selectedPosition = _GridPosition(
+      row: row,
+      column: column,
+    );
+
+    if (firstSelectedPosition == null) {
+      setState(() {
+        firstSelectedPosition =
+            selectedPosition;
+
+        feedback =
+            'Sekarang pilih huruf terakhir dari kata tersebut.';
+      });
+
+      return;
+    }
+
+    final firstPosition =
+        firstSelectedPosition!;
+
+    final selectedPositions =
+        getPositionsBetween(
+      firstPosition,
+      selectedPosition,
+    );
+
+    if (selectedPositions.isEmpty) {
+      setState(() {
+        firstSelectedPosition = null;
+
+        feedback =
+            'Pilih kata dalam garis lurus horizontal, vertikal, atau diagonal.';
+      });
+
+      return;
+    }
+
+    final selectedWord =
+        selectedPositions.map((position) {
+      return letterGrid[position.row]
+          [position.column];
+    }).join();
+
+    final reversedWord =
+        selectedWord.split('').reversed.join();
+
+    _PlacedWord? matchedWord;
+
+    for (final placedWord in placedWords) {
+      if (foundWords.contains(
+        placedWord.word,
+      )) {
+        continue;
+      }
+
+      if (placedWord.word == selectedWord ||
+          placedWord.word == reversedWord) {
+        matchedWord = placedWord;
+        break;
+      }
+    }
+
+    if (matchedWord != null) {
+      setState(() {
+        foundWords.add(
+          matchedWord!.word,
+        );
+
+        foundPositions.addAll(
+          matchedWord.positions,
+        );
+
+        firstSelectedPosition = null;
+
+        feedback =
+            'Benar! Kamu menemukan ${matchedWord.vocabulary.indonesian}.';
+      });
+    } else {
+      setState(() {
+        firstSelectedPosition = null;
+
+        feedback =
+            'Belum cocok. Coba cari kata yang lain!';
+      });
+    }
+  }
+
+  List<_GridPosition> getPositionsBetween(
+    _GridPosition start,
+    _GridPosition end,
+  ) {
+    final rowDifference =
+        end.row - start.row;
+
+    final columnDifference =
+        end.column - start.column;
+
+    int rowStep = 0;
+    int columnStep = 0;
+
+    if (rowDifference == 0 &&
+        columnDifference != 0) {
+      columnStep =
+          columnDifference > 0 ? 1 : -1;
+    } else if (columnDifference == 0 &&
+        rowDifference != 0) {
+      rowStep =
+          rowDifference > 0 ? 1 : -1;
+    } else if (rowDifference.abs() ==
+        columnDifference.abs()) {
+      rowStep =
+          rowDifference > 0 ? 1 : -1;
+
+      columnStep =
+          columnDifference > 0 ? 1 : -1;
+    } else {
+      return [];
+    }
+
+    final length = max(
+          rowDifference.abs(),
+          columnDifference.abs(),
+        ) +
+        1;
+
+    return List.generate(
+      length,
+      (index) {
+        return _GridPosition(
+          row: start.row +
+              index * rowStep,
+          column: start.column +
+              index * columnStep,
+        );
+      },
+    );
+  }
+
+  bool isFoundPosition(
+    int row,
+    int column,
+  ) {
+    return foundPositions.contains(
+      _GridPosition(
+        row: row,
+        column: column,
+      ),
+    );
+  }
+
+  bool isFirstSelected(
+    int row,
+    int column,
+  ) {
+    return firstSelectedPosition ==
+        _GridPosition(
+          row: row,
+          column: column,
+        );
+  }
+
   Widget buildLetterGrid() {
     if (letterGrid.isEmpty) {
       return const SizedBox();
@@ -288,27 +505,72 @@ class _WordHuntPageState extends State<WordHuntPage> {
           final character =
               letterGrid[row][column];
 
-          return Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF20272B),
-              borderRadius:
-                  BorderRadius.circular(5),
-              border: Border.all(
-                color: const Color.fromARGB(
-                  35,
-                  255,
-                  255,
-                  255,
+          final found =
+              isFoundPosition(
+            row,
+            column,
+          );
+
+          final selected =
+              isFirstSelected(
+            row,
+            column,
+          );
+
+          Color cardColor =
+              const Color(0xFF20272B);
+
+          Color textColor =
+              Colors.white;
+
+          if (found) {
+            cardColor =
+                const Color(0xFF356859);
+          } else if (selected) {
+            cardColor =
+                const Color(0xFFE7C249);
+
+            textColor =
+                const Color(0xFF272F33);
+          }
+
+          return GestureDetector(
+            onTap: () {
+              selectCell(
+                row,
+                column,
+              );
+            },
+            child: AnimatedContainer(
+              duration: const Duration(
+                milliseconds: 200,
+              ),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius:
+                    BorderRadius.circular(5),
+                border: Border.all(
+                  color: selected
+                      ? const Color(
+                          0xFFE7C249,
+                        )
+                      : const Color.fromARGB(
+                          35,
+                          255,
+                          255,
+                          255,
+                        ),
                 ),
               ),
-            ),
-            child: Center(
-              child: Text(
-                character,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
+              child: Center(
+                child: Text(
+                  character,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 13,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -322,24 +584,57 @@ class _WordHuntPageState extends State<WordHuntPage> {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: vocabularies.map((vocabulary) {
+      children: placedWords.map((placedWord) {
+        final found =
+            foundWords.contains(
+          placedWord.word,
+        );
+
         return Container(
-          padding: const EdgeInsets.symmetric(
+          padding:
+              const EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 8,
           ),
           decoration: BoxDecoration(
-            color: const Color(0xFF20272B),
+            color: found
+                ? const Color(0xFF356859)
+                : const Color(0xFF20272B),
             borderRadius:
                 BorderRadius.circular(12),
           ),
-          child: Text(
-            vocabulary.indonesian,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+          child: Row(
+            mainAxisSize:
+                MainAxisSize.min,
+            children: [
+              if (found) ...[
+                const Icon(
+                  Icons.check_rounded,
+                  color: Colors.greenAccent,
+                  size: 16,
+                ),
+
+                const SizedBox(width: 4),
+              ],
+
+              Text(
+                placedWord
+                    .vocabulary
+                    .indonesian,
+                style: TextStyle(
+                  color: found
+                      ? Colors.greenAccent
+                      : Colors.white70,
+                  fontSize: 14,
+                  fontWeight:
+                      FontWeight.bold,
+                  decoration: found
+                      ? TextDecoration
+                          .lineThrough
+                      : null,
+                ),
+              ),
+            ],
           ),
         );
       }).toList(),
@@ -408,8 +703,11 @@ class _WordHuntPageState extends State<WordHuntPage> {
             const SizedBox(height: 25),
 
             ElevatedButton(
-              onPressed: loadVocabularies,
-              child: const Text('COBA LAGI'),
+              onPressed:
+                  loadVocabularies,
+              child: const Text(
+                'COBA LAGI',
+              ),
             ),
           ],
         ),
@@ -418,36 +716,79 @@ class _WordHuntPageState extends State<WordHuntPage> {
   }
 
   Widget buildGame() {
+    final totalWords =
+        placedWords.length;
+
+    final totalFound =
+        foundWords.length;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment:
             CrossAxisAlignment.start,
         children: [
-          Text(
-            'Bahasa: ${widget.selectedLanguage}',
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 14,
-            ),
+          Row(
+            mainAxisAlignment:
+                MainAxisAlignment
+                    .spaceBetween,
+            children: [
+              Text(
+                'Bahasa: ${widget.selectedLanguage}',
+                style:
+                    const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 14,
+                ),
+              ),
+
+              Text(
+                '$totalFound / $totalWords',
+                style:
+                    const TextStyle(
+                  color:
+                      Color(0xFFE7C249),
+                  fontSize: 17,
+                  fontWeight:
+                      FontWeight.bold,
+                ),
+              ),
+            ],
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+
+          LinearProgressIndicator(
+            value: totalWords == 0
+                ? 0
+                : totalFound /
+                    totalWords,
+            minHeight: 8,
+            backgroundColor:
+                const Color(0xFF20272B),
+            color:
+                const Color(0xFFE7C249),
+            borderRadius:
+                BorderRadius.circular(20),
+          ),
+
+          const SizedBox(height: 20),
 
           const Text(
             'Temukan Kata!',
             style: TextStyle(
               color: Colors.white,
               fontSize: 25,
-              fontWeight: FontWeight.bold,
+              fontWeight:
+                  FontWeight.bold,
             ),
           ),
 
           const SizedBox(height: 5),
 
-          const Text(
-            'Cari kosakata yang tersembunyi di dalam susunan huruf.',
-            style: TextStyle(
+          Text(
+            feedback,
+            style: const TextStyle(
               color: Colors.white70,
               fontSize: 14,
             ),
@@ -464,7 +805,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontWeight:
+                  FontWeight.bold,
             ),
           ),
 
@@ -472,17 +814,7 @@ class _WordHuntPageState extends State<WordHuntPage> {
 
           buildTargetWords(),
 
-          const SizedBox(height: 20),
-
-          const Center(
-            child: Text(
-              'Pemilihan kata akan ditambahkan selanjutnya.',
-              style: TextStyle(
-                color: Colors.white38,
-                fontSize: 12,
-              ),
-            ),
-          ),
+          const SizedBox(height: 25),
         ],
       ),
     );
@@ -497,19 +829,22 @@ class _WordHuntPageState extends State<WordHuntPage> {
         backgroundColor:
             const Color(0xFF272F33),
         elevation: 0,
-        iconTheme: const IconThemeData(
+        iconTheme:
+            const IconThemeData(
           color: Colors.white,
         ),
         title: const Text(
           'Perburuan Kata',
           style: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+            fontWeight:
+                FontWeight.bold,
           ),
         ),
         actions: [
           IconButton(
-            onPressed: loadVocabularies,
+            onPressed:
+                loadVocabularies,
             icon: const Icon(
               Icons.refresh_rounded,
             ),
