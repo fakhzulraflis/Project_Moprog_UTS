@@ -17,6 +17,7 @@ class WordHuntPage extends StatefulWidget {
   State<WordHuntPage> createState() => _WordHuntPageState();
 }
 
+// Menyimpan posisi satu huruf di dalam grid
 class _GridPosition {
   final int row;
   final int column;
@@ -37,6 +38,7 @@ class _GridPosition {
   int get hashCode => Object.hash(row, column);
 }
 
+// Menyimpan data kata yang berhasil ditempatkan di grid
 class _PlacedWord {
   final Vocabulary vocabulary;
   final String word;
@@ -55,20 +57,25 @@ class _WordHuntPageState extends State<WordHuntPage> {
   final Random random = Random();
 
   List<Vocabulary> vocabularies = [];
+
   List<List<String>> letterGrid = [];
 
   final List<_PlacedWord> placedWords = [];
 
   final Set<String> foundWords = {};
+
   final Set<_GridPosition> foundPositions = {};
 
   _GridPosition? firstSelectedPosition;
 
   bool isLoading = true;
 
+  bool isFinished = false;
+
   String? errorMessage;
 
-  String feedback = 'Pilih huruf awal dan huruf akhir dari sebuah kata.';
+  String feedback =
+      'Pilih huruf awal dan huruf akhir dari sebuah kata.';
 
   @override
   void initState() {
@@ -77,6 +84,7 @@ class _WordHuntPageState extends State<WordHuntPage> {
     loadVocabularies();
   }
 
+  // Mengambil terjemahan berdasarkan bahasa pilihan user
   String getTranslation(Vocabulary vocabulary) {
     switch (widget.selectedLanguage) {
       case 'Japanese':
@@ -91,6 +99,7 @@ class _WordHuntPageState extends State<WordHuntPage> {
     }
   }
 
+  // Membersihkan kata sebelum dimasukkan ke grid
   String cleanWord(String word) {
     return word
         .trim()
@@ -99,9 +108,11 @@ class _WordHuntPageState extends State<WordHuntPage> {
         .toUpperCase();
   }
 
+  // Mengambil vocabulary dari backend
   Future<void> loadVocabularies() async {
     setState(() {
       isLoading = true;
+      isFinished = false;
       errorMessage = null;
 
       firstSelectedPosition = null;
@@ -114,13 +125,17 @@ class _WordHuntPageState extends State<WordHuntPage> {
     });
 
     try {
-      final result = await ApiService.getVocabularies();
+      final result =
+          await ApiService.getVocabularies();
 
       if (!mounted) return;
 
-      final shuffled = List<Vocabulary>.from(result)
-        ..shuffle();
+      // Acak vocabulary
+      final shuffled =
+          List<Vocabulary>.from(result)
+            ..shuffle();
 
+      // Maksimal 8 kata per permainan
       final selected = shuffled.length > 8
           ? shuffled.sublist(0, 8)
           : shuffled;
@@ -142,10 +157,13 @@ class _WordHuntPageState extends State<WordHuntPage> {
         isLoading = false;
       });
 
-      debugPrint('Word Hunt error: $e');
+      debugPrint(
+        'Word Hunt error: $e',
+      );
     }
   }
 
+  // Membuat grid kosong
   List<List<String>> createEmptyGrid() {
     return List.generate(
       gridSize,
@@ -156,6 +174,7 @@ class _WordHuntPageState extends State<WordHuntPage> {
     );
   }
 
+  // Mengambil karakter untuk mengisi kotak kosong
   List<String> createFillerCharacters() {
     final List<String> characters = [];
 
@@ -169,15 +188,18 @@ class _WordHuntPageState extends State<WordHuntPage> {
       );
     }
 
+    // Fallback kalau tidak ada karakter
     if (characters.isEmpty) {
       characters.addAll(
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            .split(''),
       );
     }
 
     return characters;
   }
 
+  // Generate grid permainan
   void generateGrid() {
     final grid = createEmptyGrid();
 
@@ -188,7 +210,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
         getTranslation(vocabulary),
       );
 
-      if (word.isEmpty || word.length > gridSize) {
+      if (word.isEmpty ||
+          word.length > gridSize) {
         continue;
       }
 
@@ -204,33 +227,55 @@ class _WordHuntPageState extends State<WordHuntPage> {
     letterGrid = grid;
   }
 
+  // Menempatkan kata ke grid
   bool placeWord(
     List<List<String>> grid,
     String word,
     Vocabulary vocabulary,
   ) {
+    // Arah kata:
+    // horizontal
+    // vertikal
+    // diagonal
     final directions = [
-      [0, 1], // horizontal
-      [1, 0], // vertikal
-      [1, 1], // diagonal
+      [0, 1],
+      [1, 0],
+      [1, 1],
     ];
 
-    for (int attempt = 0; attempt < 100; attempt++) {
+    for (int attempt = 0;
+        attempt < 100;
+        attempt++) {
       final direction =
-          directions[random.nextInt(directions.length)];
+          directions[
+              random.nextInt(
+                directions.length,
+              )
+          ];
 
-      final rowDirection = direction[0];
-      final columnDirection = direction[1];
+      final rowDirection =
+          direction[0];
 
-      final startRow = random.nextInt(gridSize);
-      final startColumn = random.nextInt(gridSize);
+      final columnDirection =
+          direction[1];
+
+      final startRow =
+          random.nextInt(gridSize);
+
+      final startColumn =
+          random.nextInt(gridSize);
 
       final endRow =
-          startRow + (word.length - 1) * rowDirection;
+          startRow +
+          (word.length - 1) *
+              rowDirection;
 
       final endColumn =
-          startColumn + (word.length - 1) * columnDirection;
+          startColumn +
+          (word.length - 1) *
+              columnDirection;
 
+      // Jangan sampai keluar grid
       if (endRow >= gridSize ||
           endColumn >= gridSize) {
         continue;
@@ -238,22 +283,31 @@ class _WordHuntPageState extends State<WordHuntPage> {
 
       bool canPlace = true;
 
-      final List<_GridPosition> positions = [];
+      final List<_GridPosition>
+          positions = [];
 
-      for (int i = 0; i < word.length; i++) {
+      for (int i = 0;
+          i < word.length;
+          i++) {
         final row =
-            startRow + i * rowDirection;
+            startRow +
+            i * rowDirection;
 
         final column =
-            startColumn + i * columnDirection;
+            startColumn +
+            i * columnDirection;
 
         final existingCharacter =
             grid[row][column];
 
-        final newCharacter = word[i];
+        final newCharacter =
+            word[i];
 
+        // Kata boleh bertumpuk
+        // kalau hurufnya sama
         if (existingCharacter.isNotEmpty &&
-            existingCharacter != newCharacter) {
+            existingCharacter !=
+                newCharacter) {
           canPlace = false;
           break;
         }
@@ -270,10 +324,15 @@ class _WordHuntPageState extends State<WordHuntPage> {
         continue;
       }
 
-      for (int i = 0; i < word.length; i++) {
-        final position = positions[i];
+      // Masukkan kata ke grid
+      for (int i = 0;
+          i < word.length;
+          i++) {
+        final position =
+            positions[i];
 
-        grid[position.row][position.column] =
+        grid[position.row]
+                [position.column] =
             word[i];
       }
 
@@ -295,6 +354,7 @@ class _WordHuntPageState extends State<WordHuntPage> {
     return false;
   }
 
+  // Mengisi grid kosong dengan karakter random
   void fillEmptyCells(
     List<List<String>> grid,
   ) {
@@ -311,7 +371,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
           grid[row][column] =
               fillerCharacters[
                   random.nextInt(
-                    fillerCharacters.length,
+                    fillerCharacters
+                        .length,
                   )
               ];
         }
@@ -319,13 +380,20 @@ class _WordHuntPageState extends State<WordHuntPage> {
     }
   }
 
-  void selectCell(int row, int column) {
-    final selectedPosition = _GridPosition(
+  // User memilih satu kotak
+  void selectCell(
+    int row,
+    int column,
+  ) {
+    final selectedPosition =
+        _GridPosition(
       row: row,
       column: column,
     );
 
-    if (firstSelectedPosition == null) {
+    // Pilihan pertama
+    if (firstSelectedPosition ==
+        null) {
       setState(() {
         firstSelectedPosition =
             selectedPosition;
@@ -340,6 +408,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
     final firstPosition =
         firstSelectedPosition!;
 
+    // Ambil semua posisi di antara
+    // pilihan awal dan akhir
     final selectedPositions =
         getPositionsBetween(
       firstPosition,
@@ -348,7 +418,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
 
     if (selectedPositions.isEmpty) {
       setState(() {
-        firstSelectedPosition = null;
+        firstSelectedPosition =
+            null;
 
         feedback =
             'Pilih kata dalam garis lurus horizontal, vertikal, atau diagonal.';
@@ -357,49 +428,76 @@ class _WordHuntPageState extends State<WordHuntPage> {
       return;
     }
 
+    // Gabungkan huruf yang dipilih
     final selectedWord =
-        selectedPositions.map((position) {
-      return letterGrid[position.row]
-          [position.column];
-    }).join();
+        selectedPositions
+            .map(
+              (position) =>
+                  letterGrid[
+                          position.row]
+                      [position.column],
+            )
+            .join();
 
+    // Mendukung pemilihan dari belakang
     final reversedWord =
-        selectedWord.split('').reversed.join();
+        selectedWord
+            .split('')
+            .reversed
+            .join();
 
     _PlacedWord? matchedWord;
 
-    for (final placedWord in placedWords) {
+    for (final placedWord
+        in placedWords) {
       if (foundWords.contains(
         placedWord.word,
       )) {
         continue;
       }
 
-      if (placedWord.word == selectedWord ||
-          placedWord.word == reversedWord) {
-        matchedWord = placedWord;
+      if (placedWord.word ==
+              selectedWord ||
+          placedWord.word ==
+              reversedWord) {
+        matchedWord =
+            placedWord;
+
         break;
       }
     }
 
+    // Kalau benar
     if (matchedWord != null) {
+      final matched =
+          matchedWord;
+
       setState(() {
         foundWords.add(
-          matchedWord!.word,
+          matched.word,
         );
 
         foundPositions.addAll(
-          matchedWord.positions,
+          matched.positions,
         );
 
-        firstSelectedPosition = null;
+        firstSelectedPosition =
+            null;
 
         feedback =
-            'Benar! Kamu menemukan ${matchedWord.vocabulary.indonesian}.';
+            'Benar! Kamu menemukan ${matched.vocabulary.indonesian}.';
+
+        // Semua kata sudah ditemukan
+        if (foundWords.length ==
+            placedWords.length) {
+          isFinished = true;
+        }
       });
     } else {
+      // Kalau salah
       setState(() {
-        firstSelectedPosition = null;
+        firstSelectedPosition =
+            null;
 
         feedback =
             'Belum cocok. Coba cari kata yang lain!';
@@ -407,7 +505,10 @@ class _WordHuntPageState extends State<WordHuntPage> {
     }
   }
 
-  List<_GridPosition> getPositionsBetween(
+  // Mengambil semua posisi dari
+  // huruf awal sampai huruf akhir
+  List<_GridPosition>
+      getPositionsBetween(
     _GridPosition start,
     _GridPosition end,
   ) {
@@ -420,21 +521,36 @@ class _WordHuntPageState extends State<WordHuntPage> {
     int rowStep = 0;
     int columnStep = 0;
 
+    // Horizontal
     if (rowDifference == 0 &&
         columnDifference != 0) {
       columnStep =
-          columnDifference > 0 ? 1 : -1;
-    } else if (columnDifference == 0 &&
+          columnDifference > 0
+              ? 1
+              : -1;
+    }
+
+    // Vertikal
+    else if (columnDifference == 0 &&
         rowDifference != 0) {
       rowStep =
-          rowDifference > 0 ? 1 : -1;
-    } else if (rowDifference.abs() ==
+          rowDifference > 0
+              ? 1
+              : -1;
+    }
+
+    // Diagonal
+    else if (rowDifference.abs() ==
         columnDifference.abs()) {
       rowStep =
-          rowDifference > 0 ? 1 : -1;
+          rowDifference > 0
+              ? 1
+              : -1;
 
       columnStep =
-          columnDifference > 0 ? 1 : -1;
+          columnDifference > 0
+              ? 1
+              : -1;
     } else {
       return [];
     }
@@ -452,7 +568,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
           row: start.row +
               index * rowStep,
           column: start.column +
-              index * columnStep,
+              index *
+                  columnStep,
         );
       },
     );
@@ -481,6 +598,7 @@ class _WordHuntPageState extends State<WordHuntPage> {
         );
   }
 
+  // Tampilan grid
   Widget buildLetterGrid() {
     if (letterGrid.isEmpty) {
       return const SizedBox();
@@ -491,19 +609,26 @@ class _WordHuntPageState extends State<WordHuntPage> {
       child: GridView.builder(
         physics:
             const NeverScrollableScrollPhysics(),
-        itemCount: gridSize * gridSize,
+        itemCount:
+            gridSize * gridSize,
         gridDelegate:
             const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: gridSize,
+          crossAxisCount:
+              gridSize,
           crossAxisSpacing: 3,
           mainAxisSpacing: 3,
         ),
-        itemBuilder: (context, index) {
-          final row = index ~/ gridSize;
-          final column = index % gridSize;
+        itemBuilder:
+            (context, index) {
+          final row =
+              index ~/ gridSize;
+
+          final column =
+              index % gridSize;
 
           final character =
-              letterGrid[row][column];
+              letterGrid[row]
+                  [column];
 
           final found =
               isFoundPosition(
@@ -518,20 +643,24 @@ class _WordHuntPageState extends State<WordHuntPage> {
           );
 
           Color cardColor =
-              const Color(0xFF20272B);
+              const Color(
+                  0xFF20272B);
 
           Color textColor =
               Colors.white;
 
           if (found) {
             cardColor =
-                const Color(0xFF356859);
+                const Color(
+                    0xFF356859);
           } else if (selected) {
             cardColor =
-                const Color(0xFFE7C249);
+                const Color(
+                    0xFFE7C249);
 
             textColor =
-                const Color(0xFF272F33);
+                const Color(
+                    0xFF272F33);
           }
 
           return GestureDetector(
@@ -541,20 +670,26 @@ class _WordHuntPageState extends State<WordHuntPage> {
                 column,
               );
             },
-            child: AnimatedContainer(
-              duration: const Duration(
+            child:
+                AnimatedContainer(
+              duration:
+                  const Duration(
                 milliseconds: 200,
               ),
-              decoration: BoxDecoration(
+              decoration:
+                  BoxDecoration(
                 color: cardColor,
                 borderRadius:
-                    BorderRadius.circular(5),
-                border: Border.all(
+                    BorderRadius
+                        .circular(5),
+                border:
+                    Border.all(
                   color: selected
                       ? const Color(
                           0xFFE7C249,
                         )
-                      : const Color.fromARGB(
+                      : const Color
+                          .fromARGB(
                           35,
                           255,
                           255,
@@ -565,11 +700,14 @@ class _WordHuntPageState extends State<WordHuntPage> {
               child: Center(
                 child: Text(
                   character,
-                  style: TextStyle(
-                    color: textColor,
+                  style:
+                      TextStyle(
+                    color:
+                        textColor,
                     fontSize: 13,
                     fontWeight:
-                        FontWeight.bold,
+                        FontWeight
+                            .bold,
                   ),
                 ),
               ),
@@ -580,64 +718,82 @@ class _WordHuntPageState extends State<WordHuntPage> {
     );
   }
 
+  // Daftar kata yang harus dicari
   Widget buildTargetWords() {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: placedWords.map((placedWord) {
-        final found =
-            foundWords.contains(
-          placedWord.word,
-        );
+      children:
+          placedWords.map(
+        (placedWord) {
+          final found =
+              foundWords.contains(
+            placedWord.word,
+          );
 
-        return Container(
-          padding:
-              const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
-          ),
-          decoration: BoxDecoration(
-            color: found
-                ? const Color(0xFF356859)
-                : const Color(0xFF20272B),
-            borderRadius:
-                BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize:
-                MainAxisSize.min,
-            children: [
-              if (found) ...[
-                const Icon(
-                  Icons.check_rounded,
-                  color: Colors.greenAccent,
-                  size: 16,
+          return Container(
+            padding:
+                const EdgeInsets
+                    .symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            decoration:
+                BoxDecoration(
+              color: found
+                  ? const Color(
+                      0xFF356859)
+                  : const Color(
+                      0xFF20272B),
+              borderRadius:
+                  BorderRadius
+                      .circular(12),
+            ),
+            child: Row(
+              mainAxisSize:
+                  MainAxisSize.min,
+              children: [
+                if (found) ...[
+                  const Icon(
+                    Icons
+                        .check_rounded,
+                    color: Colors
+                        .greenAccent,
+                    size: 16,
+                  ),
+
+                  const SizedBox(
+                    width: 4,
+                  ),
+                ],
+
+                Text(
+                  placedWord
+                      .vocabulary
+                      .indonesian,
+                  style:
+                      TextStyle(
+                    color: found
+                        ? Colors
+                            .greenAccent
+                        : Colors
+                            .white70,
+                    fontSize: 14,
+                    fontWeight:
+                        FontWeight
+                            .bold,
+                    decoration:
+                        found
+                            ? TextDecoration
+                                .lineThrough
+                            : null,
+                  ),
                 ),
-
-                const SizedBox(width: 4),
               ],
-
-              Text(
-                placedWord
-                    .vocabulary
-                    .indonesian,
-                style: TextStyle(
-                  color: found
-                      ? Colors.greenAccent
-                      : Colors.white70,
-                  fontSize: 14,
-                  fontWeight:
-                      FontWeight.bold,
-                  decoration: found
-                      ? TextDecoration
-                          .lineThrough
-                      : null,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+            ),
+          );
+        },
+      ).toList(),
     );
   }
 
@@ -648,7 +804,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
             MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            color: Color(0xFFE7C249),
+            color:
+                Color(0xFFE7C249),
           ),
 
           SizedBox(height: 20),
@@ -677,30 +834,39 @@ class _WordHuntPageState extends State<WordHuntPage> {
   Widget buildError() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(25),
+        padding:
+            const EdgeInsets.all(25),
         child: Column(
           mainAxisAlignment:
-              MainAxisAlignment.center,
+              MainAxisAlignment
+                  .center,
           children: [
             const Icon(
               Icons.cloud_off_rounded,
-              color: Color(0xFFE7C249),
+              color:
+                  Color(0xFFE7C249),
               size: 70,
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(
+              height: 20,
+            ),
 
             Text(
               errorMessage ??
                   'Terjadi kesalahan.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
+              textAlign:
+                  TextAlign.center,
+              style:
+                  const TextStyle(
                 color: Colors.white,
                 fontSize: 17,
               ),
             ),
 
-            const SizedBox(height: 25),
+            const SizedBox(
+              height: 25,
+            ),
 
             ElevatedButton(
               onPressed:
@@ -715,6 +881,7 @@ class _WordHuntPageState extends State<WordHuntPage> {
     );
   }
 
+  // Tampilan game
   Widget buildGame() {
     final totalWords =
         placedWords.length;
@@ -723,7 +890,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
         foundWords.length;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(18),
+      padding:
+          const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment:
             CrossAxisAlignment.start,
@@ -737,7 +905,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
                 'Bahasa: ${widget.selectedLanguage}',
                 style:
                     const TextStyle(
-                  color: Colors.white54,
+                  color:
+                      Colors.white54,
                   fontSize: 14,
                 ),
               ),
@@ -746,8 +915,8 @@ class _WordHuntPageState extends State<WordHuntPage> {
                 '$totalFound / $totalWords',
                 style:
                     const TextStyle(
-                  color:
-                      Color(0xFFE7C249),
+                  color: Color(
+                      0xFFE7C249),
                   fontSize: 17,
                   fontWeight:
                       FontWeight.bold,
@@ -756,7 +925,9 @@ class _WordHuntPageState extends State<WordHuntPage> {
             ],
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(
+            height: 10,
+          ),
 
           LinearProgressIndicator(
             value: totalWords == 0
@@ -765,14 +936,19 @@ class _WordHuntPageState extends State<WordHuntPage> {
                     totalWords,
             minHeight: 8,
             backgroundColor:
-                const Color(0xFF20272B),
+                const Color(
+                    0xFF20272B),
             color:
-                const Color(0xFFE7C249),
+                const Color(
+                    0xFFE7C249),
             borderRadius:
-                BorderRadius.circular(20),
+                BorderRadius
+                    .circular(20),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(
+            height: 20,
+          ),
 
           const Text(
             'Temukan Kata!',
@@ -784,7 +960,9 @@ class _WordHuntPageState extends State<WordHuntPage> {
             ),
           ),
 
-          const SizedBox(height: 5),
+          const SizedBox(
+            height: 5,
+          ),
 
           Text(
             feedback,
@@ -794,11 +972,15 @@ class _WordHuntPageState extends State<WordHuntPage> {
             ),
           ),
 
-          const SizedBox(height: 22),
+          const SizedBox(
+            height: 22,
+          ),
 
           buildLetterGrid(),
 
-          const SizedBox(height: 25),
+          const SizedBox(
+            height: 25,
+          ),
 
           const Text(
             'Kata yang dicari',
@@ -810,18 +992,161 @@ class _WordHuntPageState extends State<WordHuntPage> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(
+            height: 12,
+          ),
 
           buildTargetWords(),
 
-          const SizedBox(height: 25),
+          const SizedBox(
+            height: 25,
+          ),
         ],
       ),
     );
   }
 
+  // Tampilan setelah semua kata ditemukan
+  Widget buildResult() {
+    return Center(
+      child: Padding(
+        padding:
+            const EdgeInsets.all(30),
+        child: Column(
+          mainAxisAlignment:
+              MainAxisAlignment
+                  .center,
+          children: [
+            const Icon(
+              Icons
+                  .emoji_events_rounded,
+              color:
+                  Color(0xFFE7C249),
+              size: 90,
+            ),
+
+            const SizedBox(
+              height: 20,
+            ),
+
+            const Text(
+              'Perburuan Selesai!',
+              textAlign:
+                  TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(
+              height: 12,
+            ),
+
+            const Text(
+              'Kamu berhasil menemukan semua kata.',
+              textAlign:
+                  TextAlign.center,
+              style: TextStyle(
+                color:
+                    Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+
+            const SizedBox(
+              height: 30,
+            ),
+
+            Text(
+              '${foundWords.length} / ${placedWords.length} kata ditemukan',
+              style:
+                  const TextStyle(
+                color:
+                    Color(0xFFE7C249),
+                fontSize: 21,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(
+              height: 40,
+            ),
+
+            SizedBox(
+              width:
+                  double.infinity,
+              child:
+                  ElevatedButton(
+                onPressed:
+                    loadVocabularies,
+                style:
+                    ElevatedButton
+                        .styleFrom(
+                  backgroundColor:
+                      const Color(
+                          0xFFE7C249),
+                  padding:
+                      const EdgeInsets
+                          .symmetric(
+                    vertical: 15,
+                  ),
+                ),
+                child:
+                    const Text(
+                  'MAIN LAGI',
+                  style:
+                      TextStyle(
+                    color: Color(
+                        0xFF272F33),
+                    fontSize: 16,
+                    fontWeight:
+                        FontWeight
+                            .bold,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 12,
+            ),
+
+            SizedBox(
+              width:
+                  double.infinity,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.pop(
+                    context,
+                  );
+                },
+                child:
+                    const Text(
+                  'KEMBALI KE LATIHAN',
+                  style:
+                      TextStyle(
+                    color: Colors
+                        .white70,
+                    fontWeight:
+                        FontWeight
+                            .bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+      BuildContext context) {
     return Scaffold(
       backgroundColor:
           const Color(0xFF272F33),
@@ -856,7 +1181,9 @@ class _WordHuntPageState extends State<WordHuntPage> {
             ? buildLoading()
             : errorMessage != null
                 ? buildError()
-                : buildGame(),
+                : isFinished
+                    ? buildResult()
+                    : buildGame(),
       ),
     );
   }
