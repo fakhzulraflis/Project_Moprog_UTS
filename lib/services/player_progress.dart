@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/reward_chest.dart';
 import '../widgets/spin_wheel.dart';
 import 'duck_pet.dart';
+import 'inventory_service.dart';
 import 'quest_pool.dart';
 
 export 'quest_pool.dart' show DailyQuest, QuestPool;
@@ -22,7 +23,6 @@ class PlayerProgress extends ChangeNotifier {
   static const int xpPerLesson = 10;
   static const int monthlyTarget = 30;
   static const int weeklyTarget = 20;
-  static const Duration xpBoostDuration = Duration(minutes: 15);
   static const int rerollPrice = 20;
 
   SharedPreferences? prefs;
@@ -319,12 +319,15 @@ class PlayerProgress extends ChangeNotifier {
         : ChestState.locked;
   }
 
-  Future<void> claimQuest(DailyQuest quest, ChestLoot loot) {
-    return update(() {
+  Future<void> claimQuest(DailyQuest quest, ChestLoot loot) async {
+    var claimed = false;
+    await update(() {
       if (chestStateOf(quest) != ChestState.ready) return;
       claimedToday.add(quest.id);
       applyLoot(loot);
+      claimed = true;
     });
+    if (claimed) await deliverItem(loot);
   }
 
   ChestState get weeklyChestState {
@@ -334,20 +337,40 @@ class PlayerProgress extends ChangeNotifier {
         : ChestState.locked;
   }
 
-  Future<void> claimWeekly(ChestLoot loot) {
-    return update(() {
+  Future<void> claimWeekly(ChestLoot loot) async {
+    var claimed = false;
+    await update(() {
       if (weeklyChestState != ChestState.ready) return;
       weeklyClaimed = true;
       applyLoot(loot);
+      claimed = true;
     });
+    if (claimed) await deliverItem(loot);
   }
 
-  Future<void> claimMonthly(ChestLoot loot) {
-    return update(() {
+  Future<void> claimMonthly(ChestLoot loot) async {
+    var claimed = false;
+    await update(() {
       if (monthlyChestState != ChestState.ready) return;
       monthlyClaimed = true;
       applyLoot(loot);
+      claimed = true;
     });
+    if (claimed) await deliverItem(loot);
+  }
+
+  // Gem pengganti kalau barang dari peti gagal disimpan ke inventory
+  // (misalnya server mati), supaya hadiahnya tidak hilang begitu saja.
+  static const int itemFallbackGems = 20;
+
+  // Barang dari peti tidak langsung aktif, tapi dikirim ke inventory.
+  Future<void> deliverItem(ChestLoot loot) async {
+    if (loot.type != LootType.item) return;
+    final saved = await InventoryService.instance.add(
+      loot.itemKey!,
+      source: 'chest',
+    );
+    if (!saved) await update(() => gems += itemFallbackGems);
   }
 
   void applyLoot(ChestLoot loot) {
@@ -360,17 +383,30 @@ class PlayerProgress extends ChangeNotifier {
         xpToday += loot.amount;
       case LootType.hearts:
         bonusHearts += loot.amount;
+      case LootType.item:
+        // Barang inventory diurus deliverItem(), bukan langsung ke saldo
+        break;
     }
   }
 
   // ---------- Dipanggil dari halaman lesson ----------
 
+  // XP Ganda aktif kalau dipakai dari inventory. xpBoostUntil masih dibaca
+  // untuk data lama sebelum ada inventory.
   bool get isXpBoostActive =>
-      xpBoostUntil != null && DateTime.now().isBefore(xpBoostUntil!);
+      InventoryService.instance.isActive(ItemEffect.xpBoost) ||
+      (xpBoostUntil != null && DateTime.now().isBefore(xpBoostUntil!));
 
-  Duration get xpBoostLeft => isXpBoostActive
-      ? xpBoostUntil!.difference(DateTime.now())
-      : Duration.zero;
+  Duration get xpBoostLeft {
+    final fromInventory = InventoryService.instance.timeLeft(
+      ItemEffect.xpBoost,
+    );
+    final legacy =
+        xpBoostUntil != null && DateTime.now().isBefore(xpBoostUntil!)
+        ? xpBoostUntil!.difference(DateTime.now())
+        : Duration.zero;
+    return fromInventory > legacy ? fromInventory : legacy;
+  }
 
   // Mengembalikan jumlah XP yang didapat (sudah termasuk boost).
   Future<int> completeLesson() async {
@@ -461,9 +497,9 @@ class PlayerProgress extends ChangeNotifier {
   // halaman di tengah animasi tidak bisa dipakai untuk memutar ulang.
   Future<bool> claimSpin(int index) async {
     var ok = false;
+    final prize = SpinPrize.all[index];
     await update(() {
       if (!canSpin) return;
-      final prize = SpinPrize.all[index];
       lastSpinDay = dayKey(DateTime.now());
       lastSpinPrize = index;
 
@@ -475,16 +511,22 @@ class PlayerProgress extends ChangeNotifier {
         case PrizeType.xp:
           applyLoot(ChestLoot(LootType.xp, prize.amount));
         case PrizeType.xpBoost:
-          // Kalau boost masih aktif, waktunya ditambah
-          final from = isXpBoostActive ? xpBoostUntil! : DateTime.now();
-          xpBoostUntil = from.add(Duration(minutes: prize.amount));
+          // Masuk ke inventory, dikirim setelah data disimpan (di bawah)
+          break;
         case PrizeType.none:
           break;
       }
       ok = true;
     });
+
+    if (ok && prize.type == PrizeType.xpBoost) {
+      await deliverItem(const ChestLoot.item(spinBoostItem));
+    }
     return ok;
   }
+
+  // Hadiah XP Ganda dari roda masuk ke inventory sebagai barang ini.
+  static const String spinBoostItem = 'xp_boost_15';
 
   // ---------- Toko ----------
 
@@ -499,16 +541,23 @@ class PlayerProgress extends ChangeNotifier {
     return ok;
   }
 
-  Future<bool> buyXpBoost(int price) async {
-    var ok = false;
+  // Beli barang inventory di toko. Barang disimpan ke inventory dulu,
+  // gem baru dipotong kalau penyimpanan berhasil. Mengembalikan pesan
+  // error, atau null kalau berhasil.
+  Future<String?> buyItem(String itemKey, int price) async {
+    await load();
+    if (gems < price) return 'Gem kamu belum cukup.';
+
+    final saved = await InventoryService.instance.add(itemKey, source: 'shop');
+    if (!saved) {
+      return InventoryService.instance.error ?? 'Gagal menyimpan barang.';
+    }
+
     await update(() {
-      if (gems < price || isXpBoostActive) return;
       gems -= price;
-      xpBoostUntil = DateTime.now().add(xpBoostDuration);
       purchasesToday++;
-      ok = true;
     });
-    return ok;
+    return null;
   }
 
   Future<bool> buyBonusHearts(int price, int amount) async {
@@ -535,7 +584,11 @@ class PlayerProgress extends ChangeNotifier {
     return ok;
   }
 
-  Future<void> addLoot(ChestLoot loot) => update(() => applyLoot(loot));
+  // Dipakai Peti Misteri dari toko.
+  Future<void> addLoot(ChestLoot loot) async {
+    await update(() => applyLoot(loot));
+    await deliverItem(loot);
+  }
 
   @visibleForTesting
   void resetForTest() {

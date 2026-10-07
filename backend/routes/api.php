@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AccountRegistrationController;
+use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\LessonController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -22,3 +23,10 @@ Route::get('/lessons/{lessonId}/questions', [QuestionController::class, 'index']
 
 Route::get('/languages', [LanguageController::class, 'index']);
 Route::get('/languages/{code}/path', [LanguageController::class, 'path']);
+
+// Inventory: hanya bisa diakses user yang login (pakai token Sanctum)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/inventory', [InventoryController::class, 'index']);
+    Route::post('/inventory', [InventoryController::class, 'store']);
+    Route::post('/inventory/{id}/use', [InventoryController::class, 'use'])->whereNumber('id');
+});

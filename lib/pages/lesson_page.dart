@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 
 import '../models/question.dart';
 import '../services/api_service.dart';
+import '../services/inventory_service.dart';
 import '../services/player_progress.dart';
 
 const Color _bg = Color(0xFF272F33);
@@ -458,7 +459,11 @@ class _LessonPageState extends State<LessonPage> {
           ? _praise[_random.nextInt(_praise.length)]
           : 'Jawaban belum tepat';
 
-      if (!correct && hearts > 0) {
+      // Hati tidak berkurang kalau Hati Tak Terbatas dari Inventori aktif
+      final unlimited = InventoryService.instance.isActive(
+        ItemEffect.unlimitedHearts,
+      );
+      if (!correct && hearts > 0 && !unlimited) {
         hearts--;
       }
     });
@@ -826,7 +831,9 @@ class _LessonPageState extends State<LessonPage> {
                 const SizedBox(width: 6),
 
                 Text(
-                  '$hearts',
+                  InventoryService.instance.isActive(ItemEffect.unlimitedHearts)
+                      ? '∞'
+                      : '$hearts',
                   style: const TextStyle(
                     color: _red,
                     fontSize: 18,

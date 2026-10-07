@@ -32,6 +32,8 @@ class LoginController extends Controller
 
         return response()->json([
             'message' => 'Login successful.',
+            // Token untuk API yang butuh login (misalnya inventory)
+            'token' => $user->createToken('mobile')->plainTextToken,
             'user' => [
                 'id' => $user->id,
                 'fullname' => $user->name,

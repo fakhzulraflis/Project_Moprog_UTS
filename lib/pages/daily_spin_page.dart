@@ -132,6 +132,12 @@ class _DailySpinPageState extends State<DailySpinPage>
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70, fontSize: 16),
               ),
+              if (prize.type == PrizeType.xpBoost)
+                const Text(
+                  'Masuk ke Inventori, pakai kapan saja',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white54, fontSize: 13),
+                ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,

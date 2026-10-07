@@ -8,8 +8,10 @@ import '../pages/pet_page.dart';
 import '../pages/shop_page.dart';
 import '../pages/streak_calendar_page.dart';
 import '../services/duck_pet.dart';
+import '../services/inventory_service.dart';
 import '../services/player_progress.dart';
 import '../widgets/duck_painter.dart';
+import '../widgets/inventory_button.dart';
 import '../widgets/reward_chest.dart';
 import '../widgets/spin_wheel.dart';
 
@@ -172,9 +174,14 @@ class _QuestsPageState extends State<QuestsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF272F33),
+      floatingActionButton: const InventoryButton(),
       body: SafeArea(
         child: ListenableBuilder(
-          listenable: Listenable.merge([progress, pet]),
+          listenable: Listenable.merge([
+            progress,
+            pet,
+            InventoryService.instance,
+          ]),
           builder: (context, _) {
             if (!progress.isLoaded || !pet.isLoaded) {
               return const Center(
@@ -193,7 +200,7 @@ class _QuestsPageState extends State<QuestsPage> {
             }
 
             return ListView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
               children: [
                 Row(
                   children: [
@@ -214,6 +221,13 @@ class _QuestsPageState extends State<QuestsPage> {
                 if (progress.isXpBoostActive) ...[
                   const SizedBox(height: 10),
                   buildBoostBanner(),
+                ],
+
+                if (InventoryService.instance.isActive(
+                  ItemEffect.unlimitedHearts,
+                )) ...[
+                  const SizedBox(height: 10),
+                  buildHeartsBanner(),
                 ],
 
                 const SizedBox(height: 15),
@@ -536,6 +550,33 @@ class _QuestsPageState extends State<QuestsPage> {
           Expanded(
             child: Text(
               'XP Ganda aktif: XP 2x lipat, sisa $minutes menit',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Banner Hati Tak Terbatas yang sedang aktif dari Inventori.
+  Widget buildHeartsBanner() {
+    final left = InventoryService.instance.timeLeft(ItemEffect.unlimitedHearts);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF5C2F35),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Image.asset('assets/icons/hearts.png', height: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Hati Tak Terbatas aktif, sisa ${left.inMinutes + 1} menit',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
