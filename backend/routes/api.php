@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\LessonController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\QuestionController;
+use App\Http\Controllers\Api\LanguageController;
 use App\Http\Controllers\Api\VocabularyController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,3 +19,6 @@ Route::get('/vocabularies', [VocabularyController::class, 'index']);
 Route::get('/lessons', [LessonController::class, 'index']);
 
 Route::get('/lessons/{lessonId}/questions', [QuestionController::class, 'index']);
+
+Route::get('/languages', [LanguageController::class, 'index']);
+Route::get('/languages/{code}/path', [LanguageController::class, 'path']);

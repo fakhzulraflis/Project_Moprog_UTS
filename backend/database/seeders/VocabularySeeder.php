@@ -70,6 +70,36 @@ class VocabularySeeder extends Seeder
                 'japanese' => '肉',
                 'korean' => '고기',
             ],
+            [
+                'indonesian' => 'air',
+                'english' => 'water',
+                'japanese' => '水',
+                'korean' => '물',
+            ],
+            [
+                'indonesian' => 'kopi',
+                'english' => 'coffee',
+                'japanese' => 'コーヒー',
+                'korean' => '커피',
+            ],
+            [
+                'indonesian' => 'teh',
+                'english' => 'tea',
+                'japanese' => 'お茶',
+                'korean' => '차',
+            ],
+            [
+                'indonesian' => 'susu',
+                'english' => 'milk',
+                'japanese' => '牛乳',
+                'korean' => '우유',
+            ],
+            [
+                'indonesian' => 'jus',
+                'english' => 'juice',
+                'japanese' => 'ジュース',
+                'korean' => '주스',
+            ],
         ];
 
         foreach ($vocabularies as $vocabulary) {

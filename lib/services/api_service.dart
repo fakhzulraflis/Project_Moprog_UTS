@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/question.dart';
+import '../models/vocabulary.dart';
 
 class ApiService {
   static String get baseUrl {
@@ -200,6 +201,20 @@ class ApiService {
       return data.map((item) => Question.fromJson(item)).toList();
     } else {
       throw Exception('Failed to load questions: ${response.statusCode}');
+    }
+  }
+
+  static Future<List<Vocabulary>> getVocabularies() async {
+    final response = await http.get(Uri.parse('$baseUrl/vocabularies'));
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+
+      final List<dynamic> data = jsonData['data'];
+
+      return data.map((item) => Vocabulary.fromJson(item)).toList();
+    } else {
+      throw Exception('Failed to load vocabularies: ${response.statusCode}');
     }
   }
 }
