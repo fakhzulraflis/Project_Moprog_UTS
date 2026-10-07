@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../services/api_service.dart';
+import '../services/auth_session.dart';
 import '../tabs/home_page.dart';
 
 import 'forgot_password_page.dart';
@@ -158,6 +159,9 @@ class _LoginPageState extends State<LoginPage> {
         usernameOrEmail: _usernameOrEmailController.text.trim(),
         password: _passwordController.text,
       );
+
+      // Simpan token login, dipakai untuk mengambil inventory milik user ini
+      await AuthSession.instance.saveLogin(response);
 
       if (!mounted) return;
 

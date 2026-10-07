@@ -3,6 +3,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../services/auth_session.dart';
+import '../services/inventory_service.dart';
+
 // Tingkatan peti. Makin tinggi tingkatnya, makin besar isinya.
 enum ChestTier { bronze, silver, gold }
 
@@ -48,17 +51,30 @@ class ChestColors {
 }
 
 // Jenis hadiah yang bisa keluar dari peti.
-enum LootType { gems, xp, hearts }
+// gems, xp, hearts langsung masuk ke saldo. item masuk ke inventory dulu.
+enum LootType { gems, xp, hearts, item }
 
 // Isi peti setelah dibuka.
 class ChestLoot {
   final LootType type;
   final int amount;
 
-  const ChestLoot(this.type, this.amount);
+  // Kunci barang inventory, hanya untuk LootType.item
+  final String? itemKey;
+
+  const ChestLoot(this.type, this.amount, {this.itemKey});
+
+  const ChestLoot.item(String key)
+    : type = LootType.item,
+      amount = 1,
+      itemKey = key;
+
+  ItemInfo? get itemInfo => itemKey == null ? null : ItemInfo.of(itemKey!);
 
   String get icon {
     switch (type) {
+      case LootType.item:
+        return itemInfo!.image;
       case LootType.gems:
         return 'assets/icons/gems.png';
       case LootType.xp:
@@ -70,6 +86,8 @@ class ChestLoot {
 
   String get label {
     switch (type) {
+      case LootType.item:
+        return itemInfo!.name;
       case LootType.gems:
         return 'Gem';
       case LootType.xp:
@@ -81,8 +99,21 @@ class ChestLoot {
 
   // Isi peti diacak. Peti emas selalu lebih besar dari perak,
   // perak selalu lebih besar dari perunggu.
-  static ChestLoot roll(ChestTier tier, [Random? random]) {
+  // Peti perak dan emas juga bisa berisi barang inventory, tapi hanya kalau
+  // user sudah login ([allowItems]), karena inventory disimpan di server.
+  static ChestLoot roll(
+    ChestTier tier, {
+    Random? random,
+    bool allowItems = false,
+  }) {
     final rng = random ?? Random();
+
+    if (allowItems && tier != ChestTier.bronze && rng.nextInt(4) == 0) {
+      final keys = tier == ChestTier.gold
+          ? ['xp_boost_60', 'unlimited_hearts_60']
+          : ['xp_boost_30', 'unlimited_hearts_30'];
+      return ChestLoot.item(keys[rng.nextInt(keys.length)]);
+    }
 
     // [minGem, maxGem, minXp, maxXp, hati]
     const table = {
@@ -364,7 +395,10 @@ Future<ChestLoot?> showChestOpening(BuildContext context, ChestTier tier) {
     barrierColor: const Color(0xFF272F33),
     transitionDuration: const Duration(milliseconds: 250),
     pageBuilder: (context, animation, secondaryAnimation) {
-      return ChestOpeningScreen(tier: tier, loot: ChestLoot.roll(tier));
+      return ChestOpeningScreen(
+        tier: tier,
+        loot: ChestLoot.roll(tier, allowItems: AuthSession.instance.isLoggedIn),
+      );
     },
   );
 }
@@ -524,18 +558,28 @@ class _ChestOpeningScreenState extends State<ChestOpeningScreen>
   }
 
   Widget buildLoot() {
+    return SizedBox(width: 300, child: buildLootContent());
+  }
+
+  Widget buildLootContent() {
     return Column(
       children: [
         Image.asset(widget.loot.icon, height: 64),
         const SizedBox(height: 6),
         Text(
           '+${widget.loot.amount} ${widget.loot.label}',
+          textAlign: TextAlign.center,
           style: GoogleFonts.baloo2(
             color: Colors.white,
             fontSize: 26,
             fontWeight: FontWeight.bold,
           ),
         ),
+        if (widget.loot.type == LootType.item)
+          const Text(
+            'Masuk ke Inventori, pakai kapan saja',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
       ],
     );
   }
