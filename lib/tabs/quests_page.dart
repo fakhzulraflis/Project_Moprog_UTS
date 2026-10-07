@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../pages/daily_spin_page.dart';
 import '../pages/pet_page.dart';
 import '../pages/shop_page.dart';
+import '../pages/streak_calendar_page.dart';
 import '../services/duck_pet.dart';
 import '../services/player_progress.dart';
 import '../widgets/duck_painter.dart';
@@ -120,6 +121,14 @@ class _QuestsPageState extends State<QuestsPage> {
             }
 
             final quests = PlayerProgress.dailyQuests;
+            final milestone = progress.pendingStreakMilestone;
+            if (milestone != null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                showStreakMilestoneDialog(milestone);
+                progress.clearPendingStreakMilestone();
+              });
+            }
 
             return ListView(
               padding: const EdgeInsets.all(20),
@@ -287,66 +296,133 @@ class _QuestsPageState extends State<QuestsPage> {
     );
   }
 
-  // Streak harian dan progress menuju target dari halaman Streak Goal.
+  void showStreakMilestoneDialog(int milestone) {
+    const cardColor = Color(0xFF20272B);
+    const yellowColor = Color(0xFFFCCF10);
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.3, end: 1),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.elasticOut,
+                builder: (context, scale, child) =>
+                    Transform.scale(scale: scale, child: child),
+                child: Image.asset('assets/icons/streak.png', height: 72),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Selamat!',
+                style: GoogleFonts.baloo2(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '$milestone day streak! +20 Gems',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: yellowColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'OKE',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget buildStreakCard() {
     final streak = progress.streak;
     final goal = progress.streakGoal;
     final studied = progress.studiedToday;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF20272B),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Opacity(
-            opacity: studied ? 1 : 0.4,
-            child: Image.asset('assets/icons/streak.png', height: 44),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      '$streak day streak',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      'Best: ${progress.bestStreak}',
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                buildProgressBar(streak.clamp(0, goal), goal),
-                const SizedBox(height: 6),
-                Text(
-                  studied
-                      ? 'You studied today. Nice work!'
-                      : 'Finish 1 lesson today to keep your streak.',
-                  style: TextStyle(
-                    color: studied ? const Color(0xFF58CC02) : Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      onTap: () => openPage(const StreakCalendarPage()),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF20272B),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            Opacity(
+              opacity: studied ? 1 : 0.4,
+              child: Image.asset('assets/icons/streak.png', height: 44),
             ),
-          ),
-        ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '$streak day streak',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'Best: ${progress.bestStreak}',
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  buildProgressBar(progress.streakCycleProgress, goal),
+                  const SizedBox(height: 6),
+                  Text(
+                    studied
+                        ? 'You studied today. Nice work!'
+                        : 'Finish 1 lesson today to keep your streak.',
+                    style: TextStyle(
+                      color: studied
+                          ? const Color(0xFF58CC02)
+                          : Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
