@@ -16,6 +16,17 @@ class LessonSeeder extends Seeder
                 'title' => 'Basic Food',
                 'order' => 1,
             ]
+
+            
         );
+
+        Lesson::updateOrCreate(
+        ['id' => 2],
+        [
+            'unit_id' => 1,
+            'title' => 'Basic Drinks',
+            'order' => 2,
+        ]
+    );
     }
 }

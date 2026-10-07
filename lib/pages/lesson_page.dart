@@ -1,9 +1,158 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../models/question.dart';
 import '../services/api_service.dart';
 import '../services/player_progress.dart';
 
+// ============================================================
+// WARNA
+// ============================================================
+const Color _bg = Color(0xFF272F33);
+const Color _surface = Color(0xFF1F292E);
+const Color _border = Color(0xFF414F57);
+const Color _yellow = Color(0xFFFCCF10);
+const Color _yellowDark = Color(0xFFC9A200);
+const Color _onYellow = Color(0xFF3B3000);
+const Color _red = Color(0xFFFF4B4B);
+const Color _redDark = Color(0xFFC93636);
+const Color _gold = Color(0xFFFFC800);
+const Color _blue = Color(0xFF1CB0F6);
+const Color _blueDark = Color(0xFF1899D6);
+const Color _green = Color(0xFF58CC02);
+const Color _orange = Color(0xFFFF9600);
+
+// Warna pasangan untuk soal matching
+const List<Color> _pairPalette = [
+  Color(0xFF1CB0F6),
+  Color(0xFFCE82FF),
+  Color(0xFFFF9600),
+  Color(0xFF58CC02),
+  Color(0xFFFF86D0),
+  Color(0xFF2B70C9),
+];
+
+Color _pairColor(int index) => _pairPalette[index % _pairPalette.length];
+
+// Warna latar versi tipis dari sebuah warna (opaque)
+Color _tint(Color c, [double amount = 0.14]) =>
+    Color.alphaBlend(c.withValues(alpha: amount), _bg);
+
+// ============================================================
+// ASET KARAKTER  (SESUAIKAN nama file, lalu daftarkan folder
+// assets/characters/ di pubspec.yaml)
+// ============================================================
+
+// Karakter di halaman soal: dipakai bergantian tiap soal
+const List<String> _questionCharacters = [
+  'assets/characters/person_1.png',
+  'assets/characters/person_2.png',
+  'assets/characters/person_3.png',
+];
+
+// ============================================================
+// VARIAN LAYAR HASIL
+// Dipilih dari WAKTU per soal + AKURASI. Ubah ambang & teks di sini.
+// ============================================================
+
+// Rata-rata detik per soal
+const double kFastSecondsPerQuestion = 10; // <= ini dianggap cepat
+const double kSlowSecondsPerQuestion = 30; // >= ini dianggap lambat
+
+class ResultVariant {
+  final String title;
+  final String subtitle;
+  final String asset; // karakter untuk varian ini
+  final Color color; // warna judul
+
+  const ResultVariant({
+    required this.title,
+    required this.subtitle,
+    required this.asset,
+    required this.color,
+  });
+}
+
+const ResultVariant _vPerfect = ResultVariant(
+  title: 'Sempurna!',
+  subtitle: 'Tidak ada satu pun jawaban yang salah.',
+  asset: 'assets/characters/result_perfect.png',
+  color: _gold,
+);
+
+const ResultVariant _vSuperFast = ResultVariant(
+  title: 'Super cepat!',
+  subtitle: 'Kamu menyelesaikan pelajaran ini dengan sangat cepat.',
+  asset: 'assets/characters/result_super_fast.png',
+  color: _gold,
+);
+
+const ResultVariant _vHigh = ResultVariant(
+  title: 'Luar biasa!',
+  subtitle: 'Akurasimu sangat tinggi. Pertahankan!',
+  asset: 'assets/characters/result_high.png',
+  color: _green,
+);
+
+const ResultVariant _vGood = ResultVariant(
+  title: 'Bagus!',
+  subtitle: 'Kamu sudah berada di jalur yang tepat.',
+  asset: 'assets/characters/result_good.png',
+  color: _green,
+);
+
+const ResultVariant _vSlowSteady = ResultVariant(
+  title: 'Pelan tapi pasti!',
+  subtitle: 'Kamu teliti, dan hasilnya pun bagus.',
+  asset: 'assets/characters/result_slow.png',
+  color: _blue,
+);
+
+const ResultVariant _vLow = ResultVariant(
+  title: 'Terus berlatih!',
+  subtitle: 'Masih ada yang bisa diperbaiki. Coba ulangi pelajaran ini.',
+  asset: 'assets/characters/result_low.png',
+  color: _orange,
+);
+
+// Aturan dicek dari atas ke bawah; yang pertama cocok dipakai.
+ResultVariant pickResultVariant({
+  required int accuracy,
+  required double secondsPerQuestion,
+}) {
+  final fast = secondsPerQuestion <= kFastSecondsPerQuestion;
+  final slow = secondsPerQuestion >= kSlowSecondsPerQuestion;
+
+  if (accuracy == 100) return _vPerfect;
+  if (fast && accuracy >= 70) return _vSuperFast;
+  if (accuracy >= 90) return _vHigh;
+  if (accuracy >= 70) return slow ? _vSlowSteady : _vGood;
+  return _vLow;
+}
+
+String accuracyLabel(int accuracy) {
+  if (accuracy >= 90) return 'LUAR BIASA';
+  if (accuracy >= 70) return 'BAGUS';
+  return 'LATIH LAGI';
+}
+
+String timeLabel(double secondsPerQuestion) {
+  if (secondsPerQuestion <= kFastSecondsPerQuestion) return 'KILAT';
+  if (secondsPerQuestion >= kSlowSecondsPerQuestion) return 'SANTAI';
+  return 'NORMAL';
+}
+
+String _formatDuration(Duration d) {
+  final minutes = d.inMinutes;
+  final seconds = d.inSeconds % 60;
+
+  return '$minutes:${seconds.toString().padLeft(2, '0')}';
+}
+
+// ============================================================
+// LESSON PAGE
+// ============================================================
 class LessonPage extends StatefulWidget {
   final int lessonId;
 
@@ -14,10 +163,6 @@ class LessonPage extends StatefulWidget {
 }
 
 class _LessonPageState extends State<LessonPage> {
-  static const Color backgroundColor = Color(0xFF272F33);
-  static const Color yellowColor = Color(0xFFFCCF10);
-  static const Color redColor = Color(0xFFFF4B4B);
-
   List<Question> questions = [];
 
   bool isLoading = true;
@@ -25,10 +170,19 @@ class _LessonPageState extends State<LessonPage> {
 
   int currentQuestionIndex = 0;
   int hearts = 5;
+  bool heartHit = false;
+
+  // Statistik sesi (untuk layar hasil)
+  int combo = 0;
+  int comboDisplay = 2;
+  int totalAttempts = 0;
+  int correctAttempts = 0;
+  final Stopwatch _stopwatch = Stopwatch();
 
   // Answer states
   String? selectedAnswer;
   String typedAnswer = '';
+  final TextEditingController _textController = TextEditingController();
 
   List<String> selectedWords = [];
   List<int> selectedWordIndexes = [];
@@ -36,13 +190,33 @@ class _LessonPageState extends State<LessonPage> {
   String? selectedLeft;
   final Map<String, String> matchedPairs = {};
 
+  // Urutan kolom kanan (diacak sekali per soal)
+  final Map<int, List<String>> _shuffledRight = {};
+
   bool hasChecked = false;
   bool isCorrect = false;
+  String feedbackTitle = '';
+
+  final math.Random _random = math.Random();
+
+  static const List<String> _praise = [
+    'Benar!',
+    'Mantap!',
+    'Keren!',
+    'Hebat!',
+    'Bagus sekali!',
+  ];
 
   @override
   void initState() {
     super.initState();
     loadQuestions();
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
   }
 
   Future<void> loadQuestions() async {
@@ -59,6 +233,8 @@ class _LessonPageState extends State<LessonPage> {
         hearts += bonusHearts;
         isLoading = false;
       });
+
+      _stopwatch.start();
     } catch (e) {
       if (!mounted) return;
 
@@ -73,17 +249,21 @@ class _LessonPageState extends State<LessonPage> {
     return questions[currentQuestionIndex];
   }
 
+  // Progress naik setelah jawaban benar (bukan saat soal baru dibuka)
   double get progress {
     if (questions.isEmpty) {
       return 0;
     }
 
-    return (currentQuestionIndex + 1) / questions.length;
+    final done = currentQuestionIndex + (hasChecked && isCorrect ? 1 : 0);
+
+    return done / questions.length;
   }
 
   void resetQuestionState() {
     selectedAnswer = null;
     typedAnswer = '';
+    _textController.clear();
 
     selectedWords = [];
     selectedWordIndexes = [];
@@ -103,14 +283,67 @@ class _LessonPageState extends State<LessonPage> {
         .replaceAll(RegExp(r'\s+'), ' ');
   }
 
+  // ---------- audio ----------
+  // TODO: hubungkan ke layanan suara (API / TTS) milikmu.
+  Future<void> _speak(String text, {bool slow = false}) async {
+    debugPrint('SPEAK${slow ? ' (pelan)' : ''}: $text');
+  }
+
+  // ---------- urutan kolom kanan untuk soal matching ----------
+  List<String> _rightItemsFor(Question q) {
+    return _shuffledRight.putIfAbsent(q.id, () {
+      final original = q.matchingOptions
+          .map((pair) => pair['right'].toString())
+          .toList();
+
+      final items = List<String>.from(original)..shuffle(_random);
+
+      // pastikan urutannya tidak sama dengan urutan kolom kiri
+      if (items.length > 1) {
+        bool same = true;
+        for (int i = 0; i < items.length; i++) {
+          if (items[i] != original[i]) {
+            same = false;
+            break;
+          }
+        }
+        if (same) items.add(items.removeAt(0));
+      }
+
+      return items;
+    });
+  }
+
+  String? _ownerOf(String right) {
+    for (final entry in matchedPairs.entries) {
+      if (entry.value == right) return entry.key;
+    }
+    return null;
+  }
+
+  bool _isPairCorrect(String left, String right) {
+    return currentQuestion.matchingOptions.any(
+      (pair) =>
+          pair['left'].toString() == left && pair['right'].toString() == right,
+    );
+  }
+
+  // ---------- cek jawaban ----------
   void checkAnswer() {
     if (hasChecked) return;
 
+    FocusManager.instance.primaryFocus?.unfocus();
+
     final question = currentQuestion;
+
+    if (question.type == 'matching') {
+      checkMatching();
+      return;
+    }
 
     String answer = '';
 
-    if (question.type == 'multiple_choice') {
+    if (question.type == 'multiple_choice' || question.type == 'image_choice') {
       answer = selectedAnswer ?? '';
     }
 
@@ -118,37 +351,60 @@ class _LessonPageState extends State<LessonPage> {
       answer = typedAnswer.trim();
     }
 
-    if (question.type == 'word_bank') {
+    if (question.type == 'word_bank' || question.type == 'listening') {
       answer = selectedWords.join(' ');
-    }
-
-    if (question.type == 'matching') {
-      checkMatching();
-      return;
     }
 
     if (answer.isEmpty) {
       return;
     }
 
-    final correctAnswer = normalizeAnswer(question.correctAnswer);
+    final correct =
+        normalizeAnswer(answer) == normalizeAnswer(question.correctAnswer);
 
-    final userAnswer = normalizeAnswer(answer);
+    _applyResult(correct);
+  }
 
-    final correct = userAnswer == correctAnswer;
+  void checkMatching() {
+    final pairs = currentQuestion.matchingOptions;
 
+    // benar hanya jika SEMUA pasangan yang dipilih cocok dengan kunci
+    final correct = pairs.every(
+      (pair) =>
+          matchedPairs[pair['left'].toString()] == pair['right'].toString(),
+    );
+
+    _applyResult(correct);
+  }
+
+  void _applyResult(bool correct) {
     if (correct) PlayerProgress.instance.recordCorrectAnswer();
 
     setState(() {
       hasChecked = true;
       isCorrect = correct;
 
+      totalAttempts++;
+
+      if (correct) {
+        correctAttempts++;
+        combo++;
+        if (combo >= 2) comboDisplay = combo;
+      } else {
+        combo = 0;
+      }
+
+      feedbackTitle = correct
+          ? _praise[_random.nextInt(_praise.length)]
+          : 'Jawaban belum tepat';
+
       if (!correct && hearts > 0) {
         hearts--;
       }
     });
 
-    // Kalau jawaban salah dan heart sudah habis
+    if (!correct) _pulseHeart();
+
     if (!correct && hearts == 0) {
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) {
@@ -158,30 +414,12 @@ class _LessonPageState extends State<LessonPage> {
     }
   }
 
-  void checkMatching() {
-    final pairs = currentQuestion.matchingOptions;
+  void _pulseHeart() {
+    setState(() => heartHit = true);
 
-    final correct = matchedPairs.length == pairs.length;
-
-    if (correct) PlayerProgress.instance.recordCorrectAnswer();
-
-    setState(() {
-      hasChecked = true;
-      isCorrect = correct;
-
-      if (!correct && hearts > 0) {
-        hearts--;
-      }
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) setState(() => heartHit = false);
     });
-
-    // Kalau matching salah dan heart sudah habis
-    if (!correct && hearts == 0) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          showOutOfHeartsDialog();
-        }
-      });
-    }
   }
 
   void continueQuestion() {
@@ -190,9 +428,7 @@ class _LessonPageState extends State<LessonPage> {
     }
 
     if (!isCorrect) {
-      resetQuestionState();
-
-      setState(() {});
+      setState(resetQuestionState);
 
       return;
     }
@@ -208,10 +444,28 @@ class _LessonPageState extends State<LessonPage> {
   }
 
   Future<void> showLessonComplete() async {
+    // Hentikan timer sebelum menunggu proses lain
+    _stopwatch.stop();
+
+    final duration = _stopwatch.elapsed;
+
+    final accuracy = totalAttempts == 0
+        ? 100
+        : (correctAttempts * 100 / totalAttempts).round();
+
+    final secondsPerQuestion = questions.isEmpty
+        ? 0.0
+        : duration.inSeconds / questions.length;
+
     // Catat ke progress quest. XP bisa 2x lipat kalau XP Boost aktif.
     final xpEarned = await PlayerProgress.instance.completeLesson();
 
     if (!mounted) return;
+
+    final variant = pickResultVariant(
+      accuracy: accuracy,
+      secondsPerQuestion: secondsPerQuestion,
+    );
 
     showGeneralDialog(
       context: context,
@@ -220,8 +474,11 @@ class _LessonPageState extends State<LessonPage> {
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
         return LessonCompleteScreen(
-          totalQuestions: questions.length,
+          variant: variant,
           xpEarned: xpEarned,
+          accuracy: accuracy,
+          duration: duration,
+          secondsPerQuestion: secondsPerQuestion,
           onContinue: () {
             Navigator.pop(context);
             Navigator.pop(context, true);
@@ -239,19 +496,112 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
+  // ---------- konfirmasi keluar ----------
+  Future<void> confirmExit() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    final leave = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: _bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Tunggu, jangan pergi dulu!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                const Text(
+                  'Kalau keluar sekarang, progres pelajaran ini akan hilang.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: Button3D(
+                    color: _yellow,
+                    lipColor: _yellowDark,
+                    holdBeforeTap: true,
+                    height: 52,
+                    depth: 5,
+                    radius: 16,
+                    alignment: Alignment.center,
+                    onTap: () => Navigator.pop(sheetContext, false),
+                    child: const Text(
+                      'LANJUT BELAJAR',
+                      style: TextStyle(
+                        color: _onYellow,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                TextButton(
+                  onPressed: () => Navigator.pop(sheetContext, true),
+                  child: const Text(
+                    'KELUAR',
+                    style: TextStyle(
+                      color: _red,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (leave == true && mounted) {
+      Navigator.pop(context, false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Scaffold(
-        backgroundColor: backgroundColor,
-        body: Center(child: CircularProgressIndicator(color: yellowColor)),
+        backgroundColor: _bg,
+        body: Center(child: CircularProgressIndicator(color: _yellow)),
       );
     }
 
     if (errorMessage != null) {
       return Scaffold(
-        backgroundColor: backgroundColor,
-        appBar: AppBar(backgroundColor: backgroundColor, elevation: 0),
+        backgroundColor: _bg,
+        appBar: AppBar(
+          backgroundColor: _bg,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -266,103 +616,168 @@ class _LessonPageState extends State<LessonPage> {
 
     if (questions.isEmpty) {
       return const Scaffold(
-        backgroundColor: backgroundColor,
+        backgroundColor: _bg,
         body: Center(
           child: Text('Tidak ada soal.', style: TextStyle(color: Colors.white)),
         ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            buildTopBar(),
-            buildProgressBar(),
-
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 140),
-                child: buildQuestion(),
-              ),
-            ),
-
-            if (hasChecked) buildFeedbackPanel() else buildCheckButton(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildTopBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () {
-              Navigator.pop(context, false);
-            },
-            icon: const Icon(Icons.close, color: Colors.white70, size: 28),
-          ),
-
-          const SizedBox(width: 8),
-
-          Expanded(
-            child: Text(
-              'Lesson ${widget.lessonId}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-
-          Row(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) confirmExit();
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
+          child: Column(
             children: [
-              const Icon(Icons.favorite, color: Colors.redAccent, size: 22),
-              const SizedBox(width: 5),
-              Text(
-                '$hearts',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              buildTopBar(),
+
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.08, 0),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    layoutBuilder: (currentChild, previousChildren) {
+                      return Stack(
+                        alignment: Alignment.topLeft,
+                        children: <Widget>[
+                          ...previousChildren,
+                          if (currentChild != null) currentChild,
+                        ],
+                      );
+                    },
+                    child: KeyedSubtree(
+                      key: ValueKey(currentQuestionIndex),
+                      child: buildQuestion(),
+                    ),
+                  ),
                 ),
+              ),
+
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                transitionBuilder: (child, animation) {
+                  return SlideTransition(
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(0, 0.4),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
+                    child: FadeTransition(opacity: animation, child: child),
+                  );
+                },
+                layoutBuilder: (currentChild, previousChildren) {
+                  return Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: <Widget>[
+                      ...previousChildren,
+                      if (currentChild != null) currentChild,
+                    ],
+                  );
+                },
+                child: hasChecked ? buildFeedbackPanel() : buildCheckButton(),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget buildProgressBar() {
+  // ============================================================
+  // TOP BAR
+  // ============================================================
+  Widget buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(8, 22, 20, 6),
       child: Row(
         children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 12,
-                backgroundColor: Colors.white12,
-                color: yellowColor,
-              ),
+          IconButton(
+            onPressed: confirmExit,
+            icon: const Icon(
+              Icons.close_rounded,
+              color: Colors.white54,
+              size: 30,
             ),
           ),
 
-          const SizedBox(width: 12),
+          const SizedBox(width: 4),
 
-          Text(
-            '${currentQuestionIndex + 1}/${questions.length}',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontWeight: FontWeight.bold,
+          Expanded(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                LessonProgressBar(value: progress),
+
+                // label combo di atas progress bar
+                Positioned(
+                  left: 2,
+                  top: -22,
+                  child: AnimatedOpacity(
+                    opacity: combo >= 2 ? 1 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Text(
+                      'COMBO x$comboDisplay',
+                      style: const TextStyle(
+                        color: _yellow,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          AnimatedScale(
+            scale: heartHit ? 1.35 : 1.0,
+            duration: const Duration(milliseconds: 150),
+            child: Row(
+              children: [
+                Image.asset(
+                  'assets/icons/hearts.png',
+                  width: 26,
+                  height: 26,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.favorite, color: _red, size: 26),
+                ),
+
+                const SizedBox(width: 6),
+
+                Text(
+                  '$hearts',
+                  style: const TextStyle(
+                    color: _red,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -370,58 +785,69 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
+  // ============================================================
+  // SOAL
+  // ============================================================
   Widget buildQuestion() {
     final question = currentQuestion;
+    final type = question.type;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          getQuestionInstruction(question.type),
-          style: const TextStyle(
-            color: Colors.white60,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Judul instruksi
+          Text(
+            getQuestionInstruction(type),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              height: 1.25,
+            ),
           ),
-        ),
 
-        const SizedBox(height: 12),
+          const SizedBox(height: 24),
 
-        Text(
-          question.prompt,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 27,
-            fontWeight: FontWeight.bold,
-            height: 1.25,
-          ),
-        ),
+          // Karakter + balon ucapan (atau tombol audio)
+          buildPromptArea(question),
 
-        const SizedBox(height: 30),
+          const SizedBox(height: 28),
 
-        if (question.type == 'multiple_choice') buildMultipleChoice(question),
+          if (type == 'multiple_choice') buildMultipleChoice(question),
 
-        if (question.type == 'translation') buildTranslation(),
+          if (type == 'image_choice') buildImageChoice(question),
 
-        if (question.type == 'word_bank') buildWordBank(question),
+          if (type == 'translation') buildTranslation(),
 
-        if (question.type == 'fill_blank') buildFillBlank(),
+          if (type == 'word_bank' || type == 'listening')
+            buildWordBank(question),
 
-        if (question.type == 'matching') buildMatching(question),
-      ],
+          if (type == 'fill_blank') buildFillBlank(),
+
+          if (type == 'matching') buildMatching(question),
+        ],
+      ),
     );
   }
 
   String getQuestionInstruction(String type) {
     switch (type) {
       case 'multiple_choice':
-        return 'Pilih jawaban yang benar';
+        return 'Pilih terjemahan yang benar';
+
+      case 'image_choice':
+        return 'Pilih gambar yang benar';
 
       case 'translation':
         return 'Terjemahkan kalimat ini';
 
       case 'word_bank':
         return 'Susun kata-kata menjadi kalimat';
+
+      case 'listening':
+        return 'Ketuk apa yang kamu dengar';
 
       case 'fill_blank':
         return 'Lengkapi kalimat berikut';
@@ -434,56 +860,156 @@ class _LessonPageState extends State<LessonPage> {
     }
   }
 
+  // ---------- area prompt ----------
+  Widget buildPromptArea(Question q) {
+    final character =
+        _questionCharacters[currentQuestionIndex % _questionCharacters.length];
+
+    switch (q.type) {
+      case 'matching':
+        if (q.prompt.isEmpty) return const SizedBox.shrink();
+
+        return Text(
+          q.prompt,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        );
+
+      case 'image_choice':
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (q.audioText != null) ...[
+              _AudioSquare(onTap: () => _speak(q.audioText!)),
+              const SizedBox(width: 14),
+            ],
+            Expanded(child: _romanizedText(q, fontSize: 28)),
+          ],
+        );
+
+      case 'listening':
+        final heard = q.audioText ?? q.correctAnswer;
+
+        return CharacterBubble(
+          asset: character,
+          bubblePadding: EdgeInsets.zero,
+          child: _BubbleAudioButtons(
+            onNormal: () => _speak(heard),
+            onSlow: () => _speak(heard, slow: true),
+          ),
+        );
+
+      default:
+        return CharacterBubble(
+          asset: character,
+          child: Row(
+            children: [
+              if (q.audioText != null) ...[
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _speak(q.audioText!),
+                  child: const Icon(
+                    Icons.volume_up_rounded,
+                    color: _blue,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(child: _romanizedText(q, fontSize: 22)),
+            ],
+          ),
+        );
+    }
+  }
+
+  // Prompt dengan romaji kecil di atasnya (kalau ada)
+  Widget _romanizedText(Question q, {required double fontSize}) {
+    final romaji = q.romanization;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (romaji != null && romaji.isNotEmpty)
+          Text(
+            romaji,
+            style: const TextStyle(
+              color: Colors.white38,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+
+        Text(
+          q.prompt,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+            height: 1.25,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---------- pilihan ganda ----------
+  _ChoiceStyle _choiceStyle({
+    required bool isSelected,
+    required bool isRight,
+    required bool isWrong,
+  }) {
+    if (isWrong) return _ChoiceStyle(_tint(_red, 0.18), _red, _red);
+
+    if (isRight) return _ChoiceStyle(_tint(_yellow, 0.18), _yellow, _yellow);
+
+    if (isSelected) return _ChoiceStyle(_tint(_yellow), _yellow, _yellow);
+
+    return const _ChoiceStyle(_bg, _border, Colors.white);
+  }
+
   Widget buildMultipleChoice(Question question) {
     return Column(
       children: question.stringOptions.map((option) {
         final isSelected = selectedAnswer == option;
 
-        Color background = Colors.transparent;
+        final style = _choiceStyle(
+          isSelected: isSelected,
+          isRight: hasChecked && option == question.correctAnswer,
+          isWrong: hasChecked && isSelected && !isCorrect,
+        );
 
-        Color border = Colors.white24;
-
-        if (isSelected) {
-          background = Colors.white.withValues(alpha: 0.10);
-          border = Colors.white;
-        }
-
-        if (hasChecked && option == question.correctAnswer) {
-          background = yellowColor.withValues(alpha: 0.18);
-          border = yellowColor;
-        }
-
-        if (hasChecked && isSelected && !isCorrect) {
-          background = redColor.withValues(alpha: 0.18);
-          border = redColor;
-        }
-
-        return Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: OutlinedButton(
-            onPressed: hasChecked
-                ? null
-                : () {
-                    setState(() {
-                      selectedAnswer = option;
-                    });
-                  },
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-              alignment: Alignment.centerLeft,
-              side: BorderSide(color: border, width: 2),
-              backgroundColor: background,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: Text(
-              option,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: SizedBox(
+            width: double.infinity,
+            child: Button3D(
+              color: style.face,
+              lipColor: style.edge,
+              borderColor: style.edge,
+              enabled: !hasChecked,
+              depth: 4,
+              radius: 16,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+              alignment: Alignment.center,
+              onTap: () {
+                setState(() {
+                  selectedAnswer = option;
+                });
+              },
+              child: Text(
+                option,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: style.text,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -492,8 +1018,126 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
+  // ---------- pilih gambar ----------
+  Widget buildImageChoice(Question question) {
+    final items = question.imageOptions;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = (constraints.maxWidth - 12) / 2;
+
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: items.map((item) {
+            final label = item['label']?.toString() ?? '';
+            final image = item['image']?.toString();
+
+            final isSelected = selectedAnswer == label;
+
+            final style = _choiceStyle(
+              isSelected: isSelected,
+              isRight: hasChecked && label == question.correctAnswer,
+              isWrong: hasChecked && isSelected && !isCorrect,
+            );
+
+            return SizedBox(
+              width: cardWidth,
+              child: Button3D(
+                color: style.face,
+                lipColor: style.edge,
+                borderColor: style.edge,
+                enabled: !hasChecked,
+                depth: 4,
+                radius: 18,
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+                onTap: () {
+                  setState(() {
+                    selectedAnswer = label;
+                  });
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 110,
+                      width: double.infinity,
+                      child: _optionImage(image),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: style.text,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _optionImage(String? src) {
+    Widget fallback() => const Center(
+      child: Icon(Icons.image_not_supported_rounded, color: Colors.white24),
+    );
+
+    if (src == null || src.isEmpty) return fallback();
+
+    if (src.startsWith('http')) {
+      return Image.network(
+        src,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => fallback(),
+      );
+    }
+
+    return Image.asset(
+      src,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => fallback(),
+    );
+  }
+
+  // ---------- kolom input ----------
+  OutlineInputBorder _outline(Color color) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: color, width: 2),
+    );
+  }
+
+  InputDecoration _fieldDecoration(String hint) {
+    final doneColor = isCorrect ? _yellow : _red;
+
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(
+        color: Colors.white30,
+        fontWeight: FontWeight.normal,
+      ),
+      filled: true,
+      fillColor: _surface,
+      contentPadding: const EdgeInsets.all(18),
+      border: _outline(_border),
+      enabledBorder: _outline(_border),
+      disabledBorder: _outline(hasChecked ? doneColor : _border),
+      focusedBorder: _outline(_yellow),
+    );
+  }
+
   Widget buildTranslation() {
     return TextField(
+      controller: _textController,
       enabled: !hasChecked,
       onChanged: (value) {
         setState(() {
@@ -503,29 +1147,14 @@ class _LessonPageState extends State<LessonPage> {
       style: const TextStyle(color: Colors.white, fontSize: 18),
       minLines: 3,
       maxLines: 5,
-      decoration: InputDecoration(
-        hintText: 'Ketik terjemahan...',
-        hintStyle: const TextStyle(color: Colors.white38),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Colors.white24),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Colors.white24),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: yellowColor, width: 2),
-        ),
-      ),
+      cursorColor: _yellow,
+      decoration: _fieldDecoration('Ketik terjemahanmu di sini...'),
     );
   }
 
   Widget buildFillBlank() {
     return TextField(
+      controller: _textController,
       enabled: !hasChecked,
       onChanged: (value) {
         setState(() {
@@ -537,63 +1166,79 @@ class _LessonPageState extends State<LessonPage> {
         fontSize: 20,
         fontWeight: FontWeight.bold,
       ),
-      decoration: InputDecoration(
-        hintText: 'Ketik kata yang hilang...',
-        hintStyle: const TextStyle(
-          color: Colors.white38,
-          fontWeight: FontWeight.normal,
-        ),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.05),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Colors.white24),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: yellowColor, width: 2),
-        ),
-      ),
+      cursorColor: _yellow,
+      decoration: _fieldDecoration('Ketik kata yang hilang...'),
     );
   }
 
+  // ---------- susun kata / ketuk apa yang kamu dengar ----------
   Widget buildWordBank(Question question) {
     final words = question.stringOptions;
+    final chipEdge = hasChecked ? (isCorrect ? _yellow : _red) : _border;
+    final chipFace = hasChecked ? _tint(chipEdge, 0.16) : _bg;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Area jawaban (bergaris)
         Container(
           width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 100),
-          padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.white24)),
-          ),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: selectedWords.map((word) {
-              return buildWordChip(word, selected: true, onTap: null);
-            }).toList(),
+          constraints: const BoxConstraints(minHeight: 120),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: CustomPaint(painter: _AnswerLinesPainter()),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: List.generate(selectedWords.length, (i) {
+                    return _wordChip(
+                      selectedWords[i],
+                      edge: chipEdge,
+                      face: chipFace,
+                      // ketuk kata di jawaban untuk mengembalikannya
+                      onTap: hasChecked
+                          ? null
+                          : () {
+                              setState(() {
+                                selectedWords.removeAt(i);
+                                selectedWordIndexes.removeAt(i);
+                              });
+                            },
+                    );
+                  }),
+                ),
+              ),
+            ],
           ),
         ),
 
         const SizedBox(height: 28),
 
+        // Bank kata
         Wrap(
-          spacing: 10,
-          runSpacing: 12,
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
           children: List.generate(words.length, (index) {
             final isUsed = selectedWordIndexes.contains(index);
 
             if (isUsed) {
-              return const SizedBox(width: 70, height: 46);
+              return _wordChip(
+                words[index],
+                edge: _border,
+                onTap: null,
+                ghost: true,
+              );
             }
 
-            return buildWordChip(
+            return _wordChip(
               words[index],
-              selected: false,
+              edge: _border,
               onTap: hasChecked
                   ? null
                   : () {
@@ -606,65 +1251,75 @@ class _LessonPageState extends State<LessonPage> {
             );
           }),
         ),
-
-        if (selectedWords.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 20),
-            child: TextButton(
-              onPressed: hasChecked
-                  ? null
-                  : () {
-                      setState(() {
-                        selectedWords.clear();
-
-                        selectedWordIndexes.clear();
-                      });
-                    },
-              child: const Text(
-                'Reset',
-                style: TextStyle(color: Colors.white54),
-              ),
-            ),
-          ),
       ],
     );
   }
 
-  Widget buildWordChip(
+  Widget _wordChip(
     String word, {
-    required bool selected,
+    required Color edge,
     required VoidCallback? onTap,
+    Color face = _bg,
+    bool ghost = false,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white12 : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white24),
-          boxShadow: selected
-              ? []
-              : [const BoxShadow(color: Colors.black26, offset: Offset(0, 3))],
+    // "ghost" = slot kosong di bank kata (ukurannya sama dengan kata aslinya)
+    if (ghost) {
+      return Button3D(
+        color: _surface,
+        lipColor: _surface,
+        enabled: false,
+        onTap: null,
+        height: 44,
+        depth: 4,
+        radius: 12,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Center(
+          widthFactor: 1,
+          child: Text(
+            word,
+            style: const TextStyle(
+              color: Colors.transparent,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
+      );
+    }
+
+    return Button3D(
+      color: face,
+      lipColor: edge,
+      borderColor: edge,
+      enabled: onTap != null,
+      onTap: onTap,
+      height: 44,
+      depth: 4,
+      radius: 12,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Center(
+        widthFactor: 1,
         child: Text(
           word,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
     );
   }
 
+  // ---------- mencocokkan ----------
   Widget buildMatching(Question question) {
     final pairs = question.matchingOptions;
 
     final leftItems = pairs.map((pair) => pair['left'].toString()).toList();
 
-    final rightItems = pairs.map((pair) => pair['right'].toString()).toList();
+    final rightItems = _rightItemsFor(question);
+
+    final order = matchedPairs.keys.toList();
 
     return Column(
       children: [
@@ -682,16 +1337,26 @@ class _LessonPageState extends State<LessonPage> {
               child: Column(
                 children: leftItems.map((left) {
                   final matched = matchedPairs.containsKey(left);
+                  final partner = matchedPairs[left];
 
-                  return buildMatchingButton(
+                  return _matchItem(
                     text: left,
                     selected: selectedLeft == left,
-                    matched: matched,
-                    onTap: hasChecked || matched
+                    pairColor: matched ? _pairColor(order.indexOf(left)) : null,
+                    status: hasChecked && partner != null
+                        ? (_isPairCorrect(left, partner) ? 1 : -1)
+                        : 0,
+                    onTap: hasChecked
                         ? null
                         : () {
                             setState(() {
-                              selectedLeft = left;
+                              if (matched) {
+                                // ketuk lagi untuk membatalkan pasangan
+                                matchedPairs.remove(left);
+                                selectedLeft = null;
+                              } else {
+                                selectedLeft = left;
+                              }
                             });
                           },
                   );
@@ -704,19 +1369,29 @@ class _LessonPageState extends State<LessonPage> {
             Expanded(
               child: Column(
                 children: rightItems.map((right) {
-                  final alreadyMatched = matchedPairs.values.contains(right);
+                  final owner = _ownerOf(right);
+                  final matched = owner != null;
 
-                  return buildMatchingButton(
+                  return _matchItem(
                     text: right,
                     selected: false,
-                    matched: alreadyMatched,
-                    onTap: hasChecked || alreadyMatched || selectedLeft == null
+                    pairColor: matched
+                        ? _pairColor(order.indexOf(owner))
+                        : null,
+                    status: hasChecked && owner != null
+                        ? (_isPairCorrect(owner, right) ? 1 : -1)
+                        : 0,
+                    onTap: hasChecked
                         ? null
                         : () {
                             setState(() {
-                              matchedPairs[selectedLeft!] = right;
-
-                              selectedLeft = null;
+                              if (matched) {
+                                matchedPairs.remove(owner);
+                                selectedLeft = null;
+                              } else if (selectedLeft != null) {
+                                matchedPairs[selectedLeft!] = right;
+                                selectedLeft = null;
+                              }
                             });
                           },
                   );
@@ -729,96 +1404,119 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  Widget buildMatchingButton({
+  // status: 0 = belum dicek, 1 = benar, -1 = salah
+  Widget _matchItem({
     required String text,
     required bool selected,
-    required bool matched,
+    required Color? pairColor,
+    required int status,
     required VoidCallback? onTap,
   }) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      child: OutlinedButton(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 8),
-          side: BorderSide(
-            color: matched
-                ? yellowColor
-                : selected
-                ? Colors.white
-                : Colors.white24,
-            width: 2,
-          ),
-          backgroundColor: matched
-              ? yellowColor.withValues(alpha: 0.15)
-              : selected
-              ? Colors.white10
-              : Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+    Color face = _bg;
+    Color edge = _border;
+    Color textColor = Colors.white;
+
+    if (selected) {
+      face = _tint(Colors.white, 0.10);
+      edge = Colors.white;
+    }
+
+    if (pairColor != null) {
+      face = _tint(pairColor);
+      edge = pairColor;
+      textColor = pairColor;
+    }
+
+    if (status == 1) {
+      face = _tint(_yellow, 0.18);
+      edge = _yellow;
+      textColor = _yellow;
+    }
+
+    if (status == -1) {
+      face = _tint(_red, 0.18);
+      edge = _red;
+      textColor = _red;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SizedBox(
+        width: double.infinity,
+        child: Button3D(
+          color: face,
+          lipColor: edge,
+          borderColor: edge,
+          enabled: onTap != null,
+          onTap: onTap,
+          depth: 4,
+          radius: 14,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+          alignment: Alignment.center,
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),
     );
   }
 
+  // ============================================================
+  // TOMBOL PERIKSA
+  // ============================================================
   Widget buildCheckButton() {
     bool canCheck = false;
 
-    if (currentQuestion.type == 'multiple_choice') {
+    final type = currentQuestion.type;
+
+    if (type == 'multiple_choice' || type == 'image_choice') {
       canCheck = selectedAnswer != null;
     }
 
-    if (currentQuestion.type == 'translation' ||
-        currentQuestion.type == 'fill_blank') {
+    if (type == 'translation' || type == 'fill_blank') {
       canCheck = typedAnswer.trim().isNotEmpty;
     }
 
-    if (currentQuestion.type == 'word_bank') {
+    if (type == 'word_bank' || type == 'listening') {
       canCheck = selectedWords.isNotEmpty;
     }
 
-    if (currentQuestion.type == 'matching') {
+    if (type == 'matching') {
       canCheck = matchedPairs.length == currentQuestion.matchingOptions.length;
     }
 
     return SafeArea(
+      key: const ValueKey('check'),
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
         decoration: const BoxDecoration(
-          color: backgroundColor,
+          color: _bg,
           border: Border(top: BorderSide(color: Colors.white10)),
         ),
         child: SizedBox(
           width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: canCheck ? checkAnswer : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: yellowColor,
-              disabledBackgroundColor: Colors.white12,
-              foregroundColor: Colors.white,
-              disabledForegroundColor: Colors.white30,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Text(
-              'CHECK',
+          child: Button3D(
+            color: canCheck ? _yellow : const Color(0xFF3A464D),
+            lipColor: canCheck ? _yellowDark : const Color(0xFF2E383E),
+            enabled: canCheck,
+            holdBeforeTap: true,
+            onTap: checkAnswer,
+            height: 52,
+            depth: 5,
+            radius: 16,
+            alignment: Alignment.center,
+            child: Text(
+              'PERIKSA',
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                color: canCheck ? _onYellow : Colors.white30,
+                fontWeight: FontWeight.w900,
                 fontSize: 16,
                 letterSpacing: 1,
               ),
@@ -829,81 +1527,155 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
+  // ============================================================
+  // PANEL FEEDBACK
+  // ============================================================
   Widget buildFeedbackPanel() {
+    final accent = isCorrect ? _yellow : _red;
+    final panelBg = isCorrect
+        ? const Color(0xFF3A3410)
+        : const Color(0xFF3B1D1D);
+
+    final title = isCorrect
+        ? feedbackTitle
+        : hearts == 0
+        ? 'Hati habis'
+        : feedbackTitle;
+
+    final meaning = currentQuestion.meaning;
+    final showMeaning = isCorrect && meaning != null && meaning.isNotEmpty;
+
     return SafeArea(
+      key: const ValueKey('feedback'),
       top: false,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
+        padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
         decoration: BoxDecoration(
-          color: isCorrect ? const Color(0xFF4A3D08) : const Color(0xFF461616),
-          border: Border(
-            top: BorderSide(
-              color: isCorrect ? yellowColor : redColor,
-              width: 2,
-            ),
-          ),
+          color: panelBg,
+          border: Border(top: BorderSide(color: accent, width: 2)),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              isCorrect ? Icons.check_circle : Icons.cancel,
-              color: isCorrect ? yellowColor : redColor,
-              size: 34,
-            ),
-
-            const SizedBox(width: 14),
-
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isCorrect
-                        ? 'Benar!'
-                        : hearts == 0
-                        ? 'Hearts habis'
-                        : 'Jawaban belum tepat',
-                    style: TextStyle(
-                      color: isCorrect ? yellowColor : redColor,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: accent,
+                    shape: BoxShape.circle,
                   ),
-
-                  if (!isCorrect)
-                    Text(
-                      'Jawaban: ${currentQuestion.correctAnswer}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 10),
-
-            SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: continueQuestion,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isCorrect ? yellowColor : redColor,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  child: Icon(
+                    isCorrect ? Icons.check_rounded : Icons.close_rounded,
+                    color: isCorrect ? _onYellow : Colors.white,
+                    size: 26,
                   ),
                 ),
-                child: Text(
-                  isCorrect
-                      ? 'CONTINUE'
-                      : hearts == 0
-                      ? 'SELESAI'
-                      : 'TRY AGAIN',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+
+                const SizedBox(width: 14),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+
+                      if (showMeaning) ...[
+                        const SizedBox(height: 4),
+
+                        const Text(
+                          'Artinya:',
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+
+                        const SizedBox(height: 2),
+
+                        Text(
+                          meaning,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+
+                      if (!isCorrect) ...[
+                        const SizedBox(height: 4),
+
+                        const Text(
+                          'Jawaban yang benar:',
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+
+                        const SizedBox(height: 2),
+
+                        Text(
+                          currentQuestion.correctAnswer,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            Opacity(
+              opacity: hearts > 0 ? 1 : 0.5,
+              child: SizedBox(
+                width: double.infinity,
+                child: Button3D(
+                  color: accent,
+                  lipColor: isCorrect ? _yellowDark : _redDark,
+                  enabled: hearts > 0,
+                  holdBeforeTap: true,
+                  onTap: continueQuestion,
+                  height: 52,
+                  depth: 5,
+                  radius: 16,
+                  alignment: Alignment.center,
+                  child: Text(
+                    isCorrect
+                        ? 'LANJUT'
+                        : hearts == 0
+                        ? 'SELESAI'
+                        : 'COBA LAGI',
+                    style: TextStyle(
+                      color: isCorrect ? _onYellow : Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -927,6 +1699,15 @@ class _LessonPageState extends State<LessonPage> {
             setState(() {
               hearts = 5;
               currentQuestionIndex = 0;
+
+              combo = 0;
+              totalAttempts = 0;
+              correctAttempts = 0;
+
+              _stopwatch
+                ..reset()
+                ..start();
+
               resetQuestionState();
             });
           },
@@ -948,6 +1729,516 @@ class _LessonPageState extends State<LessonPage> {
   }
 }
 
+// ============================================================
+// GAYA PILIHAN (pilihan ganda & pilih gambar)
+// ============================================================
+class _ChoiceStyle {
+  final Color face;
+  final Color edge;
+  final Color text;
+
+  const _ChoiceStyle(this.face, this.edge, this.text);
+}
+
+// ============================================================
+// KARAKTER + BALON UCAPAN
+// ============================================================
+class CharacterBubble extends StatelessWidget {
+  final String asset;
+  final Widget child;
+  final EdgeInsetsGeometry bubblePadding;
+
+  const CharacterBubble({
+    super.key,
+    required this.asset,
+    required this.child,
+    this.bubblePadding = const EdgeInsets.symmetric(
+      horizontal: 16,
+      vertical: 14,
+    ),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        CharacterImage(asset: asset, width: 104, height: 124),
+
+        const SizedBox(width: 16),
+
+        Expanded(
+          child: _SpeechBubble(padding: bubblePadding, child: child),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpeechBubble extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  const _SpeechBubble({required this.child, required this.padding});
+
+  @override
+  Widget build(BuildContext context) {
+    const edge = BorderSide(color: _border, width: 2);
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 72),
+          padding: padding,
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.fromBorderSide(edge),
+          ),
+          alignment: Alignment.centerLeft,
+          child: child,
+        ),
+
+        // ekor balon yang menunjuk ke karakter
+        Positioned(
+          left: -9,
+          top: 0,
+          bottom: 0,
+          child: Center(
+            child: Transform.rotate(
+              angle: math.pi / 4,
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: const BoxDecoration(
+                  color: _surface,
+                  border: Border(left: edge, bottom: edge),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Gambar karakter dengan cadangan jika aset belum ada
+class CharacterImage extends StatelessWidget {
+  final String asset;
+  final double width;
+  final double height;
+
+  const CharacterImage({
+    super.key,
+    required this.asset,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      asset,
+      width: width,
+      height: height,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => SizedBox(
+        width: width,
+        height: height,
+        child: Center(
+          child: Icon(
+            Icons.face_rounded,
+            size: math.min(width, height) * 0.5,
+            color: Colors.white24,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// TOMBOL AUDIO
+// ============================================================
+
+// Tombol audio persegi biru 3D
+class _AudioSquare extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AudioSquare({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 62,
+      child: Button3D(
+        color: _blue,
+        lipColor: _blueDark,
+        height: 52,
+        depth: 4,
+        radius: 16,
+        alignment: Alignment.center,
+        onTap: onTap,
+        child: const Icon(
+          Icons.volume_up_rounded,
+          color: Colors.white,
+          size: 30,
+        ),
+      ),
+    );
+  }
+}
+
+// Dua tombol di dalam balon: normal & pelan
+class _BubbleAudioButtons extends StatelessWidget {
+  final VoidCallback onNormal;
+  final VoidCallback onSlow;
+
+  const _BubbleAudioButtons({required this.onNormal, required this.onSlow});
+
+  Widget _flat(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: Icon(icon, color: _blue, size: 38)),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _flat(Icons.volume_up_rounded, onNormal)),
+
+          Container(width: 2, color: _border),
+
+          Expanded(child: _flat(Icons.slow_motion_video_rounded, onSlow)),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
+// GARIS DI AREA JAWABAN (SUSUN KATA)
+// ============================================================
+class _AnswerLinesPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = _border
+      ..strokeWidth = 2;
+
+    // tinggi satu baris kata = 48 (tombol) + 8 (jarak antar baris)
+    for (double y = 56; y < size.height; y += 56) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ============================================================
+// PROGRESS BAR
+// ============================================================
+class LessonProgressBar extends StatelessWidget {
+  final double value; // 0.0 - 1.0
+
+  const LessonProgressBar({super.key, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fillWidth = constraints.maxWidth * value.clamp(0.0, 1.0);
+
+        return Container(
+          height: 16,
+          decoration: BoxDecoration(
+            color: const Color(0xFF3A464D),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOutCubic,
+              width: fillWidth,
+              height: 16,
+              decoration: BoxDecoration(
+                color: _yellow,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              // kilau kecil di bagian atas
+              child: fillWidth > 24
+                  ? Align(
+                      alignment: Alignment.topCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+                        child: Container(
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ============================================================
+// BUTTON 3D (tombol bergaya Duolingo)
+// ============================================================
+class Button3D extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final bool enabled;
+
+  /// true  = aksi dijalankan setelah animasi tekan terlihat (cocok untuk
+  ///         tombol utama). false = aksi langsung dijalankan.
+  final bool holdBeforeTap;
+
+  final Color color; // warna permukaan
+  final Color? lipColor; // warna "bibir" bawah (default: versi gelap color)
+  final Color? borderColor; // garis tepi permukaan (opsional)
+  final double? height; // tinggi permukaan (opsional)
+  final double depth; // tebal bibir
+  final double radius;
+  final EdgeInsetsGeometry? padding;
+  final AlignmentGeometry? alignment;
+
+  const Button3D({
+    super.key,
+    required this.child,
+    required this.onTap,
+    required this.color,
+    this.lipColor,
+    this.borderColor,
+    this.enabled = true,
+    this.holdBeforeTap = false,
+    this.height,
+    this.depth = 4,
+    this.radius = 14,
+    this.padding,
+    this.alignment,
+  });
+
+  @override
+  State<Button3D> createState() => _Button3DState();
+}
+
+class _Button3DState extends State<Button3D> {
+  bool _pressed = false;
+  DateTime? _pressStart;
+
+  // Tombol minimal tertahan sebesar ini supaya tap cepat tetap terlihat
+  static const Duration minPress = Duration(milliseconds: 120);
+
+  bool get _active => widget.enabled && widget.onTap != null;
+
+  Color _darken(Color c, [double amount = 0.15]) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl
+        .withLightness((hsl.lightness - amount).clamp(0.0, 1.0))
+        .toColor();
+  }
+
+  void _down() {
+    if (!_active) return;
+
+    _pressStart = DateTime.now();
+
+    if (!_pressed) setState(() => _pressed = true);
+  }
+
+  Future<void> _up() async {
+    final start = _pressStart;
+
+    if (start != null) {
+      final elapsed = DateTime.now().difference(start);
+
+      if (elapsed < minPress) {
+        await Future.delayed(minPress - elapsed);
+      }
+    }
+
+    if (mounted && _pressed) setState(() => _pressed = false);
+  }
+
+  Future<void> _tap() async {
+    if (!_active) return;
+
+    if (widget.holdBeforeTap) {
+      await _up();
+
+      if (!mounted) return;
+
+      widget.onTap?.call();
+    } else {
+      widget.onTap?.call();
+
+      _up();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(widget.radius);
+    final lip = widget.lipColor ?? _darken(widget.color);
+    final border = widget.borderColor;
+
+    return Listener(
+      onPointerDown: (_) => _down(),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapCancel: _up,
+        onTap: _tap,
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            // bibir bawah
+            Positioned.fill(
+              top: widget.depth,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: lip, borderRadius: radius),
+              ),
+            ),
+
+            // permukaan: margin atas + bawah selalu = depth, jadi tinggi tetap
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 80),
+              curve: Curves.easeOut,
+              height: widget.height,
+              margin: EdgeInsets.only(
+                top: _pressed ? widget.depth : 0,
+                bottom: _pressed ? 0 : widget.depth,
+              ),
+              padding: widget.padding,
+              alignment: widget.alignment,
+              decoration: BoxDecoration(
+                color: widget.color,
+                borderRadius: radius,
+                border: border != null
+                    ? Border.all(color: border, width: 2)
+                    : null,
+              ),
+              child: widget.child,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// PRESSABLE BUTTON (dipertahankan untuk kompatibilitas;
+// hapus jika tidak dipakai file lain)
+// ============================================================
+
+class PressableButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final bool enabled;
+  final double pressedOffset;
+
+  const PressableButton({
+    super.key,
+    required this.child,
+    required this.onTap,
+    this.enabled = true,
+    this.pressedOffset = 4,
+  });
+
+  @override
+  State<PressableButton> createState() => _PressableButtonState();
+}
+
+class _PressableButtonState extends State<PressableButton> {
+  bool isPressed = false;
+
+  void pressDown() {
+    if (!widget.enabled || widget.onTap == null) {
+      return;
+    }
+
+    setState(() {
+      isPressed = true;
+    });
+  }
+
+  void pressUp() {
+    if (!widget.enabled || widget.onTap == null) {
+      return;
+    }
+
+    setState(() {
+      isPressed = false;
+    });
+  }
+
+  void handleTap() {
+    if (!widget.enabled || widget.onTap == null) {
+      return;
+    }
+
+    widget.onTap!();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+
+      onTapDown: (_) {
+        pressDown();
+      },
+
+      onTapUp: (_) {
+        pressUp();
+        handleTap();
+      },
+
+      onTapCancel: () {
+        pressUp();
+      },
+
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        curve: Curves.easeOut,
+
+        transform: Matrix4.translationValues(
+          0,
+          isPressed ? widget.pressedOffset : 0,
+          0,
+        ),
+
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+// ============================================================
+// OUT OF HEARTS SCREEN
+// ============================================================
+
 class OutOfHeartsScreen extends StatelessWidget {
   final VoidCallback onRetry;
   final VoidCallback onExit;
@@ -958,19 +2249,13 @@ class OutOfHeartsScreen extends StatelessWidget {
     required this.onExit,
   });
 
-  static const Color backgroundColor = Color(0xFF272F33);
-
-  static const Color redColor = Color(0xFFFF4B4B);
-
-  static const Color yellowColor = Color(0xFFFCCF10);
-
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: SafeArea(
         child: Container(
-          color: backgroundColor,
+          color: _bg,
           child: Column(
             children: [
               Expanded(
@@ -985,7 +2270,7 @@ class OutOfHeartsScreen extends StatelessWidget {
                         const SizedBox(height: 30),
 
                         const Text(
-                          'Oh no!',
+                          'Oh tidak!',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
@@ -997,7 +2282,7 @@ class OutOfHeartsScreen extends StatelessWidget {
                         const SizedBox(height: 10),
 
                         const Text(
-                          'Hearts kamu habis',
+                          'Hati kamu habis',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
@@ -1009,8 +2294,8 @@ class OutOfHeartsScreen extends StatelessWidget {
                         const SizedBox(height: 14),
 
                         const Text(
-                          'Kamu perlu mencoba lagi '
-                          'untuk menyelesaikan lesson ini.',
+                          'Kamu perlu mengulang '
+                          'untuk menyelesaikan pelajaran ini.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white60,
@@ -1041,12 +2326,12 @@ class OutOfHeartsScreen extends StatelessWidget {
       width: 120,
       height: 120,
       decoration: BoxDecoration(
-        color: redColor.withValues(alpha: 0.12),
+        color: _red.withValues(alpha: 0.12),
         shape: BoxShape.circle,
-        border: Border.all(color: redColor.withValues(alpha: 0.35), width: 2),
+        border: Border.all(color: _red.withValues(alpha: 0.35), width: 2),
       ),
       child: const Center(
-        child: Icon(Icons.heart_broken_rounded, color: redColor, size: 65),
+        child: Icon(Icons.heart_broken_rounded, color: _red, size: 65),
       ),
     );
   }
@@ -1062,7 +2347,7 @@ class OutOfHeartsScreen extends StatelessWidget {
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.favorite, color: redColor, size: 27),
+          Icon(Icons.favorite, color: _red, size: 27),
 
           SizedBox(width: 10),
 
@@ -1086,42 +2371,38 @@ class OutOfHeartsScreen extends StatelessWidget {
         children: [
           SizedBox(
             width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: yellowColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
+            child: Button3D(
+              color: _yellow,
+              lipColor: _yellowDark,
+              holdBeforeTap: true,
+              onTap: onRetry,
+              height: 54,
+              depth: 5,
+              radius: 16,
+              alignment: Alignment.center,
               child: const Text(
                 'COBA LAGI',
                 style: TextStyle(
+                  color: _onYellow,
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
+                  letterSpacing: 1,
                 ),
               ),
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: TextButton(
-              onPressed: onExit,
-              child: const Text(
-                'KELUAR',
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
+          TextButton(
+            onPressed: onExit,
+            child: const Text(
+              'KELUAR',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
               ),
             ),
           ),
@@ -1131,23 +2412,27 @@ class OutOfHeartsScreen extends StatelessWidget {
   }
 }
 
+// ============================================================
+// LESSON COMPLETE SCREEN
+// ============================================================
+
 class LessonCompleteScreen extends StatelessWidget {
-  final int totalQuestions;
+  final ResultVariant variant;
   final int xpEarned;
+  final int accuracy; // 0 - 100
+  final Duration duration;
+  final double secondsPerQuestion;
   final VoidCallback onContinue;
 
   const LessonCompleteScreen({
     super.key,
-    required this.totalQuestions,
+    required this.variant,
     required this.xpEarned,
+    required this.accuracy,
+    required this.duration,
+    required this.secondsPerQuestion,
     required this.onContinue,
   });
-
-  static const Color backgroundColor = Color(0xFF272F33);
-
-  static const Color yellowColor = Color(0xFFFCCF10);
-
-  static const Color goldColor = Color(0xFFFFC800);
 
   @override
   Widget build(BuildContext context) {
@@ -1155,7 +2440,7 @@ class LessonCompleteScreen extends StatelessWidget {
       color: Colors.transparent,
       child: SafeArea(
         child: Container(
-          color: backgroundColor,
+          color: _bg,
           child: Column(
             children: [
               Expanded(
@@ -1165,34 +2450,46 @@ class LessonCompleteScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        buildTrophy(),
+                        // karakter muncul dengan efek membal
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: 1),
+                          duration: const Duration(milliseconds: 600),
+                          curve: Curves.easeOutBack,
+                          builder: (context, value, child) {
+                            return Transform.scale(scale: value, child: child);
+                          },
+                          child: CharacterImage(
+                            asset: variant.asset,
+                            width: 240,
+                            height: 240,
+                          ),
+                        ),
 
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 20),
 
-                        const Text(
-                          'Lesson selesai!',
+                        Text(
+                          variant.title,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: variant.color,
                             fontSize: 32,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
 
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
 
-                        const Text(
-                          'Luar biasa! Kamu berhasil '
-                          'menyelesaikan lesson ini.',
+                        Text(
+                          variant.subtitle,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.white60,
-                            fontSize: 16,
+                            fontSize: 17,
                             height: 1.5,
                           ),
                         ),
 
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 36),
 
                         buildStats(),
                       ],
@@ -1209,95 +2506,44 @@ class LessonCompleteScreen extends StatelessWidget {
     );
   }
 
-  Widget buildTrophy() {
-    return Container(
-      width: 130,
-      height: 130,
-      decoration: BoxDecoration(
-        color: goldColor.withValues(alpha: 0.12),
-        shape: BoxShape.circle,
-        border: Border.all(color: goldColor.withValues(alpha: 0.4), width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: goldColor.withValues(alpha: 0.15),
-            blurRadius: 30,
-            spreadRadius: 5,
-          ),
-        ],
-      ),
-      child: const Center(
-        child: Icon(Icons.emoji_events_rounded, color: goldColor, size: 70),
-      ),
-    );
-  }
-
   Widget buildStats() {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: buildStatCard(
+          child: _ResultStatCard(
+            label: 'TOTAL XP',
+            accent: _gold,
+            labelColor: _onYellow,
             icon: Icons.bolt_rounded,
-            iconColor: goldColor,
-            title: '+$xpEarned',
-            subtitle: 'XP',
+            value: '$xpEarned',
           ),
         ),
 
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
 
         Expanded(
-          child: buildStatCard(
-            icon: Icons.check_circle_rounded,
-            iconColor: yellowColor,
-            title: '$totalQuestions',
-            subtitle: 'SOAL',
+          child: _ResultStatCard(
+            label: accuracyLabel(accuracy),
+            accent: _green,
+            labelColor: Colors.white,
+            icon: Icons.track_changes_rounded,
+            value: '$accuracy%',
+          ),
+        ),
+
+        const SizedBox(width: 10),
+
+        Expanded(
+          child: _ResultStatCard(
+            label: timeLabel(secondsPerQuestion),
+            accent: _blue,
+            labelColor: Colors.white,
+            icon: Icons.speed_rounded,
+            value: _formatDuration(duration),
           ),
         ),
       ],
-    );
-  }
-
-  Widget buildStatCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: iconColor, size: 30),
-
-          const SizedBox(height: 8),
-
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-
-          const SizedBox(height: 2),
-
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1306,26 +2552,102 @@ class LessonCompleteScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
       child: SizedBox(
         width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: onContinue,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: yellowColor,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
+        child: Button3D(
+          color: _yellow,
+          lipColor: _yellowDark,
+          holdBeforeTap: true,
+          onTap: onContinue,
+          height: 54,
+          depth: 5,
+          radius: 16,
+          alignment: Alignment.center,
           child: const Text(
             'LANJUTKAN',
             style: TextStyle(
+              color: _onYellow,
               fontSize: 16,
               fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
+              letterSpacing: 1,
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// Kartu statistik: label berwarna di atas, nilai di kotak dalam
+class _ResultStatCard extends StatelessWidget {
+  final String label;
+  final Color accent;
+  final Color labelColor;
+  final IconData icon;
+  final String value;
+
+  const _ResultStatCard({
+    required this.label,
+    required this.accent,
+    required this.labelColor,
+    required this.icon,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: accent,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: labelColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+            decoration: BoxDecoration(
+              color: _bg,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: accent, size: 24),
+
+                const SizedBox(width: 5),
+
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
