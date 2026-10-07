@@ -4,11 +4,12 @@ import 'learn_page.dart';
 import 'quests_page.dart';
 import 'leaderboard_page.dart';
 import 'practice_page.dart';
+import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
   final String selectedLanguage;
 
-  const HomePage({super.key, required this.selectedLanguage});
+  const HomePage({super.key, this.selectedLanguage = 'English'});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -28,7 +29,7 @@ class _HomePageState extends State<HomePage> {
       PracticePage(selectedLanguage: widget.selectedLanguage),
       LeaderboardPage(),
       QuestsPage(),
-      LearnPage(selectedLanguage: widget.selectedLanguage),
+      ProfilePage(selectedLanguage: widget.selectedLanguage),
     ];
   }
 

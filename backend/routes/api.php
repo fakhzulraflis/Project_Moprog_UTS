@@ -1,10 +1,18 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\VocabularyController;
+use App\Http\Controllers\Api\AccountRegistrationController;
 use App\Http\Controllers\Api\LessonController;
+use App\Http\Controllers\Api\LoginController;
+use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\LanguageController;
+use App\Http\Controllers\Api\VocabularyController;
+use Illuminate\Support\Facades\Route;
+
+Route::post('/register', [AccountRegistrationController::class, 'store']);
+Route::post('/login', [LoginController::class, 'login']);
+Route::post('/forgot-password', [PasswordResetController::class, 'sendCode']);
+Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 
 Route::get('/vocabularies', [VocabularyController::class, 'index']);
 
