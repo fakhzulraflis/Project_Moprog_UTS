@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\LessonController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\LanguageController;
 use App\Http\Controllers\Api\VocabularyController;
@@ -29,4 +30,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index']);
     Route::post('/inventory', [InventoryController::class, 'store']);
     Route::post('/inventory/{id}/use', [InventoryController::class, 'use'])->whereNumber('id');
+
+    // Profil user + syarat "Complete your profile"
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile/avatar', [ProfileController::class, 'updateAvatar']);
+    Route::get('/profile/suggestions', [ProfileController::class, 'suggestions']);
+    Route::post('/users/{id}/follow', [ProfileController::class, 'toggleFollow'])->whereNumber('id');
+    Route::get('/posts', [ProfileController::class, 'posts']);
+    Route::post('/posts/{id}/like', [ProfileController::class, 'toggleLike'])->whereNumber('id');
 });
