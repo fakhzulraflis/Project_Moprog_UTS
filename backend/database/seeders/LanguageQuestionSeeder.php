@@ -19,18 +19,22 @@ abstract class LanguageQuestionSeeder extends Seeder
 
         $lessons = $this->lessonsOf($language);
 
-        foreach ($this->lessons() as $number => $questions) {
-            $lesson = $lessons->get($number - 1);
+        foreach ($this->lessons() as $lessonTitle => $questions) {
+            $lesson = $lessons->firstWhere('title', $lessonTitle);
 
             if (! $lesson) {
-                $this->command?->warn("Pelajaran {$number} belum ada untuk {$language->name}.");
+                $this->command?->warn(
+                    "Lesson '{$lessonTitle}' belum ada untuk {$language->name}."
+                );
                 continue;
             }
 
             Question::where('lesson_id', $lesson->id)->delete();
 
             foreach ($questions as $question) {
-                Question::create(['lesson_id' => $lesson->id] + $question);
+                Question::create([
+                    'lesson_id' => $lesson->id,
+                ] + $question);
             }
         }
     }
@@ -78,5 +82,10 @@ abstract class LanguageQuestionSeeder extends Seeder
     protected function pic(string $label, string $file): array
     {
         return ['label' => $label, 'image' => "assets/foods/{$file}.png"];
+    }
+
+    protected function img(string $label, string $folder, string $file): array
+    {
+        return ['label' => $label, 'image' => "assets/{$folder}/{$file}.png"];
     }
 }

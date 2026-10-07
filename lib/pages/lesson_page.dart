@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import '../models/question.dart';
 import '../services/api_service.dart';
@@ -137,8 +138,20 @@ class LessonPage extends StatefulWidget {
   State<LessonPage> createState() => _LessonPageState();
 }
 
+class _WordDragData {
+  final bool fromBank;
+  final int index;
+
+  const _WordDragData({required this.fromBank, required this.index});
+}
+
 class _LessonPageState extends State<LessonPage> {
   final FlutterTts _flutterTts = FlutterTts();
+  final AudioPlayer _correctPlayer = AudioPlayer();
+  final AudioPlayer _wrongPlayer = AudioPlayer();
+  final AudioPlayer _completePlayer = AudioPlayer();
+  final AudioPlayer _failPlayer = AudioPlayer();
+
   List<Question> questions = [];
 
   bool isLoading = true;
@@ -183,14 +196,72 @@ class _LessonPageState extends State<LessonPage> {
   @override
   void initState() {
     super.initState();
+
+    _preloadSounds();
     loadQuestions();
   }
 
   @override
   void dispose() {
     _flutterTts.stop();
+    _correctPlayer.dispose();
+    _wrongPlayer.dispose();
+    _completePlayer.dispose();
+    _failPlayer.dispose();
     _textController.dispose();
     super.dispose();
+  }
+
+  Future<void> _preloadSounds() async {
+    try {
+      await Future.wait([
+        _preparePlayer(_correctPlayer, 'sounds/correct.mp3'),
+        _preparePlayer(_wrongPlayer, 'sounds/wrong.mp3'),
+        _preparePlayer(_completePlayer, 'sounds/complete.mp3'),
+        _preparePlayer(_failPlayer, 'sounds/fail.mp3'),
+      ]);
+
+      debugPrint('All sound effects preloaded');
+    } catch (e) {
+      debugPrint('Sound preload error: $e');
+    }
+  }
+
+  Future<void> _preparePlayer(AudioPlayer player, String asset) async {
+    await player.setReleaseMode(ReleaseMode.stop);
+    await player.setSource(AssetSource(asset));
+  }
+
+  Future<void> _playSound(String fileName) async {
+    try {
+      AudioPlayer player;
+
+      switch (fileName) {
+        case 'correct':
+          player = _correctPlayer;
+          break;
+
+        case 'wrong':
+          player = _wrongPlayer;
+          break;
+
+        case 'complete':
+          player = _completePlayer;
+          break;
+
+        case 'fail':
+          player = _failPlayer;
+          break;
+
+        default:
+          return;
+      }
+
+      await player.seek(Duration.zero);
+      await player.resume();
+    } catch (e) {
+      debugPrint('Sound effect error [$fileName]: $e');
+    }
   }
 
   Future<void> loadQuestions() async {
@@ -269,7 +340,7 @@ class _LessonPageState extends State<LessonPage> {
 
       await _flutterTts.setLanguage(widget.ttsCode);
 
-      await _flutterTts.setSpeechRate(slow ? 0.35 : 0.5);
+      await _flutterTts.setSpeechRate(slow ? 0.25 : 0.5);
 
       await _flutterTts.setPitch(1.0);
       await _flutterTts.setVolume(1.0);
@@ -347,6 +418,9 @@ class _LessonPageState extends State<LessonPage> {
     final correct =
         normalizeAnswer(answer) == normalizeAnswer(question.correctAnswer);
 
+    // Play immediately based on the actual result.
+    _playSound(correct ? 'correct' : 'wrong');
+
     _applyResult(correct);
   }
 
@@ -357,6 +431,8 @@ class _LessonPageState extends State<LessonPage> {
       (pair) =>
           matchedPairs[pair['left'].toString()] == pair['right'].toString(),
     );
+
+    _playSound(correct ? 'correct' : 'wrong');
 
     _applyResult(correct);
   }
@@ -390,6 +466,8 @@ class _LessonPageState extends State<LessonPage> {
     if (!correct) _pulseHeart();
 
     if (!correct && hearts == 0) {
+      _playSound('fail');
+
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) {
           showOutOfHeartsDialog();
@@ -423,6 +501,7 @@ class _LessonPageState extends State<LessonPage> {
         resetQuestionState();
       });
     } else {
+      _playSound('complete');
       showLessonComplete();
     }
   }
@@ -1165,6 +1244,66 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
+  void _addWord(int index) {
+    if (hasChecked) return;
+    if (selectedWordIndexes.contains(index)) return;
+
+    setState(() {
+      selectedWords.add(currentQuestion.choiceOptions[index].text);
+      selectedWordIndexes.add(index);
+    });
+  }
+
+  void _removeWord(int position) {
+    if (hasChecked) return;
+    if (position < 0 || position >= selectedWords.length) return;
+
+    setState(() {
+      selectedWords.removeAt(position);
+      selectedWordIndexes.removeAt(position);
+    });
+  }
+
+  void _insertWordFromBank(int bankIndex, int position) {
+    if (hasChecked) return;
+    if (selectedWordIndexes.contains(bankIndex)) return;
+
+    final word = currentQuestion.choiceOptions[bankIndex].text;
+
+    setState(() {
+      final safePosition = position.clamp(0, selectedWords.length);
+
+      selectedWords.insert(safePosition, word);
+      selectedWordIndexes.insert(safePosition, bankIndex);
+    });
+  }
+
+  void _returnWordToBank(int position) {
+    if (hasChecked) return;
+    if (position < 0 || position >= selectedWords.length) return;
+
+    setState(() {
+      selectedWords.removeAt(position);
+      selectedWordIndexes.removeAt(position);
+    });
+  }
+
+  void _moveWord(int oldIndex, int newIndex) {
+    if (hasChecked) return;
+    if (oldIndex < 0 || oldIndex >= selectedWords.length) return;
+    if (newIndex < 0 || newIndex >= selectedWords.length) return;
+
+    if (oldIndex == newIndex) return;
+
+    setState(() {
+      final word = selectedWords.removeAt(oldIndex);
+      final sourceIndex = selectedWordIndexes.removeAt(oldIndex);
+
+      selectedWords.insert(newIndex, word);
+      selectedWordIndexes.insert(newIndex, sourceIndex);
+    });
+  }
+
   Widget buildWordBank(Question question) {
     final words = question.choiceOptions;
 
@@ -1174,79 +1313,269 @@ class _LessonPageState extends State<LessonPage> {
     final pitch = chipHeight + 12;
 
     final chipEdge = hasChecked ? (isCorrect ? _yellow : _red) : _border;
+
     final chipFace = hasChecked ? _tint(chipEdge, 0.16) : _bg;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: double.infinity,
-          constraints: BoxConstraints(minHeight: pitch * 2 + 8),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: CustomPaint(painter: _AnswerLinesPainter(pitch)),
-              ),
+        // =========================
+        // AREA JAWABAN
+        // =========================
+        DragTarget<_WordDragData>(
+          onWillAcceptWithDetails: (details) {
+            return !hasChecked;
+          },
+          onAcceptWithDetails: (details) {
+            final data = details.data;
 
-              Padding(
-                padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: List.generate(selectedWords.length, (i) {
-                    final source = words[selectedWordIndexes[i]];
+            if (data.fromBank) {
+              _insertWordFromBank(data.index, selectedWords.length);
+            }
+          },
+          builder: (context, candidateData, rejectedData) {
+            final isHovering = candidateData.isNotEmpty;
 
-                    return _wordChip(
-                      source.text,
-                      romaji: source.romanization,
-                      height: chipHeight,
-                      edge: chipEdge,
-                      face: chipFace,
-                      onTap: hasChecked
-                          ? null
-                          : () {
-                              setState(() {
-                                selectedWords.removeAt(i);
-                                selectedWordIndexes.removeAt(i);
-                              });
-                            },
-                    );
-                  }),
-                ),
+            return Container(
+              width: double.infinity,
+              constraints: BoxConstraints(minHeight: pitch * 2 + 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: isHovering
+                    ? Border.all(color: _yellow, width: 2)
+                    : null,
               ),
-            ],
-          ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(painter: _AnswerLinesPainter(pitch)),
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+                    child: selectedWords.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 28),
+                              child: Text(
+                                isHovering
+                                    ? 'Lepaskan di sini'
+                                    : 'Tarik kata ke sini',
+                                style: TextStyle(
+                                  color: isHovering ? _yellow : Colors.white24,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: List.generate(selectedWords.length, (i) {
+                              final source = words[selectedWordIndexes[i]];
+
+                              return _answerWordTarget(
+                                position: i,
+                                word: source.text,
+                                romaji: source.romanization,
+                                height: chipHeight,
+                                edge: chipEdge,
+                                face: chipFace,
+                              );
+                            }),
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
 
         const SizedBox(height: 28),
 
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.center,
-          children: List.generate(words.length, (index) {
-            final word = words[index];
-            final isUsed = selectedWordIndexes.contains(index);
+        DragTarget<_WordDragData>(
+          onWillAcceptWithDetails: (details) {
+            return !hasChecked && !details.data.fromBank;
+          },
 
-            return _wordChip(
-              word.text,
-              romaji: word.romanization,
-              height: chipHeight,
-              edge: _border,
-              ghost: isUsed,
-              onTap: hasChecked || isUsed
-                  ? null
-                  : () {
-                      setState(() {
-                        selectedWords.add(word.text);
+          onAcceptWithDetails: (details) {
+            final data = details.data;
 
-                        selectedWordIndexes.add(index);
-                      });
-                    },
+            _returnWordToBank(data.index);
+          },
+
+          builder: (context, candidateData, rejectedData) {
+            final isHovering = candidateData.isNotEmpty;
+
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isHovering ? _yellow : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: List.generate(words.length, (index) {
+                  final word = words[index];
+
+                  final isUsed = selectedWordIndexes.contains(index);
+
+                  return _bankWordChip(
+                    index: index,
+                    word: word.text,
+                    romaji: word.romanization,
+                    height: chipHeight,
+                    enabled: !hasChecked && !isUsed,
+                    ghost: isUsed,
+                  );
+                }),
+              ),
             );
-          }),
+          },
         ),
       ],
+    );
+  }
+
+  Widget _bankWordChip({
+    required int index,
+    required String word,
+    String? romaji,
+    required double height,
+    required bool enabled,
+    required bool ghost,
+  }) {
+    final chip = _wordChip(
+      word,
+      romaji: romaji,
+      height: height,
+      edge: _border,
+      face: _bg,
+      onTap: enabled ? () => _addWord(index) : null,
+      ghost: ghost,
+    );
+
+    if (!enabled || ghost) {
+      return chip;
+    }
+
+    return Draggable<_WordDragData>(
+      data: _WordDragData(fromBank: true, index: index),
+
+      feedback: Material(
+        color: Colors.transparent,
+        child: _wordChip(
+          word,
+          romaji: romaji,
+          height: height,
+          edge: _yellow,
+          face: _tint(_yellow, 0.18),
+          onTap: null,
+        ),
+      ),
+
+      childWhenDragging: Opacity(opacity: 0.25, child: chip),
+
+      child: chip,
+    );
+  }
+
+  Widget _answerWordTarget({
+    required int position,
+    required String word,
+    String? romaji,
+    required double height,
+    required Color edge,
+    required Color face,
+  }) {
+    return DragTarget<_WordDragData>(
+      onWillAcceptWithDetails: (details) {
+        return !hasChecked && !details.data.fromBank;
+      },
+
+      onAcceptWithDetails: (details) {
+        final data = details.data;
+
+        _moveWord(data.index, position);
+      },
+
+      builder: (context, candidateData, rejectedData) {
+        final isHovering = candidateData.isNotEmpty;
+
+        final chip = _answerWordChip(
+          position: position,
+          word: word,
+          romaji: romaji,
+          height: height,
+          edge: isHovering ? _yellow : edge,
+          face: isHovering ? _tint(_yellow, 0.18) : face,
+        );
+
+        if (!isHovering) {
+          return chip;
+        }
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _yellow, width: 2),
+          ),
+          child: chip,
+        );
+      },
+    );
+  }
+
+  Widget _answerWordChip({
+    required int position,
+    required String word,
+    String? romaji,
+    required double height,
+    required Color edge,
+    required Color face,
+  }) {
+    final chip = _wordChip(
+      word,
+      romaji: romaji,
+      height: height,
+      edge: edge,
+      face: face,
+      onTap: hasChecked ? null : () => _removeWord(position),
+    );
+
+    if (hasChecked) {
+      return chip;
+    }
+
+    return Draggable<_WordDragData>(
+      data: _WordDragData(fromBank: false, index: position),
+
+      feedback: Material(
+        color: Colors.transparent,
+        child: _wordChip(
+          word,
+          romaji: romaji,
+          height: height,
+          edge: _yellow,
+          face: _tint(_yellow, 0.18),
+          onTap: null,
+        ),
+      ),
+
+      childWhenDragging: Opacity(opacity: 0.25, child: chip),
+
+      child: chip,
     );
   }
 
@@ -1517,7 +1846,7 @@ class _LessonPageState extends State<LessonPage> {
             color: canCheck ? _yellow : const Color(0xFF3A464D),
             lipColor: canCheck ? _yellowDark : const Color(0xFF2E383E),
             enabled: canCheck,
-            holdBeforeTap: true,
+            holdBeforeTap: false,
             onTap: checkAnswer,
             height: 52,
             depth: 5,
@@ -1765,9 +2094,9 @@ class CharacterBubble extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        CharacterImage(asset: asset, width: 150, height: 150),
+        CharacterImage(asset: asset, width: 150, height: 110),
 
-        const SizedBox(width: 16),
+        const SizedBox(width: 10),
 
         Expanded(
           child: _SpeechBubble(padding: bubblePadding, child: child),
