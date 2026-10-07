@@ -21,14 +21,10 @@ class _MemoryCard {
 class MemoryGamePage extends StatefulWidget {
   final String selectedLanguage;
 
-  const MemoryGamePage({
-    super.key,
-    required this.selectedLanguage,
-  });
+  const MemoryGamePage({super.key, required this.selectedLanguage});
 
   @override
-  State<MemoryGamePage> createState() =>
-      _MemoryGamePageState();
+  State<MemoryGamePage> createState() => _MemoryGamePageState();
 }
 
 class _MemoryGamePageState extends State<MemoryGamePage> {
@@ -81,8 +77,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
     });
 
     try {
-      final vocabularies =
-          await ApiService.getVocabularies();
+      final vocabularies = await ApiService.getVocabularies();
 
       if (!mounted) return;
 
@@ -91,9 +86,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
       }
 
       // Acak vocabulary dari backend
-      final shuffled =
-          List<Vocabulary>.from(vocabularies)
-            ..shuffle();
+      final shuffled = List<Vocabulary>.from(vocabularies)..shuffle();
 
       // Maksimal 10 vocabulary = 20 kartu
       final selected = shuffled.length > 10
@@ -105,8 +98,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
       for (int i = 0; i < selected.length; i++) {
         final vocabulary = selected[i];
 
-        final translated =
-            getTranslation(vocabulary).trim();
+        final translated = getTranslation(vocabulary).trim();
 
         if (translated.isEmpty) {
           continue;
@@ -114,25 +106,15 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
 
         // Kartu Indonesia
         newCards.add(
-          _MemoryCard(
-            pairId: vocabulary.id,
-            text: vocabulary.indonesian,
-          ),
+          _MemoryCard(pairId: vocabulary.id, text: vocabulary.indonesian),
         );
 
         // Kartu bahasa yang dipilih user
-        newCards.add(
-          _MemoryCard(
-            pairId: vocabulary.id,
-            text: translated,
-          ),
-        );
+        newCards.add(_MemoryCard(pairId: vocabulary.id, text: translated));
       }
 
       if (newCards.length < 4) {
-        throw Exception(
-          'Tidak cukup vocabulary untuk Memory Game',
-        );
+        throw Exception('Tidak cukup vocabulary untuk Memory Game');
       }
 
       // Campur seluruh kartu
@@ -149,8 +131,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
       if (!mounted) return;
 
       setState(() {
-        errorMessage =
-            'Gagal mengambil vocabulary dari server.';
+        errorMessage = 'Gagal mengambil vocabulary dari server.';
 
         isLoading = false;
       });
@@ -193,9 +174,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
 
     if (firstCard.pairId == secondCard.pairId) {
       // MATCH
-      await Future.delayed(
-        const Duration(milliseconds: 300),
-      );
+      await Future.delayed(const Duration(milliseconds: 300));
 
       if (!mounted) return;
 
@@ -214,9 +193,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
       });
     } else {
       // SALAH - tunggu lalu tutup kembali
-      await Future.delayed(
-        const Duration(milliseconds: 850),
-      );
+      await Future.delayed(const Duration(milliseconds: 850));
 
       if (!mounted) return;
 
@@ -233,8 +210,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
   Widget buildCard(int index) {
     final card = cards[index];
 
-    final bool showText =
-        card.isFlipped || card.isMatched;
+    final bool showText = card.isFlipped || card.isMatched;
 
     Color cardColor = const Color(0xFF20272B);
 
@@ -247,21 +223,14 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
     return GestureDetector(
       onTap: () => selectCard(index),
       child: AnimatedContainer(
-        duration: const Duration(
-          milliseconds: 250,
-        ),
+        duration: const Duration(milliseconds: 250),
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: card.isFlipped
                 ? const Color(0xFFE7C249)
-                : const Color.fromARGB(
-                    40,
-                    255,
-                    255,
-                    255,
-                  ),
+                : const Color.fromARGB(40, 255, 255, 255),
             width: 2,
           ),
         ),
@@ -273,8 +242,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
                     card.text,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: card.isFlipped &&
-                              !card.isMatched
+                      color: card.isFlipped && !card.isMatched
                           ? const Color(0xFF272F33)
                           : Colors.white,
                       fontSize: 14,
@@ -300,19 +268,14 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
           child: Column(
             children: [
               Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'Pairs',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(color: Colors.white54, fontSize: 13),
                       ),
 
                       Text(
@@ -327,15 +290,11 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
                   ),
 
                   Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       const Text(
                         'Moves',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(color: Colors.white54, fontSize: 13),
                       ),
 
                       Text(
@@ -354,15 +313,11 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
               const SizedBox(height: 15),
 
               LinearProgressIndicator(
-                value: totalPairs == 0
-                    ? 0
-                    : matchedPairs / totalPairs,
+                value: totalPairs == 0 ? 0 : matchedPairs / totalPairs,
                 minHeight: 9,
-                backgroundColor:
-                    const Color(0xFF20272B),
+                backgroundColor: const Color(0xFF20272B),
                 color: const Color(0xFFE7C249),
-                borderRadius:
-                    BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20),
               ),
             ],
           ),
@@ -370,16 +325,10 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
 
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              0,
-              16,
-              16,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: GridView.builder(
               itemCount: cards.length,
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 4,
                 crossAxisSpacing: 9,
                 mainAxisSpacing: 9,
@@ -398,30 +347,22 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
   Widget buildLoading() {
     return const Center(
       child: Column(
-        mainAxisAlignment:
-            MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: Color(0xFFE7C249),
-          ),
+          CircularProgressIndicator(color: Color(0xFFE7C249)),
 
           SizedBox(height: 20),
 
           Text(
             'Preparing Memory Game...',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-            ),
+            style: TextStyle(color: Colors.white, fontSize: 17),
           ),
 
           SizedBox(height: 8),
 
           Text(
             'Loading vocabulary from server',
-            style: TextStyle(
-              color: Colors.white54,
-            ),
+            style: TextStyle(color: Colors.white54),
           ),
         ],
       ),
@@ -433,8 +374,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
       child: Padding(
         padding: const EdgeInsets.all(25),
         child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(
               Icons.cloud_off_rounded,
@@ -445,21 +385,14 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
             const SizedBox(height: 20),
 
             Text(
-              errorMessage ??
-                  'Something went wrong.',
+              errorMessage ?? 'Something went wrong.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 17),
             ),
 
             const SizedBox(height: 25),
 
-            ElevatedButton(
-              onPressed: loadGame,
-              child: const Text('TRY AGAIN'),
-            ),
+            ElevatedButton(onPressed: loadGame, child: const Text('TRY AGAIN')),
           ],
         ),
       ),
@@ -471,8 +404,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
       child: Padding(
         padding: const EdgeInsets.all(30),
         child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(
               Icons.psychology_rounded,
@@ -506,10 +438,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
 
             Text(
               'Moves: $moves',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 18,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 18),
             ),
 
             const SizedBox(height: 35),
@@ -519,12 +448,8 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
               child: ElevatedButton(
                 onPressed: loadGame,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      const Color(0xFFE7C249),
-                  padding:
-                      const EdgeInsets.symmetric(
-                    vertical: 15,
-                  ),
+                  backgroundColor: const Color(0xFFE7C249),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
                 ),
                 child: const Text(
                   'PLAY AGAIN',
@@ -546,9 +471,7 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
                 },
                 child: const Text(
                   'BACK TO PRACTICE',
-                  style: TextStyle(
-                    color: Colors.white70,
-                  ),
+                  style: TextStyle(color: Colors.white70),
                 ),
               ),
             ),
@@ -565,22 +488,15 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF272F33),
         elevation: 0,
-        iconTheme: const IconThemeData(
-          color: Colors.white,
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'Permainan Mengingat',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
             onPressed: loadGame,
-            icon: const Icon(
-              Icons.refresh_rounded,
-            ),
+            icon: const Icon(Icons.refresh_rounded),
           ),
         ],
       ),
@@ -588,10 +504,10 @@ class _MemoryGamePageState extends State<MemoryGamePage> {
         child: isLoading
             ? buildLoading()
             : errorMessage != null
-                ? buildError()
-                : isFinished
-                    ? buildResult()
-                    : buildGame(),
+            ? buildError()
+            : isFinished
+            ? buildResult()
+            : buildGame(),
       ),
     );
   }

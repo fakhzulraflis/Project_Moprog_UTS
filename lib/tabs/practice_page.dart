@@ -8,10 +8,7 @@ import '../pages/mistake_review_page.dart';
 class PracticePage extends StatelessWidget {
   final String selectedLanguage;
 
-  const PracticePage({
-    super.key,
-    required this.selectedLanguage,
-  });
+  const PracticePage({super.key, required this.selectedLanguage});
 
   @override
   Widget build(BuildContext context) {
@@ -34,10 +31,7 @@ class PracticePage extends StatelessWidget {
               const SizedBox(height: 8),
               const Text(
                 'Latih kembali apa yang sudah kamu pelajari!',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
               const SizedBox(height: 30),
 
@@ -60,8 +54,7 @@ class PracticePage extends StatelessWidget {
                         child: buildPracticeCard(
                           icon: const ContainerMemoryIcon(),
                           title: 'Permainan Mengingat',
-                          description:
-                              'Temukan dan cocokkan pasangan kata yang tersembunyi',
+                          description: 'Temukan dan cocokkan pasangan kata yang tersembunyi',
                         ),
                       ),
 
@@ -82,8 +75,7 @@ class PracticePage extends StatelessWidget {
                         child: buildPracticeCard(
                           icon: const ContainerWordHuntIcon(),
                           title: 'Perburuan Kata',
-                          description:
-                              'Temukan kosakata yang tersembunyi di dalam susunan huruf',
+                          description: 'Temukan kosakata yang tersembunyi di dalam susunan huruf',
                         ),
                       ),
 
@@ -104,8 +96,7 @@ class PracticePage extends StatelessWidget {
                         child: buildPracticeCard(
                           icon: const ContainerWordChaseIcon(),
                           title: 'Kejar Kata',
-                          description:
-                              'Jawab kosakata sebanyak mungkin sebelum waktu habis',
+                          description: 'Jawab kosakata sebanyak mungkin sebelum waktu habis',
                         ),
                       ),
 
@@ -126,8 +117,7 @@ class PracticePage extends StatelessWidget {
                         child: buildPracticeCard(
                           icon: const ContainerMistakeIcon(),
                           title: 'Review Kesalahan',
-                          description:
-                              'Latih kembali kosakata yang pernah kamu jawab salah',
+                          description: 'Latih kembali kosakata yang pernah kamu jawab salah',
                         ),
                       ),
 
@@ -154,14 +144,7 @@ class PracticePage extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF20272B),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: const Color.fromARGB(
-            70,
-            255,
-            255,
-            255,
-          ),
-        ),
+        border: Border.all(color: const Color.fromARGB(70, 255, 255, 255)),
       ),
       child: Row(
         children: [
@@ -183,10 +166,7 @@ class PracticePage extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   description,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
               ],
             ),
@@ -208,9 +188,7 @@ class ContainerMemoryIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return buildIconContainer(
-      Icons.psychology_rounded,
-    );
+    return buildIconContainer(Icons.psychology_rounded);
   }
 }
 
@@ -219,9 +197,7 @@ class ContainerWordHuntIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return buildIconContainer(
-      Icons.search_rounded,
-    );
+    return buildIconContainer(Icons.search_rounded);
   }
 }
 
@@ -230,9 +206,7 @@ class ContainerWordChaseIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return buildIconContainer(
-      Icons.bolt_rounded,
-    );
+    return buildIconContainer(Icons.bolt_rounded);
   }
 }
 
@@ -241,9 +215,7 @@ class ContainerMistakeIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return buildIconContainer(
-      Icons.replay_rounded,
-    );
+    return buildIconContainer(Icons.replay_rounded);
   }
 }
 
@@ -255,10 +227,6 @@ Widget buildIconContainer(IconData icon) {
       color: const Color(0xFFE7C249),
       borderRadius: BorderRadius.circular(15),
     ),
-    child: Icon(
-      icon,
-      color: const Color(0xFF272F33),
-      size: 34,
-    ),
+    child: Icon(icon, color: const Color(0xFF272F33), size: 34),
   );
 }

@@ -44,8 +44,8 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             return FutureBuilder<List<LeaderboardUser>>(
               future: _usersFuture,
               builder: (context, usersSnapshot) {
-                final isLoading = leagueSnapshot.connectionState !=
-                        ConnectionState.done ||
+                final isLoading =
+                    leagueSnapshot.connectionState != ConnectionState.done ||
                     usersSnapshot.connectionState != ConnectionState.done;
                 final hasData = leagueSnapshot.hasData && usersSnapshot.hasData;
 
@@ -97,7 +97,11 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.wifi_off_rounded, color: Colors.white.withValues(alpha: 0.5), size: 40),
+          Icon(
+            Icons.wifi_off_rounded,
+            color: Colors.white.withValues(alpha: 0.5),
+            size: 40,
+          ),
           const SizedBox(height: 12),
           Text(
             'Gagal memuat leaderboard',
@@ -198,9 +202,11 @@ class _LeaderboardList extends StatelessWidget {
       itemCount: users.length,
       separatorBuilder: (context, index) {
         final rankAfter = users[index].rank;
-        final showPromotionDivider = rankAfter == league.promotionZoneSize &&
+        final showPromotionDivider =
+            rankAfter == league.promotionZoneSize &&
             totalUsers > league.promotionZoneSize;
-        final showDemotionDivider = rankAfter == demotionStartRank - 1 &&
+        final showDemotionDivider =
+            rankAfter == demotionStartRank - 1 &&
             league.demotionZoneSize < totalUsers;
 
         if (showPromotionDivider) {
@@ -241,7 +247,9 @@ class _ZoneDivider extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          Expanded(child: Divider(color: color.withValues(alpha: 0.4), thickness: 1)),
+          Expanded(
+            child: Divider(color: color.withValues(alpha: 0.4), thickness: 1),
+          ),
           const SizedBox(width: 8),
           Icon(icon, color: color, size: 16),
           const SizedBox(width: 4),
@@ -254,7 +262,9 @@ class _ZoneDivider extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(child: Divider(color: color.withValues(alpha: 0.4), thickness: 1)),
+          Expanded(
+            child: Divider(color: color.withValues(alpha: 0.4), thickness: 1),
+          ),
         ],
       ),
     );
@@ -325,8 +335,9 @@ class _LeaderboardTile extends StatelessWidget {
           CircleAvatar(
             radius: 18,
             backgroundColor: _avatarColor(),
-            backgroundImage:
-                user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+            backgroundImage: user.avatarUrl != null
+                ? NetworkImage(user.avatarUrl!)
+                : null,
             child: user.avatarUrl == null
                 ? Text(
                     user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',

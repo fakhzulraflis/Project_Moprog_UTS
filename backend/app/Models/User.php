@@ -50,6 +50,7 @@ class User extends Authenticatable
         'native_language',
         'learning_language',
         'avatar_path',
+        'avatar_character',
     ];
 
     /**

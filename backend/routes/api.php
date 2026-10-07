@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Profil user + syarat "Complete your profile"
     Route::get('/profile', [ProfileController::class, 'show']);
+    Route::put('/profile/avatar', [ProfileController::class, 'updateAvatar']);
     Route::get('/profile/suggestions', [ProfileController::class, 'suggestions']);
     Route::post('/users/{id}/follow', [ProfileController::class, 'toggleFollow'])->whereNumber('id');
     Route::get('/posts', [ProfileController::class, 'posts']);

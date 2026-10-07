@@ -21,6 +21,26 @@ class ProfileController extends Controller
         return response()->json(['data' => $this->payload($request->user())]);
     }
 
+    // Kunci karakter yang boleh dipilih (harus sama dengan AvatarCatalog di Flutter)
+    public const AVATARS = [
+        'engduck', 'japduck', 'korduck',
+        'qua_chef', 'qua_scholar',
+        'binbin_cardigan', 'binbin_florist', 'binbin_winter',
+    ];
+
+    // PUT /api/profile/avatar
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'avatar_character' => ['required', 'string', 'in:'.implode(',', self::AVATARS)],
+        ]);
+
+        $me = $request->user();
+        $me->update(['avatar_character' => $validated['avatar_character']]);
+
+        return response()->json(['data' => $this->payload($me)]);
+    }
+
     // GET /api/profile/suggestions
     public function suggestions(Request $request): JsonResponse
     {
@@ -139,6 +159,7 @@ class ProfileController extends Controller
             'native_language' => $user->native_language,
             'country' => $user->country,
             'avatar_path' => $user->avatar_path,
+            'avatar_character' => $user->avatar_character,
             'joined_at' => optional($user->created_at)->toIso8601String(),
             'following_count' => $user->following()->count(),
             'followers_count' => $user->followers()->count(),

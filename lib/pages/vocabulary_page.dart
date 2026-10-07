@@ -132,11 +132,7 @@ class _VocabularyPageState extends State<VocabularyPage> {
         'meaning': 'Makanan',
         'example': 'I eumsik-eun masisseoyo.',
       },
-      {
-        'word': 'Jip',
-        'meaning': 'Rumah',
-        'example': 'Uri jip-eun keoyo.',
-      },
+      {'word': 'Jip', 'meaning': 'Rumah', 'example': 'Uri jip-eun keoyo.'},
       {
         'word': 'Gongbu',
         'meaning': 'Belajar',
@@ -173,20 +169,14 @@ class _VocabularyPageState extends State<VocabularyPage> {
 
               Text(
                 item['meaning']!,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 18),
               ),
 
               const SizedBox(height: 20),
 
               const Text(
                 'Contoh kalimat',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 13),
               ),
 
               const SizedBox(height: 8),
@@ -237,11 +227,7 @@ class _VocabularyPageState extends State<VocabularyPage> {
           ),
           child: Column(
             children: [
-              Image.asset(
-                flags[language]!,
-                height: 24,
-                fit: BoxFit.contain,
-              ),
+              Image.asset(flags[language]!, height: 24, fit: BoxFit.contain),
 
               const SizedBox(height: 6),
 
@@ -298,10 +284,7 @@ class _VocabularyPageState extends State<VocabularyPage> {
 
             Text(
               '${words.length} kata tersedia. Ketuk untuk melihat contoh.',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
             ),
 
             const SizedBox(height: 15),

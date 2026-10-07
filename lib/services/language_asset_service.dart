@@ -12,20 +12,6 @@ class LanguageAssetService {
     }
   }
 
-  // Foto (gambar diam) karakter untuk halaman profil.
-  static String profileAvatarFor(String? language) {
-    switch (language?.toLowerCase()) {
-      case 'japanese':
-      case 'jepang':
-        return 'assets/avatar/japduck.png';
-      case 'korean':
-      case 'korea':
-        return 'assets/avatar/korduck.png';
-      default:
-        return 'assets/avatar/engduck.png';
-    }
-  }
-
   static String flagFor(String? language) {
     switch (language?.toLowerCase()) {
       case 'japanese':

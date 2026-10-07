@@ -21,8 +21,18 @@ class _StreakCalendarPageState extends State<StreakCalendarPage> {
   late DateTime _visibleMonth;
 
   static const monthNames = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
   ];
   static const dayLabels = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
 
@@ -141,26 +151,31 @@ class _StreakCalendarPageState extends State<StreakCalendarPage> {
   Widget _buildWeekdayLabels() {
     return Row(
       children: dayLabels
-          .map((d) => Expanded(
-                child: Center(
-                  child: Text(
-                    d,
-                    style: GoogleFonts.nunito(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
+          .map(
+            (d) => Expanded(
+              child: Center(
+                child: Text(
+                  d,
+                  style: GoogleFonts.nunito(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ))
+              ),
+            ),
+          )
           .toList(),
     );
   }
 
   Widget _buildCalendarGrid() {
     final firstOfMonth = DateTime(_visibleMonth.year, _visibleMonth.month, 1);
-    final daysInMonth =
-        DateTime(_visibleMonth.year, _visibleMonth.month + 1, 0).day;
+    final daysInMonth = DateTime(
+      _visibleMonth.year,
+      _visibleMonth.month + 1,
+      0,
+    ).day;
     // Monday = 1 ... Sunday = 7 in DateTime.weekday; grid starts on Monday.
     final leadingBlanks = firstOfMonth.weekday - 1;
     final today = DateTime.now();
@@ -176,7 +191,14 @@ class _StreakCalendarPageState extends State<StreakCalendarPage> {
       final isToday = PlayerProgress.dayKey(today) == key;
       final isFuture = date.isAfter(today);
 
-      cells.add(_DayCell(day: day, studied: studied, isToday: isToday, isFuture: isFuture));
+      cells.add(
+        _DayCell(
+          day: day,
+          studied: studied,
+          isToday: isToday,
+          isFuture: isFuture,
+        ),
+      );
     }
 
     return GridView.count(

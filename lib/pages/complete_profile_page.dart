@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../services/language_asset_service.dart';
+import '../services/avatar_catalog.dart';
 import '../services/profile_service.dart';
 
 // Syarat melengkapi profil: ikuti minimal 1 user dan sukai minimal 1 postingan.
@@ -215,7 +215,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
             ),
             clipBehavior: Clip.antiAlias,
             child: Image.asset(
-              LanguageAssetService.profileAvatarFor(user.learningLanguage),
+              AvatarCatalog.forLanguage(user.learningLanguage).asset,
               fit: BoxFit.contain,
               alignment: Alignment.bottomCenter,
             ),

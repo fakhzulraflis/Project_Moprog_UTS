@@ -54,10 +54,10 @@ class _DummyLeaderboardService implements LeaderboardService {
   Future<List<LeaderboardUser>> getWeeklyLeaderboard() async {
     await Future.delayed(const Duration(milliseconds: 300));
     return _rawUsers
-        .map((json) => LeaderboardUser.fromJson(
-              json,
-              currentUserId: _currentUserId,
-            ))
+        .map(
+          (json) =>
+              LeaderboardUser.fromJson(json, currentUserId: _currentUserId),
+        )
         .toList()
       ..sort((a, b) => a.rank.compareTo(b.rank));
   }

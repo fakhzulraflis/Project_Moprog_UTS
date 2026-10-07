@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../pages/complete_profile_page.dart';
+import '../pages/edit_avatar_page.dart';
+import '../services/avatar_catalog.dart';
+import '../widgets/animated_avatar.dart';
 import '../services/language_asset_service.dart';
 import '../services/profile_service.dart';
 
@@ -72,6 +75,21 @@ class _ProfilePageState extends State<ProfilePage> {
   // Bahasa yang dipelajari user (dari database), cadangan dari login.
   String get selectedLanguage =>
       _profile?.learningLanguage ?? widget.fallbackLanguage;
+
+  AvatarCharacter get _avatar => AvatarCatalog.resolve(
+    character: _profile?.avatarCharacter,
+    language: selectedLanguage,
+  );
+
+  Future<void> _openEditAvatar() async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditAvatarPage(currentKey: _avatar.key),
+      ),
+    );
+    if (changed == true) _loadProfile();
+  }
 
   String get _fullname => _profile?.fullname ?? '';
   String get _username => _profile?.username ?? '';
@@ -201,11 +219,26 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // Potret karakter: lebih besar dari kartu supaya bagian kaki terpotong
+  // dan wajahnya terlihat jelas. Hanya wajah yang dianimasikan.
   Widget _buildAvatar() {
-    return Image.asset(
-      LanguageAssetService.profileAvatarFor(selectedLanguage),
-      fit: BoxFit.contain,
-      alignment: Alignment.bottomCenter,
+    return LayoutBuilder(
+      builder: (context, c) => OverflowBox(
+        alignment: Alignment.topCenter,
+        minWidth: 0,
+        maxWidth: double.infinity,
+        minHeight: 0,
+        maxHeight: double.infinity,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: AnimatedAvatar(
+            key: ValueKey(_avatar.key),
+            character: _avatar,
+            height: c.maxHeight * 1.3,
+            bodyMotion: false,
+          ),
+        ),
+      ),
     );
   }
 
@@ -261,7 +294,7 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       child: IconButton(
         tooltip: "Edit profile",
-        onPressed: () {},
+        onPressed: _openEditAvatar,
         icon: const Icon(Icons.edit_rounded),
         color: const Color(0xFF343A37),
         iconSize: 24,
@@ -562,10 +595,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
               ),
-              Image.asset(
-                LanguageAssetService.profileAvatarFor(selectedLanguage),
-                height: 110,
-                fit: BoxFit.contain,
+              AnimatedAvatar(
+                key: ValueKey('account-${_avatar.key}'),
+                character: _avatar,
+                height: 170,
               ),
             ],
           ),

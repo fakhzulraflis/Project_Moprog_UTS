@@ -12,6 +12,7 @@ class UserProfile {
   final String username;
   final String email;
   final String learningLanguage;
+  final String? avatarCharacter;
   final DateTime? joinedAt;
   final int followingCount;
   final int followersCount;
@@ -24,6 +25,7 @@ class UserProfile {
     required this.username,
     required this.email,
     required this.learningLanguage,
+    required this.avatarCharacter,
     required this.joinedAt,
     required this.followingCount,
     required this.followersCount,
@@ -46,6 +48,7 @@ class UserProfile {
       username: (json['username'] ?? '').toString(),
       email: (json['email'] ?? '').toString(),
       learningLanguage: (json['learning_language'] ?? 'English').toString(),
+      avatarCharacter: json['avatar_character'] as String?,
       joinedAt: DateTime.tryParse((json['joined_at'] ?? '').toString())
           ?.toLocal(),
       followingCount: (json['following_count'] as num?)?.toInt() ?? 0,
@@ -160,6 +163,16 @@ class ProfileService {
   static Future<UserProfile> getProfile() async {
     final body = await _get('/profile');
     return UserProfile.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
+  static Future<void> setAvatar(String key) async {
+    await AuthSession.instance.load();
+    final response = await http.put(
+      Uri.parse('${ApiService.baseUrl}/profile/avatar'),
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode({'avatar_character': key}),
+    );
+    _decode(response);
   }
 
   static Future<List<SuggestedUser>> getSuggestions() async {
