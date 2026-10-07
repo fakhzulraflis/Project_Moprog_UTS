@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 class UnitData {
-  final int section; // nomor bagian
-  final int unit; // nomor unit
-  final String title; // judul unit
-  final Color color; // warna header
-  final Color nodeColor; // warna lingkaran & popup
-  final List<String> lessonTitles; // jumlah item = jumlah pelajaran
-
+  final int section;
+  final int unit;
+  final String title;
+  final Color color;
+  final Color nodeColor;
+  final List<String> lessonTitles;
+  final List<int> lessonIds;
   final List<int> chestAfter;
 
   const UnitData({
@@ -17,6 +17,7 @@ class UnitData {
     required this.color,
     required this.nodeColor,
     required this.lessonTitles,
+    required this.lessonIds,
     this.chestAfter = const [],
   });
 
@@ -25,6 +26,5 @@ class UnitData {
   int get chestCount =>
       chestAfter.toSet().where((n) => n >= 1 && n <= lessonCount).length;
 
-  /// Total slot di jalur = pelajaran + peti
   int get slotCount => lessonCount + chestCount;
 }
