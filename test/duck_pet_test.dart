@@ -141,4 +141,66 @@ void main() {
     expect(pet.name, 'Bebeku');
     expect(pet.equipped, {DuckPet.wardrobe.first.type});
   });
+
+  group('level Quacko', () {
+    test('XP yang dibutuhkan tiap level', () {
+      expect(DuckPet.levelForXp(0), 1);
+      expect(DuckPet.levelForXp(29), 1);
+      expect(DuckPet.levelForXp(30), 2);
+      expect(DuckPet.levelForXp(90), 3);
+      expect(DuckPet.levelForXp(180), 4);
+      expect(DuckPet.levelForXp(999999), DuckPet.maxLevel);
+    });
+
+    test('tahap pertumbuhan mengikuti level', () {
+      expect(DuckPet.stageForLevel(3), DuckStage.duckling);
+      expect(DuckPet.stageForLevel(4), DuckStage.teen);
+      expect(DuckPet.stageForLevel(6), DuckStage.teen);
+      expect(DuckPet.stageForLevel(7), DuckStage.adult);
+    });
+
+    test('lesson, roti, dan elus memberi XP ke Quacko', () async {
+      await start({'pet_fullness': 40.0});
+
+      await progress.completeLesson();
+      expect(pet.xp, 10);
+      await pet.feed();
+      expect(pet.xp, 10 + DuckPet.feedXp);
+      await pet.pet();
+      expect(pet.xp, 10 + DuckPet.feedXp + DuckPet.petXp);
+    });
+
+    test('naik level memberi gem dan dirayakan sekali', () async {
+      await start({'pet_xp': 25});
+      expect(pet.level, 1);
+
+      await progress.completeLesson(); // +10 XP, jadi 35
+      expect(pet.level, 2);
+      expect(pet.pendingLevelUp, 2);
+      expect(progress.gems, 50 + DuckPet.gemsPerLevel * 2);
+
+      await pet.clearLevelUp();
+      expect(pet.pendingLevelUp, 0);
+    });
+
+    test('lompat beberapa level sekaligus, hadiahnya dijumlah', () async {
+      await start();
+      expect(pet.gainXp(180), 20 + 30 + 40);
+      expect(pet.level, 4);
+      expect(pet.stage, DuckStage.teen);
+    });
+
+    test('quest santai: elus dan beri makan Quacko', () async {
+      await start({'pet_fullness': 40.0});
+
+      for (var i = 0; i < 3; i++) {
+        await pet.pet();
+        skip(DuckPet.petCooldown);
+      }
+      await pet.feed();
+
+      expect(progress.petsToday, 3);
+      expect(progress.feedsToday, 1);
+    });
+  });
 }

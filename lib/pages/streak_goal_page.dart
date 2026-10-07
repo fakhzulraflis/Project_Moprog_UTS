@@ -32,7 +32,7 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Set your streak goal',
+              'Tentukan target belajarmu',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 28,
@@ -43,7 +43,7 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
             const SizedBox(height: 8),
 
             const Text(
-              'How many days in a row do you want to study?',
+              'Berapa hari berturut-turut kamu ingin belajar?',
               style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
 
@@ -83,7 +83,7 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
                           const SizedBox(width: 15),
 
                           Text(
-                            '$streak Day Streak',
+                            '$streak Hari Beruntun',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -127,7 +127,7 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
                   ),
                 ),
                 child: const Text(
-                  'CONTINUE',
+                  'LANJUT',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
