@@ -33,7 +33,7 @@ class _WordChasePageState extends State<WordChasePage> {
   bool isLoading = true;
   bool isAnswerChecked = false;
   bool? isAnswerCorrect;
-  bool isTimeUp = false;
+  bool isFinished = false;
 
   int questionIndex = 0;
 
@@ -42,7 +42,9 @@ class _WordChasePageState extends State<WordChasePage> {
   int score = 0;
   int correctAnswers = 0;
   int wrongAnswers = 0;
+
   int combo = 0;
+  int bestCombo = 0;
 
   @override
   void initState() {
@@ -79,6 +81,19 @@ class _WordChasePageState extends State<WordChasePage> {
     return '$minutes:${remaining.toString().padLeft(2, '0')}';
   }
 
+  double get accuracy {
+    final totalAnswers =
+        correctAnswers + wrongAnswers;
+
+    if (totalAnswers == 0) {
+      return 0;
+    }
+
+    return correctAnswers /
+        totalAnswers *
+        100;
+  }
+
   Future<void> loadVocabularies() async {
     gameTimer?.cancel();
 
@@ -88,14 +103,18 @@ class _WordChasePageState extends State<WordChasePage> {
 
       questionIndex = 0;
 
-      remainingSeconds = gameDuration;
+      remainingSeconds =
+          gameDuration;
 
       score = 0;
+
       correctAnswers = 0;
       wrongAnswers = 0;
-      combo = 0;
 
-      isTimeUp = false;
+      combo = 0;
+      bestCombo = 0;
+
+      isFinished = false;
 
       selectedAnswer = null;
       isAnswerChecked = false;
@@ -103,12 +122,14 @@ class _WordChasePageState extends State<WordChasePage> {
     });
 
     try {
-      final result = await ApiService.getVocabularies();
+      final result =
+          await ApiService.getVocabularies();
 
       if (!mounted) return;
 
-      final shuffled = List<Vocabulary>.from(result)
-        ..shuffle();
+      final shuffled =
+          List<Vocabulary>.from(result)
+            ..shuffle();
 
       setState(() {
         vocabularies = shuffled;
@@ -131,7 +152,9 @@ class _WordChasePageState extends State<WordChasePage> {
         isLoading = false;
       });
 
-      debugPrint('Kejar Kata error: $e');
+      debugPrint(
+        'Kejar Kata error: $e',
+      );
     }
   }
 
@@ -151,10 +174,12 @@ class _WordChasePageState extends State<WordChasePage> {
 
           setState(() {
             remainingSeconds = 0;
-            isTimeUp = true;
+
+            isFinished = true;
 
             selectedAnswer = null;
             isAnswerChecked = false;
+            isAnswerCorrect = null;
           });
         } else {
           setState(() {
@@ -170,16 +195,21 @@ class _WordChasePageState extends State<WordChasePage> {
       return;
     }
 
-    if (questionIndex >= vocabularies.length) {
+    if (questionIndex >=
+        vocabularies.length) {
       vocabularies.shuffle();
+
       questionIndex = 0;
     }
 
     currentVocabulary =
-        vocabularies[questionIndex];
+        vocabularies[
+            questionIndex];
 
     final correctAnswer =
-        getTranslation(currentVocabulary!);
+        getTranslation(
+      currentVocabulary!,
+    );
 
     final distractorVocabularies =
         vocabularies
@@ -198,10 +228,16 @@ class _WordChasePageState extends State<WordChasePage> {
     for (final vocabulary
         in distractorVocabularies) {
       final translation =
-          getTranslation(vocabulary);
+          getTranslation(
+        vocabulary,
+      );
 
-      if (!options.contains(translation)) {
-        options.add(translation);
+      if (!options.contains(
+        translation,
+      )) {
+        options.add(
+          translation,
+        );
       }
 
       if (options.length == 4) {
@@ -218,8 +254,11 @@ class _WordChasePageState extends State<WordChasePage> {
     isAnswerCorrect = null;
   }
 
-  void selectAnswer(String answer) {
-    if (isAnswerChecked || isTimeUp) {
+  void selectAnswer(
+    String answer,
+  ) {
+    if (isAnswerChecked ||
+        isFinished) {
       return;
     }
 
@@ -232,15 +271,18 @@ class _WordChasePageState extends State<WordChasePage> {
     if (selectedAnswer == null ||
         currentVocabulary == null ||
         isAnswerChecked ||
-        isTimeUp) {
+        isFinished) {
       return;
     }
 
     final correctAnswer =
-        getTranslation(currentVocabulary!);
+        getTranslation(
+      currentVocabulary!,
+    );
 
     final correct =
-        selectedAnswer == correctAnswer;
+        selectedAnswer ==
+            correctAnswer;
 
     setState(() {
       isAnswerChecked = true;
@@ -252,6 +294,10 @@ class _WordChasePageState extends State<WordChasePage> {
         score += 10;
 
         combo++;
+
+        if (combo > bestCombo) {
+          bestCombo = combo;
+        }
       } else {
         wrongAnswers++;
 
@@ -261,7 +307,7 @@ class _WordChasePageState extends State<WordChasePage> {
   }
 
   void nextQuestion() {
-    if (isTimeUp) {
+    if (isFinished) {
       return;
     }
 
@@ -272,34 +318,57 @@ class _WordChasePageState extends State<WordChasePage> {
     });
   }
 
-  Color getOptionColor(String option) {
+  Color getOptionColor(
+    String option,
+  ) {
     if (!isAnswerChecked) {
-      if (selectedAnswer == option) {
-        return const Color(0xFFE7C249);
+      if (selectedAnswer ==
+          option) {
+        return const Color(
+          0xFFE7C249,
+        );
       }
 
-      return const Color(0xFF20272B);
+      return const Color(
+        0xFF20272B,
+      );
     }
 
     final correctAnswer =
-        getTranslation(currentVocabulary!);
+        getTranslation(
+      currentVocabulary!,
+    );
 
-    if (option == correctAnswer) {
-      return const Color(0xFF356859);
+    if (option ==
+        correctAnswer) {
+      return const Color(
+        0xFF356859,
+      );
     }
 
-    if (option == selectedAnswer &&
-        option != correctAnswer) {
-      return const Color(0xFF8B3A3A);
+    if (option ==
+            selectedAnswer &&
+        option !=
+            correctAnswer) {
+      return const Color(
+        0xFF8B3A3A,
+      );
     }
 
-    return const Color(0xFF20272B);
+    return const Color(
+      0xFF20272B,
+    );
   }
 
-  Color getOptionTextColor(String option) {
+  Color getOptionTextColor(
+    String option,
+  ) {
     if (!isAnswerChecked &&
-        selectedAnswer == option) {
-      return const Color(0xFF272F33);
+        selectedAnswer ==
+            option) {
+      return const Color(
+        0xFF272F33,
+      );
     }
 
     return Colors.white;
@@ -312,7 +381,8 @@ class _WordChasePageState extends State<WordChasePage> {
             MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            color: Color(0xFFE7C249),
+            color:
+                Color(0xFFE7C249),
           ),
 
           SizedBox(height: 20),
@@ -330,7 +400,8 @@ class _WordChasePageState extends State<WordChasePage> {
           Text(
             'Mengambil kosakata dari server',
             style: TextStyle(
-              color: Colors.white54,
+              color:
+                  Colors.white54,
             ),
           ),
         ],
@@ -341,33 +412,46 @@ class _WordChasePageState extends State<WordChasePage> {
   Widget buildError() {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(25),
+        padding:
+            const EdgeInsets.all(
+          25,
+        ),
         child: Column(
           mainAxisAlignment:
-              MainAxisAlignment.center,
+              MainAxisAlignment
+                  .center,
           children: [
             const Icon(
-              Icons.cloud_off_rounded,
-              color: Color(0xFFE7C249),
+              Icons
+                  .cloud_off_rounded,
+              color:
+                  Color(0xFFE7C249),
               size: 70,
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(
+              height: 20,
+            ),
 
             Text(
               errorMessage ??
                   'Terjadi kesalahan.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
+              textAlign:
+                  TextAlign.center,
+              style:
+                  const TextStyle(
                 color: Colors.white,
                 fontSize: 17,
               ),
             ),
 
-            const SizedBox(height: 25),
+            const SizedBox(
+              height: 25,
+            ),
 
             ElevatedButton(
-              onPressed: loadVocabularies,
+              onPressed:
+                  loadVocabularies,
               child: const Text(
                 'COBA LAGI',
               ),
@@ -385,15 +469,25 @@ class _WordChasePageState extends State<WordChasePage> {
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(
+        padding:
+            const EdgeInsets
+                .symmetric(
           vertical: 12,
           horizontal: 8,
         ),
-        decoration: BoxDecoration(
-          color: const Color(0xFF20272B),
-          borderRadius: BorderRadius.circular(14),
+        decoration:
+            BoxDecoration(
+          color:
+              const Color(
+            0xFF20272B,
+          ),
+          borderRadius:
+              BorderRadius
+                  .circular(14),
           border: Border.all(
-            color: const Color.fromARGB(
+            color:
+                const Color
+                    .fromARGB(
               40,
               255,
               255,
@@ -405,32 +499,129 @@ class _WordChasePageState extends State<WordChasePage> {
           children: [
             Icon(
               icon,
-              color: const Color(0xFFE7C249),
+              color:
+                  const Color(
+                0xFFE7C249,
+              ),
               size: 22,
             ),
 
-            const SizedBox(height: 5),
+            const SizedBox(
+              height: 5,
+            ),
 
             Text(
               value,
-              style: const TextStyle(
+              style:
+                  const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
 
-            const SizedBox(height: 2),
+            const SizedBox(
+              height: 2,
+            ),
 
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white54,
+              style:
+                  const TextStyle(
+                color:
+                    Colors.white54,
                 fontSize: 11,
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget buildResultStat({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding:
+          const EdgeInsets.all(16),
+      decoration:
+          BoxDecoration(
+        color:
+            const Color(
+          0xFF20272B,
+        ),
+        borderRadius:
+            BorderRadius
+                .circular(14),
+        border: Border.all(
+          color:
+              const Color
+                  .fromARGB(
+            40,
+            255,
+            255,
+            255,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 45,
+            height: 45,
+            decoration:
+                BoxDecoration(
+              color:
+                  const Color(
+                0xFFE7C249,
+              ),
+              borderRadius:
+                  BorderRadius
+                      .circular(
+                12,
+              ),
+            ),
+            child: Icon(
+              icon,
+              color:
+                  const Color(
+                0xFF272F33,
+              ),
+            ),
+          ),
+
+          const SizedBox(
+            width: 15,
+          ),
+
+          Expanded(
+            child: Text(
+              title,
+              style:
+                  const TextStyle(
+                color:
+                    Colors.white70,
+                fontSize: 15,
+              ),
+            ),
+          ),
+
+          Text(
+            value,
+            style:
+                const TextStyle(
+              color: Colors.white,
+              fontSize: 19,
+              fontWeight:
+                  FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -448,9 +639,11 @@ class _WordChasePageState extends State<WordChasePage> {
     IconData? statusIcon;
 
     if (isAnswerChecked) {
-      if (option == correctAnswer) {
+      if (option ==
+          correctAnswer) {
         statusIcon =
-            Icons.check_circle_rounded;
+            Icons
+                .check_circle_rounded;
       } else if (option ==
           selectedAnswer) {
         statusIcon =
@@ -464,27 +657,42 @@ class _WordChasePageState extends State<WordChasePage> {
       },
       child: AnimatedContainer(
         duration:
-            const Duration(milliseconds: 200),
+            const Duration(
+          milliseconds: 200,
+        ),
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
+        padding:
+            const EdgeInsets
+                .symmetric(
           horizontal: 18,
           vertical: 18,
         ),
-        decoration: BoxDecoration(
-          color: getOptionColor(option),
+        decoration:
+            BoxDecoration(
+          color:
+              getOptionColor(
+            option,
+          ),
           borderRadius:
-              BorderRadius.circular(16),
+              BorderRadius
+                  .circular(16),
           border: Border.all(
-            color: selectedAnswer == option
-                ? const Color(0xFFE7C249)
-                : const Color.fromARGB(
-                    50,
-                    255,
-                    255,
-                    255,
-                  ),
+            color:
+                selectedAnswer ==
+                        option
+                    ? const Color(
+                        0xFFE7C249,
+                      )
+                    : const Color
+                        .fromARGB(
+                        50,
+                        255,
+                        255,
+                        255,
+                      ),
             width:
-                selectedAnswer == option
+                selectedAnswer ==
+                        option
                     ? 2
                     : 1,
           ),
@@ -494,7 +702,8 @@ class _WordChasePageState extends State<WordChasePage> {
             Expanded(
               child: Text(
                 option,
-                style: TextStyle(
+                style:
+                    TextStyle(
                   color:
                       getOptionTextColor(
                     option,
@@ -506,10 +715,12 @@ class _WordChasePageState extends State<WordChasePage> {
               ),
             ),
 
-            if (statusIcon != null)
+            if (statusIcon !=
+                null)
               Icon(
                 statusIcon,
-                color: Colors.white,
+                color:
+                    Colors.white,
                 size: 22,
               ),
           ],
@@ -519,12 +730,14 @@ class _WordChasePageState extends State<WordChasePage> {
   }
 
   Widget buildGame() {
-    if (currentVocabulary == null) {
+    if (currentVocabulary ==
+        null) {
       return const Center(
         child: Text(
           'Kosakata tidak tersedia.',
           style: TextStyle(
-            color: Colors.white70,
+            color:
+                Colors.white70,
           ),
         ),
       );
@@ -532,25 +745,34 @@ class _WordChasePageState extends State<WordChasePage> {
 
     return SingleChildScrollView(
       padding:
-          const EdgeInsets.all(20),
+          const EdgeInsets.all(
+        20,
+      ),
       child: Column(
         crossAxisAlignment:
-            CrossAxisAlignment.start,
+            CrossAxisAlignment
+                .start,
         children: [
           Text(
             'Bahasa: ${widget.selectedLanguage}',
-            style: const TextStyle(
-              color: Colors.white54,
+            style:
+                const TextStyle(
+              color:
+                  Colors.white54,
               fontSize: 14,
             ),
           ),
 
-          const SizedBox(height: 15),
+          const SizedBox(
+            height: 15,
+          ),
 
           Row(
             children: [
               buildStatBox(
-                icon: Icons.timer_rounded,
+                icon:
+                    Icons
+                        .timer_rounded,
                 label: 'Waktu',
                 value:
                     formatTime(
@@ -558,39 +780,48 @@ class _WordChasePageState extends State<WordChasePage> {
                 ),
               ),
 
-              const SizedBox(width: 10),
+              const SizedBox(
+                width: 10,
+              ),
 
               buildStatBox(
                 icon:
-                    Icons.star_rounded,
+                    Icons
+                        .star_rounded,
                 label: 'Skor',
                 value:
                     score.toString(),
               ),
 
-              const SizedBox(width: 10),
+              const SizedBox(
+                width: 10,
+              ),
 
               buildStatBox(
                 icon:
-                    Icons.local_fire_department_rounded,
+                    Icons
+                        .local_fire_department_rounded,
                 label: 'Combo',
                 value: 'x$combo',
               ),
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(
+            height: 20,
+          ),
 
           Row(
             mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
+                MainAxisAlignment
+                    .spaceBetween,
             children: [
               Text(
                 'Benar: $correctAnswers',
                 style:
                     const TextStyle(
-                  color:
-                      Colors.greenAccent,
+                  color: Colors
+                      .greenAccent,
                   fontWeight:
                       FontWeight.bold,
                 ),
@@ -609,262 +840,462 @@ class _WordChasePageState extends State<WordChasePage> {
             ],
           ),
 
-          const SizedBox(height: 25),
+          const SizedBox(
+            height: 25,
+          ),
 
-          if (isTimeUp) ...[
+          const Center(
+            child: Icon(
+              Icons.bolt_rounded,
+              color:
+                  Color(0xFFE7C249),
+              size: 50,
+            ),
+          ),
+
+          const SizedBox(
+            height: 15,
+          ),
+
+          const Center(
+            child: Text(
+              'Apa terjemahan dari:',
+              style: TextStyle(
+                color:
+                    Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+          ),
+
+          const SizedBox(
+            height: 12,
+          ),
+
+          Center(
+            child: Text(
+              currentVocabulary!
+                  .indonesian,
+              textAlign:
+                  TextAlign.center,
+              style:
+                  const TextStyle(
+                color: Colors.white,
+                fontSize: 34,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+          ),
+
+          const SizedBox(
+            height: 35,
+          ),
+
+          ...answerOptions.map(
+            (option) {
+              return Padding(
+                padding:
+                    const EdgeInsets
+                        .only(
+                  bottom: 12,
+                ),
+                child:
+                    buildOptionButton(
+                  option,
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(
+            height: 15,
+          ),
+
+          if (isAnswerChecked) ...[
             Container(
-              width: double.infinity,
+              width:
+                  double.infinity,
               padding:
-                  const EdgeInsets.all(24),
+                  const EdgeInsets
+                      .all(16),
               decoration:
                   BoxDecoration(
                 color:
-                    const Color(
-                  0xFF20272B,
-                ),
+                    isAnswerCorrect ==
+                            true
+                        ? const Color(
+                            0xFF356859,
+                          )
+                        : const Color(
+                            0xFF8B3A3A,
+                          ),
                 borderRadius:
                     BorderRadius
-                        .circular(18),
-                border:
-                    Border.all(
-                  color:
-                      const Color(
-                    0xFFE7C249,
-                  ),
+                        .circular(
+                  14,
                 ),
               ),
-              child:
-                  const Column(
+              child: Row(
                 children: [
                   Icon(
-                    Icons
-                        .timer_off_rounded,
+                    isAnswerCorrect ==
+                            true
+                        ? Icons
+                            .check_circle_rounded
+                        : Icons
+                            .cancel_rounded,
                     color:
-                        Color(
-                      0xFFE7C249,
-                    ),
-                    size: 55,
+                        Colors.white,
                   ),
 
-                  SizedBox(
-                    height: 15,
+                  const SizedBox(
+                    width: 10,
                   ),
 
-                  Text(
-                    'Waktu Habis!',
-                    style:
-                        TextStyle(
-                      color:
-                          Colors.white,
-                      fontSize: 25,
-                      fontWeight:
-                          FontWeight
-                              .bold,
-                    ),
-                  ),
-
-                  SizedBox(
-                    height: 8,
-                  ),
-
-                  Text(
-                    'Hasil permainan akan ditampilkan pada tahap berikutnya.',
-                    textAlign:
-                        TextAlign.center,
-                    style:
-                        TextStyle(
-                      color: Colors
-                          .white70,
-                      fontSize: 14,
+                  Expanded(
+                    child: Text(
+                      isAnswerCorrect ==
+                              true
+                          ? 'Benar! +10 poin'
+                          : 'Belum tepat. Jawaban yang benar adalah ${getTranslation(currentVocabulary!)}.',
+                      style:
+                          const TextStyle(
+                        color:
+                            Colors.white,
+                        fontSize: 15,
+                        fontWeight:
+                            FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ] else ...[
-            const Center(
-              child: Icon(
-                Icons.bolt_rounded,
-                color:
-                    Color(0xFFE7C249),
-                size: 50,
-              ),
+
+            const SizedBox(
+              height: 20,
             ),
+          ],
 
-            const SizedBox(height: 15),
-
-            const Center(
-              child: Text(
-                'Apa terjemahan dari:',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
+          SizedBox(
+            width: double.infinity,
+            child:
+                ElevatedButton(
+              onPressed:
+                  isAnswerChecked
+                      ? nextQuestion
+                      : selectedAnswer !=
+                              null
+                          ? checkAnswer
+                          : null,
+              style:
+                  ElevatedButton
+                      .styleFrom(
+                backgroundColor:
+                    const Color(
+                  0xFFE7C249,
+                ),
+                disabledBackgroundColor:
+                    const Color(
+                  0xFF3C4448,
+                ),
+                padding:
+                    const EdgeInsets
+                        .symmetric(
+                  vertical: 16,
+                ),
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius
+                          .circular(
+                    14,
+                  ),
                 ),
               ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Center(
               child: Text(
-                currentVocabulary!
-                    .indonesian,
-                textAlign:
-                    TextAlign.center,
+                isAnswerChecked
+                    ? 'SOAL BERIKUTNYA'
+                    : 'PERIKSA JAWABAN',
                 style:
-                    const TextStyle(
-                  color: Colors.white,
-                  fontSize: 34,
+                    TextStyle(
+                  color:
+                      isAnswerChecked ||
+                              selectedAnswer !=
+                                  null
+                          ? const Color(
+                              0xFF272F33,
+                            )
+                          : Colors
+                              .white54,
+                  fontSize: 16,
                   fontWeight:
                       FontWeight.bold,
                 ),
               ),
             ),
+          ),
 
-            const SizedBox(height: 35),
+          const SizedBox(
+            height: 25,
+          ),
+        ],
+      ),
+    );
+  }
 
-            ...answerOptions.map(
-              (option) {
-                return Padding(
-                  padding:
-                      const EdgeInsets.only(
-                    bottom: 12,
-                  ),
-                  child:
-                      buildOptionButton(
-                    option,
-                  ),
-                );
-              },
+  Widget buildResult() {
+    return SingleChildScrollView(
+      padding:
+          const EdgeInsets.all(
+        25,
+      ),
+      child: Column(
+        children: [
+          const SizedBox(
+            height: 20,
+          ),
+
+          const Icon(
+            Icons
+                .emoji_events_rounded,
+            color:
+                Color(0xFFE7C249),
+            size: 90,
+          ),
+
+          const SizedBox(
+            height: 18,
+          ),
+
+          const Text(
+            'Waktu Habis!',
+            textAlign:
+                TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight:
+                  FontWeight.bold,
             ),
+          ),
 
-            const SizedBox(height: 15),
+          const SizedBox(
+            height: 8,
+          ),
 
-            if (isAnswerChecked) ...[
-              Container(
-                width:
-                    double.infinity,
-                padding:
-                    const EdgeInsets.all(
-                  16,
-                ),
-                decoration:
-                    BoxDecoration(
-                  color:
-                      isAnswerCorrect ==
-                              true
-                          ? const Color(
-                              0xFF356859)
-                          : const Color(
-                              0xFF8B3A3A),
-                  borderRadius:
-                      BorderRadius
-                          .circular(14),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isAnswerCorrect ==
-                              true
-                          ? Icons
-                              .check_circle_rounded
-                          : Icons
-                              .cancel_rounded,
-                      color:
-                          Colors.white,
-                    ),
+          const Text(
+            'Berikut hasil permainan Kejar Kata kamu.',
+            textAlign:
+                TextAlign.center,
+            style: TextStyle(
+              color:
+                  Colors.white70,
+              fontSize: 15,
+            ),
+          ),
 
-                    const SizedBox(
-                      width: 10,
-                    ),
+          const SizedBox(
+            height: 30,
+          ),
 
-                    Expanded(
-                      child: Text(
-                        isAnswerCorrect ==
-                                true
-                            ? 'Benar! +10 poin'
-                            : 'Belum tepat. Jawaban yang benar adalah ${getTranslation(currentVocabulary!)}.',
-                        style:
-                            const TextStyle(
-                          color:
-                              Colors.white,
-                          fontSize: 15,
-                          fontWeight:
-                              FontWeight
-                                  .bold,
-                        ),
-                      ),
-                    ),
-                  ],
+          Container(
+            width:
+                double.infinity,
+            padding:
+                const EdgeInsets
+                    .all(22),
+            decoration:
+                BoxDecoration(
+              color:
+                  const Color(
+                0xFF20272B,
+              ),
+              borderRadius:
+                  BorderRadius
+                      .circular(
+                18,
+              ),
+              border:
+                  Border.all(
+                color:
+                    const Color(
+                  0xFFE7C249,
                 ),
               ),
-
-              const SizedBox(
-                height: 20,
-              ),
-            ],
-
-            SizedBox(
-              width:
-                  double.infinity,
-              child: ElevatedButton(
-                onPressed:
-                    isAnswerChecked
-                        ? nextQuestion
-                        : selectedAnswer !=
-                                null
-                            ? checkAnswer
-                            : null,
-                style:
-                    ElevatedButton
-                        .styleFrom(
-                  backgroundColor:
-                      const Color(
-                    0xFFE7C249,
-                  ),
-                  disabledBackgroundColor:
-                      const Color(
-                    0xFF3C4448,
-                  ),
-                  padding:
-                      const EdgeInsets
-                          .symmetric(
-                    vertical: 16,
-                  ),
-                  shape:
-                      RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius
-                            .circular(
-                      14,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  isAnswerChecked
-                      ? 'SOAL BERIKUTNYA'
-                      : 'PERIKSA JAWABAN',
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  'SKOR AKHIR',
                   style:
                       TextStyle(
                     color:
-                        isAnswerChecked ||
-                                selectedAnswer !=
-                                    null
-                            ? const Color(
-                                0xFF272F33,
-                              )
-                            : Colors
-                                .white54,
-                    fontSize: 16,
+                        Colors.white54,
+                    fontSize: 13,
                     fontWeight:
                         FontWeight.bold,
                   ),
                 ),
+
+                const SizedBox(
+                  height: 5,
+                ),
+
+                Text(
+                  score.toString(),
+                  style:
+                      const TextStyle(
+                    color:
+                        Color(
+                      0xFFE7C249,
+                    ),
+                    fontSize: 42,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(
+            height: 20,
+          ),
+
+          buildResultStat(
+            icon:
+                Icons
+                    .check_circle_rounded,
+            title:
+                'Jawaban Benar',
+            value:
+                correctAnswers
+                    .toString(),
+          ),
+
+          const SizedBox(
+            height: 10,
+          ),
+
+          buildResultStat(
+            icon:
+                Icons.cancel_rounded,
+            title:
+                'Jawaban Salah',
+            value:
+                wrongAnswers
+                    .toString(),
+          ),
+
+          const SizedBox(
+            height: 10,
+          ),
+
+          buildResultStat(
+            icon:
+                Icons
+                    .percent_rounded,
+            title: 'Akurasi',
+            value:
+                '${accuracy.toStringAsFixed(0)}%',
+          ),
+
+          const SizedBox(
+            height: 10,
+          ),
+
+          buildResultStat(
+            icon:
+                Icons
+                    .local_fire_department_rounded,
+            title:
+                'Combo Terbaik',
+            value:
+                'x$bestCombo',
+          ),
+
+          const SizedBox(
+            height: 30,
+          ),
+
+          SizedBox(
+            width:
+                double.infinity,
+            child:
+                ElevatedButton(
+              onPressed:
+                  loadVocabularies,
+              style:
+                  ElevatedButton
+                      .styleFrom(
+                backgroundColor:
+                    const Color(
+                  0xFFE7C249,
+                ),
+                padding:
+                    const EdgeInsets
+                        .symmetric(
+                  vertical: 16,
+                ),
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius
+                          .circular(
+                    14,
+                  ),
+                ),
+              ),
+              child:
+                  const Text(
+                'MAIN LAGI',
+                style:
+                    TextStyle(
+                  color:
+                      Color(
+                    0xFF272F33,
+                  ),
+                  fontSize: 16,
+                  fontWeight:
+                      FontWeight.bold,
+                ),
               ),
             ),
-          ],
+          ),
 
-          const SizedBox(height: 25),
+          const SizedBox(
+            height: 10,
+          ),
+
+          SizedBox(
+            width:
+                double.infinity,
+            child: TextButton(
+              onPressed: () {
+                Navigator.pop(
+                  context,
+                );
+              },
+              child:
+                  const Text(
+                'KEMBALI KE LATIHAN',
+                style:
+                    TextStyle(
+                  color:
+                      Colors.white70,
+                  fontSize: 15,
+                  fontWeight:
+                      FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(
+            height: 20,
+          ),
         ],
       ),
     );
@@ -872,13 +1303,18 @@ class _WordChasePageState extends State<WordChasePage> {
 
   @override
   Widget build(
-      BuildContext context) {
+    BuildContext context,
+  ) {
     return Scaffold(
       backgroundColor:
-          const Color(0xFF272F33),
+          const Color(
+        0xFF272F33,
+      ),
       appBar: AppBar(
         backgroundColor:
-            const Color(0xFF272F33),
+            const Color(
+          0xFF272F33,
+        ),
         elevation: 0,
         iconTheme:
             const IconThemeData(
@@ -896,9 +1332,12 @@ class _WordChasePageState extends State<WordChasePage> {
       body: SafeArea(
         child: isLoading
             ? buildLoading()
-            : errorMessage != null
+            : errorMessage !=
+                    null
                 ? buildError()
-                : buildGame(),
+                : isFinished
+                    ? buildResult()
+                    : buildGame(),
       ),
     );
   }
