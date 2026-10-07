@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             LanguageCoursesSeeder::class,
             JapaneseQuestionSeeder::class,
             KoreanQuestionSeeder::class,
+            VocabularySeeder::class,
         ]);
     }
 }

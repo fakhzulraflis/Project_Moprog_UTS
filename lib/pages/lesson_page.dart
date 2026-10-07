@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import '../models/question.dart';
 import '../services/api_service.dart';
@@ -146,6 +147,11 @@ class _WordDragData {
 
 class _LessonPageState extends State<LessonPage> {
   final FlutterTts _flutterTts = FlutterTts();
+  final AudioPlayer _correctPlayer = AudioPlayer();
+  final AudioPlayer _wrongPlayer = AudioPlayer();
+  final AudioPlayer _completePlayer = AudioPlayer();
+  final AudioPlayer _failPlayer = AudioPlayer();
+
   List<Question> questions = [];
 
   bool isLoading = true;
@@ -190,14 +196,72 @@ class _LessonPageState extends State<LessonPage> {
   @override
   void initState() {
     super.initState();
+
+    _preloadSounds();
     loadQuestions();
   }
 
   @override
   void dispose() {
     _flutterTts.stop();
+    _correctPlayer.dispose();
+    _wrongPlayer.dispose();
+    _completePlayer.dispose();
+    _failPlayer.dispose();
     _textController.dispose();
     super.dispose();
+  }
+
+  Future<void> _preloadSounds() async {
+    try {
+      await Future.wait([
+        _preparePlayer(_correctPlayer, 'sounds/correct.mp3'),
+        _preparePlayer(_wrongPlayer, 'sounds/wrong.mp3'),
+        _preparePlayer(_completePlayer, 'sounds/complete.mp3'),
+        _preparePlayer(_failPlayer, 'sounds/fail.mp3'),
+      ]);
+
+      debugPrint('All sound effects preloaded');
+    } catch (e) {
+      debugPrint('Sound preload error: $e');
+    }
+  }
+
+  Future<void> _preparePlayer(AudioPlayer player, String asset) async {
+    await player.setReleaseMode(ReleaseMode.stop);
+    await player.setSource(AssetSource(asset));
+  }
+
+  Future<void> _playSound(String fileName) async {
+    try {
+      AudioPlayer player;
+
+      switch (fileName) {
+        case 'correct':
+          player = _correctPlayer;
+          break;
+
+        case 'wrong':
+          player = _wrongPlayer;
+          break;
+
+        case 'complete':
+          player = _completePlayer;
+          break;
+
+        case 'fail':
+          player = _failPlayer;
+          break;
+
+        default:
+          return;
+      }
+
+      await player.seek(Duration.zero);
+      await player.resume();
+    } catch (e) {
+      debugPrint('Sound effect error [$fileName]: $e');
+    }
   }
 
   Future<void> loadQuestions() async {
@@ -276,7 +340,7 @@ class _LessonPageState extends State<LessonPage> {
 
       await _flutterTts.setLanguage(widget.ttsCode);
 
-      await _flutterTts.setSpeechRate(slow ? 0.35 : 0.5);
+      await _flutterTts.setSpeechRate(slow ? 0.25 : 0.5);
 
       await _flutterTts.setPitch(1.0);
       await _flutterTts.setVolume(1.0);
@@ -354,6 +418,9 @@ class _LessonPageState extends State<LessonPage> {
     final correct =
         normalizeAnswer(answer) == normalizeAnswer(question.correctAnswer);
 
+    // Play immediately based on the actual result.
+    _playSound(correct ? 'correct' : 'wrong');
+
     _applyResult(correct);
   }
 
@@ -364,6 +431,8 @@ class _LessonPageState extends State<LessonPage> {
       (pair) =>
           matchedPairs[pair['left'].toString()] == pair['right'].toString(),
     );
+
+    _playSound(correct ? 'correct' : 'wrong');
 
     _applyResult(correct);
   }
@@ -397,6 +466,8 @@ class _LessonPageState extends State<LessonPage> {
     if (!correct) _pulseHeart();
 
     if (!correct && hearts == 0) {
+      _playSound('fail');
+
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) {
           showOutOfHeartsDialog();
@@ -430,6 +501,7 @@ class _LessonPageState extends State<LessonPage> {
         resetQuestionState();
       });
     } else {
+      _playSound('complete');
       showLessonComplete();
     }
   }
@@ -1774,7 +1846,7 @@ class _LessonPageState extends State<LessonPage> {
             color: canCheck ? _yellow : const Color(0xFF3A464D),
             lipColor: canCheck ? _yellowDark : const Color(0xFF2E383E),
             enabled: canCheck,
-            holdBeforeTap: true,
+            holdBeforeTap: false,
             onTap: checkAnswer,
             height: 52,
             depth: 5,
