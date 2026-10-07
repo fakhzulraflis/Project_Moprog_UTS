@@ -17,10 +17,63 @@ enum DuckAccessory {
   const DuckAccessory(this.slot);
 }
 
-// Gambar Quacko, anak bebek maskot aplikasi. Digambar pakai CustomPainter
-// supaya ekspresi dan aksesorisnya bisa berubah sesuai data.
+// Tahap pertumbuhan Quacko, ditentukan dari levelnya.
+enum DuckStage { duckling, teen, adult }
+
+// Ukuran tubuh tiap tahap, dalam pecahan dari lebar/tinggi kanvas.
+class DuckShape {
+  final Offset headCenter;
+  final double headRadius;
+  final Rect body;
+  final Rect belly;
+  final double wingSize;
+  final bool hasNeck;
+
+  const DuckShape({
+    required this.headCenter,
+    required this.headRadius,
+    required this.body,
+    required this.belly,
+    required this.wingSize,
+    this.hasNeck = false,
+  });
+
+  static const Map<DuckStage, DuckShape> all = {
+    // Anak bebek: kepala besar, badan bulat
+    DuckStage.duckling: DuckShape(
+      headCenter: Offset(0.5, 0.34),
+      headRadius: 0.25,
+      body: Rect.fromLTRB(0.22, 0.48, 0.78, 0.93),
+      belly: Rect.fromLTRB(0.34, 0.60, 0.66, 0.90),
+      wingSize: 1.0,
+    ),
+    // Remaja: kepala lebih kecil, badan lebih tinggi
+    DuckStage.teen: DuckShape(
+      headCenter: Offset(0.5, 0.29),
+      headRadius: 0.21,
+      body: Rect.fromLTRB(0.20, 0.43, 0.80, 0.93),
+      belly: Rect.fromLTRB(0.33, 0.55, 0.67, 0.90),
+      wingSize: 1.15,
+      hasNeck: true,
+    ),
+    // Dewasa: leher terlihat, badan lebar, sayap besar
+    DuckStage.adult: DuckShape(
+      headCenter: Offset(0.5, 0.26),
+      headRadius: 0.17,
+      body: Rect.fromLTRB(0.16, 0.50, 0.84, 0.93),
+      belly: Rect.fromLTRB(0.31, 0.58, 0.69, 0.90),
+      wingSize: 1.35,
+      hasNeck: true,
+    ),
+  };
+}
+
+// Gambar Quacko, bebek maskot aplikasi. Digambar pakai CustomPainter
+// supaya ekspresi, tahap pertumbuhan, dan aksesorisnya bisa berubah sesuai
+// data.
 class DuckPainter extends CustomPainter {
   final DuckMood mood;
+  final DuckStage stage;
   final Set<DuckAccessory> accessories;
 
   // 0.0 - 1.0, dipakai untuk mengepakkan sayap waktu senang
@@ -28,6 +81,7 @@ class DuckPainter extends CustomPainter {
 
   DuckPainter({
     required this.mood,
+    this.stage = DuckStage.duckling,
     this.accessories = const {},
     this.wingFlap = 0,
   });
@@ -40,18 +94,27 @@ class DuckPainter extends CustomPainter {
   static const Color eye = Color(0xFF3B2A20);
   static const Color cheek = Color(0xFFFF8A8A);
 
+  // Posisi kepala anak bebek. Semua bagian kepala (mata, paruh, topi, dll)
+  // digambar untuk ukuran ini, lalu digeser dan diperkecil sesuai tahapnya.
+  static const Offset babyHeadCenter = Offset(0.5, 0.34);
+  static const double babyHeadRadius = 0.25;
+
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
+    final shape = DuckShape.all[stage]!;
     final paint = Paint();
+
+    Rect scaled(Rect r) =>
+        Rect.fromLTRB(r.left * w, r.top * h, r.right * w, r.bottom * h);
 
     // Bayangan di bawah kaki
     paint.color = Colors.black.withValues(alpha: 0.25);
     canvas.drawOval(
       Rect.fromCenter(
         center: Offset(w * 0.5, h * 0.95),
-        width: w * 0.55,
+        width: w * (shape.body.width + 0.0),
         height: h * 0.06,
       ),
       paint,
@@ -72,33 +135,80 @@ class DuckPainter extends CustomPainter {
 
     // Sayap (di belakang badan). Waktu senang, sayap mengepak.
     final flap = mood == DuckMood.happy ? sin(wingFlap * pi) * 0.5 : 0.0;
+    final halfBody = shape.body.width / 2;
+    final wingY = shape.body.top + shape.body.height * 0.3;
     paint.color = yellowDark;
     for (final side in [-1, 1]) {
       canvas.save();
-      canvas.translate(w * (0.5 + side * 0.27), h * 0.62);
+      canvas.translate(w * (0.5 + side * (halfBody - 0.01)), h * wingY);
       canvas.rotate(side * (0.5 + flap));
       canvas.drawOval(
         Rect.fromCenter(
-          center: Offset(0, h * 0.08),
-          width: w * 0.16,
-          height: h * 0.24,
+          center: Offset(0, h * 0.08 * shape.wingSize),
+          width: w * 0.16 * shape.wingSize,
+          height: h * 0.24 * shape.wingSize,
         ),
         paint,
       );
       canvas.restore();
     }
 
+    // Leher untuk bebek remaja dan dewasa
+    if (shape.hasNeck) {
+      paint.color = yellow;
+      final neckWidth = shape.headRadius * 1.1;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(
+            w * (0.5 - neckWidth / 2),
+            h * shape.headCenter.dy,
+            w * (0.5 + neckWidth / 2),
+            h * (shape.body.top + 0.08),
+          ),
+          Radius.circular(w * 0.08),
+        ),
+        paint,
+      );
+    }
+
     // Badan dan perut
     paint.color = yellow;
-    canvas.drawOval(
-      Rect.fromLTRB(w * 0.22, h * 0.48, w * 0.78, h * 0.93),
-      paint,
-    );
+    canvas.drawOval(scaled(shape.body), paint);
     paint.color = belly;
-    canvas.drawOval(
-      Rect.fromLTRB(w * 0.34, h * 0.60, w * 0.66, h * 0.90),
-      paint,
-    );
+    canvas.drawOval(scaled(shape.belly), paint);
+
+    // Bulu ekor kecil di samping badan bebek dewasa
+    if (stage == DuckStage.adult) {
+      paint.color = yellowDark;
+      for (final side in [-1, 1]) {
+        final x = 0.5 + side * (halfBody - 0.03);
+        final tail = Path()
+          ..moveTo(w * x, h * 0.80)
+          ..quadraticBezierTo(
+            w * (x + side * 0.10),
+            h * 0.78,
+            w * (x + side * 0.08),
+            h * 0.70,
+          )
+          ..quadraticBezierTo(w * (x + side * 0.03), h * 0.76, w * x, h * 0.74)
+          ..close();
+        canvas.drawPath(tail, paint);
+      }
+    }
+
+    // Kepala dan semua isinya digambar dengan ukuran anak bebek, lalu
+    // dipindah dan diperkecil ke posisi kepala tahap sekarang.
+    final scale = shape.headRadius / babyHeadRadius;
+    canvas.save();
+    canvas.translate(w * shape.headCenter.dx, h * shape.headCenter.dy);
+    canvas.scale(scale);
+    canvas.translate(-w * babyHeadCenter.dx, -h * babyHeadCenter.dy);
+    drawHead(canvas, w, h);
+    canvas.restore();
+  }
+
+  void drawHead(Canvas canvas, double w, double h) {
+    final paint = Paint();
 
     if (accessories.contains(DuckAccessory.scarf)) drawScarf(canvas, w, h);
 
@@ -376,6 +486,7 @@ class DuckPainter extends CustomPainter {
   @override
   bool shouldRepaint(DuckPainter oldDelegate) =>
       oldDelegate.mood != mood ||
+      oldDelegate.stage != stage ||
       oldDelegate.wingFlap != wingFlap ||
       !setEquals(oldDelegate.accessories, accessories);
 
