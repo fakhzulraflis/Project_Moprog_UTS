@@ -1,3 +1,10 @@
+class ChoiceOption {
+  final String text;
+  final String? romanization;
+
+  const ChoiceOption(this.text, [this.romanization]);
+}
+
 class Question {
   final int id;
   final int lessonId;
@@ -6,11 +13,9 @@ class Question {
   final String correctAnswer;
   final dynamic options;
   final int order;
-
-  // Opsional: boleh null kalau backend belum mengirim
-  final String? audioText; // teks yang dibacakan (bahasa target)
-  final String? romanization; // romaji / cara baca, tampil di atas prompt
-  final String? meaning; // arti, tampil di panel "Benar! Artinya: ..."
+  final String? audioText;
+  final String? romanization;
+  final String? meaning;
 
   Question({
     required this.id,
@@ -40,12 +45,27 @@ class Question {
     );
   }
 
-  List<String> get stringOptions {
-    if (options is List) {
-      return List<String>.from(options);
+  List<ChoiceOption> get choiceOptions {
+    final raw = options;
+
+    if (raw is! List) {
+      return [];
     }
 
-    return [];
+    return raw.map<ChoiceOption>((item) {
+      if (item is Map) {
+        return ChoiceOption(
+          item['text']?.toString() ?? '',
+          item['romanization']?.toString(),
+        );
+      }
+
+      return ChoiceOption(item.toString());
+    }).toList();
+  }
+
+  List<String> get stringOptions {
+    return choiceOptions.map((option) => option.text).toList();
   }
 
   List<Map<String, dynamic>> get _mapOptions {
@@ -58,9 +78,7 @@ class Question {
     return [];
   }
 
-  // matching: [{"left": "...", "right": "..."}]
   List<Map<String, dynamic>> get matchingOptions => _mapOptions;
 
-  // image_choice: [{"label": "sushi", "image": "https://... atau assets/..."}]
   List<Map<String, dynamic>> get imageOptions => _mapOptions;
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/player_progress.dart';
-import '../tabs/home_page.dart';
+import 'create_account_page.dart';
 
 class StreakGoalPage extends StatefulWidget {
   final String selectedLanguage;
@@ -111,7 +111,7 @@ class _StreakGoalPageState extends State<StreakGoalPage> {
                         Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => HomePage(
+                            builder: (context) => CreateAccountPage(
                               selectedLanguage: widget.selectedLanguage,
                             ),
                           ),

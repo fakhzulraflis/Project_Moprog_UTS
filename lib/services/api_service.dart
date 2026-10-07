@@ -1,12 +1,192 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/question.dart';
 import '../models/vocabulary.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.68.118:8000/api';
+  static String get baseUrl {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8000/api';
+    }
+    return 'http://127.0.0.1:8000/api';
+  }
+
+  static Future<void> createAccount({
+    required String fullname,
+    required String username,
+    required String email,
+    required int birthDay,
+    required int birthMonth,
+    required int birthYear,
+    required String country,
+    required String nativeLanguage,
+    required String learningLanguage,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/register'),
+      headers: const {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'fullname': fullname,
+        'username': username,
+        'email': email,
+        'birth_day': birthDay,
+        'birth_month': birthMonth,
+        'birth_year': birthYear,
+        'country': country,
+        'native_language': nativeLanguage,
+        'learning_language': learningLanguage,
+        'password': password,
+        'password_confirmation': password,
+        'terms_accepted': true,
+      }),
+    );
+
+    if (response.statusCode == 201) return;
+
+    var message = 'Could not create account. Please try again.';
+    try {
+      final Object? responseBody = jsonDecode(response.body);
+      if (responseBody is Map<String, dynamic>) {
+        final errors = responseBody['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final firstError = errors.values.first;
+          if (firstError is List && firstError.isNotEmpty) {
+            message = firstError.first.toString();
+          }
+        } else if (responseBody['message'] is String) {
+          message = responseBody['message'] as String;
+        }
+      }
+    } on FormatException {
+      message = 'Could not connect to the account service.';
+    }
+
+    throw Exception(message);
+  }
+
+  static Future<Map<String, dynamic>> login({
+    required String usernameOrEmail,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/login'),
+      headers: const {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'username_or_email': usernameOrEmail,
+        'password': password,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final decodedBody = jsonDecode(response.body);
+      if (decodedBody is Map<String, dynamic>) {
+        return decodedBody;
+      }
+      throw const FormatException('Invalid login response.');
+    }
+
+    var message = 'Invalid username/email or password.';
+    try {
+      final Object? responseBody = jsonDecode(response.body);
+      if (responseBody is Map<String, dynamic>) {
+        final errors = responseBody['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final firstError = errors.values.first;
+          if (firstError is List && firstError.isNotEmpty) {
+            message = firstError.first.toString();
+          }
+        } else if (responseBody['message'] is String) {
+          message = responseBody['message'] as String;
+        }
+      }
+    } on FormatException {
+      message = 'Could not connect to the account service.';
+    }
+
+    throw Exception(message);
+  }
+
+  static Future<void> requestPasswordReset({
+    required String usernameOrEmail,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/forgot-password'),
+      headers: const {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'username_or_email': usernameOrEmail}),
+    );
+
+    if (response.statusCode == 200) return;
+    throw Exception(
+      _responseError(
+        response,
+        'Could not request a reset code. Please try again.',
+      ),
+    );
+  }
+
+  static Future<void> resetPassword({
+    required String usernameOrEmail,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/reset-password'),
+      headers: const {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'username_or_email': usernameOrEmail,
+        'token': token,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      }),
+    );
+
+    if (response.statusCode == 200) return;
+    throw Exception(
+      _responseError(
+        response,
+        'Could not change your password. Please try again.',
+      ),
+    );
+  }
+
+  static String _responseError(http.Response response, String fallback) {
+    try {
+      final Object? responseBody = jsonDecode(response.body);
+      if (responseBody is Map<String, dynamic>) {
+        final errors = responseBody['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final firstError = errors.values.first;
+          if (firstError is List && firstError.isNotEmpty) {
+            return firstError.first.toString();
+          }
+        }
+        if (responseBody['message'] is String) {
+          return responseBody['message'] as String;
+        }
+      }
+    } on FormatException {
+      return 'Could not connect to the account service.';
+    }
+
+    return fallback;
+  }
 
   static Future<List<Question>> getQuestions(int lessonId) async {
     final response = await http.get(

@@ -4,21 +4,21 @@ import 'package:flutter/material.dart';
 
 import '../models/unit_data.dart';
 import '../pages/lesson_page.dart';
+import '../services/course_service.dart';
 import '../widgets/chest_node.dart';
 import '../widgets/gem_burst.dart';
 import '../widgets/lesson_node.dart';
 import '../widgets/lesson_popup.dart';
 import '../widgets/unit_header.dart';
 
-// Satu slot di jalur: pelajaran atau peti
 class _Slot {
   final int unit;
-  final int index; // urutan di dalam unit (pelajaran + peti)
-  final int order; // urutan global (untuk zigzag)
+  final int index;
+  final int order;
   final bool isChest;
-  final int
-  lessonId; // pelajaran: id-nya sendiri; peti: id pelajaran sebelumnya
-  final int lessonIndex; // pelajaran: indeks di unit (0-based); peti: -1
+  final int lessonId;
+  final int apiLessonId;
+  final int lessonIndex;
 
   const _Slot({
     required this.unit,
@@ -26,6 +26,7 @@ class _Slot {
     required this.order,
     required this.isChest,
     required this.lessonId,
+    required this.apiLessonId,
     required this.lessonIndex,
   });
 }
@@ -41,82 +42,41 @@ class LearnPage extends StatefulWidget {
 
 class _LearnPageState extends State<LearnPage> {
   final ScrollController _scroll = ScrollController();
-  final GlobalKey _gemsKey = GlobalKey(); // target animasi gems
+  final GlobalKey _gemsKey = GlobalKey();
+
+  List<UnitData> units = [];
+  List<_Slot> _slots = [];
+  bool isLoading = true;
+  String? errorMessage;
+  String ttsCode = 'en-US';
 
   int completedLessons = 0;
-  int? selectedLessonId; // node yang sedang menampilkan popup
-  int headerIndex = 0; // unit yang sedang tampil di header
+  int? selectedLessonId;
+  int headerIndex = 0;
 
   int gems = 0;
   bool gemPulse = false;
-  final Set<int> openedChests =
-      {}; // diidentifikasi lewat id pelajaran sebelumnya
+  final Set<int> openedChests = {};
 
-  // =========================
-  // ZOOM HALAMAN
-  // =========================
   static const double zoom = 0.85;
 
-  // =========================
-  // HADIAH PETI
-  // =========================
-  static const int chestParticles = 10; // jumlah gems yang beterbangan
-  static const int gemsPerParticle = 2; // total hadiah = 10 x 2 = 20
+  static const int chestParticles = 10;
+  static const int gemsPerParticle = 2;
 
-  // =========================
-  // DATA UNIT (contoh, ganti sesuai materimu)
-  // =========================
-  static const List<UnitData> units = [
-    UnitData(
-      section: 1,
-      unit: 1,
-      title: 'Memesan Makanan & Minuman',
-      color: Color(0xFFFCCF10),
-      nodeColor: Color(0xFFFCCF10),
-      lessonTitles: [
-        'Memesan Makanan',
-        'Memesan Kopi & Teh',
-        'Membaca Menu',
-        'Memesan Minuman',
-        'Tantangan Unit',
-      ],
-      chestAfter: [2], // peti setelah pelajaran ke-2
-    ),
-    UnitData(
-      section: 1,
-      unit: 2,
-      title: 'Menanyakan Arah',
-      color: Color(0xFF1CB0F6),
-      nodeColor: Color(0xFFFF9600),
-      lessonTitles: [
-        'Bertanya Lokasi',
-        'Kiri dan Kanan',
-        'Naik Transportasi',
-        'Tantangan Unit',
-      ],
-      chestAfter: [3], // peti setelah pelajaran ke-3
-    ),
-  ];
-
-  // =========================
-  // TATA LETAK
-  // =========================
-  static const double slotHeight = 150; // tinggi tiap slot node
-  static const double topPad = 40; // ruang di atas node pertama tiap unit
-  static const double dividerHeight = 70; // pemisah antar unit
-  static const double popupSpace = 200; // perkiraan tinggi popup
-  static const double headerSwitchOffset =
-      60; // kapan header berganti saat scroll
+  static const double slotHeight = 170;
+  static const double topPad = 40;
+  static const double dividerHeight = 70;
+  static const double popupSpace = 200;
+  static const double headerSwitchOffset = 60;
 
   static const Color backgroundColor = Color(0xFF272F33);
   static const Color dividerColor = Color(0xFF52656D);
-
-  late final List<_Slot> _slots = _buildSlots();
 
   @override
   void initState() {
     super.initState();
     _scroll.addListener(_onScroll);
+    _loadPath();
   }
 
   @override
@@ -125,10 +85,55 @@ class _LearnPageState extends State<LearnPage> {
     super.dispose();
   }
 
-  // ---------- susun slot (pelajaran + peti) ----------
+  String get languageCode {
+    switch (widget.selectedLanguage) {
+      case 'Japanese':
+      case 'Jepang':
+        return 'ja';
+
+      case 'Korean':
+      case 'Korea':
+        return 'ko';
+
+      default:
+        return 'en';
+    }
+  }
+
+  Future<void> _loadPath() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final result = await CourseService.getPath(languageCode);
+
+      if (!mounted) return;
+
+      setState(() {
+        units = result.units;
+        ttsCode = result.ttsCode;
+        _slots = _buildSlots();
+        headerIndex = 0;
+        completedLessons = 0;
+        selectedLessonId = null;
+        openedChests.clear();
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
+
   List<_Slot> _buildSlots() {
     final out = <_Slot>[];
-    int lessonId = 0;
+    int lessonNumber = 0;
     int order = 0;
 
     for (int u = 0; u < units.length; u++) {
@@ -136,14 +141,16 @@ class _LearnPageState extends State<LearnPage> {
       int idx = 0;
 
       for (int j = 0; j < unit.lessonCount; j++) {
-        lessonId++;
+        lessonNumber++;
+
         out.add(
           _Slot(
             unit: u,
             index: idx++,
             order: order++,
             isChest: false,
-            lessonId: lessonId,
+            lessonId: lessonNumber,
+            apiLessonId: unit.lessonIds[j],
             lessonIndex: j,
           ),
         );
@@ -155,20 +162,21 @@ class _LearnPageState extends State<LearnPage> {
               index: idx++,
               order: order++,
               isChest: true,
-              lessonId: lessonId,
+              lessonId: lessonNumber,
+              apiLessonId: unit.lessonIds[j],
               lessonIndex: -1,
             ),
           );
         }
       }
     }
+
     return out;
   }
 
-  _Slot _lessonSlot(int lessonId) =>
-      _slots.firstWhere((s) => !s.isChest && s.lessonId == lessonId);
+  _Slot _lessonSlot(int lessonNumber) =>
+      _slots.firstWhere((s) => !s.isChest && s.lessonId == lessonNumber);
 
-  // ---------- helper hitung posisi ----------
   double _unitHeight(int u) =>
       (u > 0 ? dividerHeight : 0) + topPad + units[u].slotCount * slotHeight;
 
@@ -188,25 +196,70 @@ class _LearnPageState extends State<LearnPage> {
 
   double _popupTop(_Slot s) => _slotTop(s) + slotHeight - 4;
 
-  // ---------- header berganti saat scroll ----------
   void _onScroll() {
+    if (units.isEmpty) return;
+
     final offset = _scroll.offset;
     int idx = 0;
+
     for (int u = 1; u < units.length; u++) {
       if (offset + headerSwitchOffset >= _unitStart(u) + dividerHeight / 2) {
         idx = u;
       }
     }
+
     if (idx != headerIndex) setState(() => headerIndex = idx);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        backgroundColor: backgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFFCCF10)),
+        ),
+      );
+    }
+
+    if (errorMessage != null || units.isEmpty) {
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    errorMessage ?? 'Belum ada pelajaran untuk bahasa ini.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: _loadPath,
+                    child: const Text(
+                      'COBA LAGI',
+                      style: TextStyle(
+                        color: Color(0xFFFCCF10),
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
-        // Halaman digambar di kanvas yang lebih besar (ukuran / zoom),
-        // lalu diskala turun supaya pas di layar
         child: LayoutBuilder(
           builder: (context, constraints) {
             final w = constraints.maxWidth / zoom;
@@ -230,17 +283,11 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
-  // =========================
-  // ISI HALAMAN
-  // =========================
   Widget _buildContent() {
     final current = units[headerIndex];
 
     return Column(
       children: [
-        // =========================
-        // TOP BAR
-        // =========================
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
@@ -269,8 +316,6 @@ class _LearnPageState extends State<LearnPage> {
                     ),
                   ),
                   const SizedBox(width: 18),
-
-                  // ikon gems = tujuan animasi, ikut "berdenyut" saat gem tiba
                   AnimatedScale(
                     key: _gemsKey,
                     scale: gemPulse ? 1.3 : 1.0,
@@ -291,7 +336,6 @@ class _LearnPageState extends State<LearnPage> {
                     ),
                   ),
                   const SizedBox(width: 18),
-
                   Image.asset(
                     'assets/icons/hearts.png',
                     width: 24,
@@ -312,9 +356,6 @@ class _LearnPageState extends State<LearnPage> {
           ),
         ),
 
-        // =========================
-        // UNIT HEADER (menempel, berganti per unit)
-        // =========================
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
           child: UnitHeader(
@@ -322,17 +363,12 @@ class _LearnPageState extends State<LearnPage> {
             color: current.color,
             sectionLabel: 'BAGIAN ${current.section}, UNIT ${current.unit}',
             title: current.title,
-            onGuidebookTap: () {
-              // TODO: buka halaman panduan untuk unit ini
-            },
+            onGuidebookTap: () {},
           ),
         ),
 
         const SizedBox(height: 4),
 
-        // =========================
-        // JALUR PELAJARAN (bisa di-scroll)
-        // =========================
         Expanded(
           child: SingleChildScrollView(
             controller: _scroll,
@@ -343,14 +379,10 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
-  // =========================
-  // JALUR: satu Stack untuk semua unit
-  // =========================
   Widget _buildPath() {
     final baseHeight = _unitStart(units.length);
     double totalHeight = baseHeight;
 
-    // beri ruang ekstra bila popup mencapai dasar jalur
     if (selectedLessonId != null) {
       final popupBottom =
           _popupTop(_lessonSlot(selectedLessonId!)) + popupSpace;
@@ -367,12 +399,10 @@ class _LearnPageState extends State<LearnPage> {
       children.add(s.isChest ? _buildChestSlot(s) : _buildLessonSlot(s));
     }
 
-    // popup paling akhir = paling atas, tidak menggeser apa pun
     if (selectedLessonId != null) children.add(_buildPopup(selectedLessonId!));
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
-      // ketuk area kosong -> tutup popup
       onTap: () => setState(() => selectedLessonId = null),
       child: SizedBox(
         width: double.infinity,
@@ -408,7 +438,6 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
-  // ---------- slot pelajaran ----------
   Widget _buildLessonSlot(_Slot s) {
     final unit = units[s.unit];
     final id = s.lessonId;
@@ -416,7 +445,6 @@ class _LearnPageState extends State<LearnPage> {
     final isLast = s.lessonIndex == unit.lessonCount - 1;
     final isSelected = selectedLessonId == id;
 
-    // Piala tetap piala (abu/putih), centang hanya untuk node bintang
     final type = isLast
         ? NodeType.trophy
         : state == NodeState.completed
@@ -448,7 +476,6 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
-  // ---------- slot peti ----------
   Widget _buildChestSlot(_Slot s) {
     return Positioned(
       top: _slotTop(s),
@@ -481,7 +508,6 @@ class _LearnPageState extends State<LearnPage> {
       top: _popupTop(s),
       left: 24,
       right: 24,
-      // GestureDetector kosong: ketuk badan popup tidak menutupnya
       child: GestureDetector(
         onTap: () {},
         child: LessonPopup(
@@ -499,13 +525,11 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
-  // Warna teks popup: versi gelap dari warna kartu
   Color _popupTextColor(Color c) {
     final hsl = HSLColor.fromColor(c);
     return hsl.withLightness(0.14).toColor();
   }
 
-  // zigzag berlanjut antar slot (pelajaran & peti): 0, +50, 0, -50, 0 ...
   double _dxOf(int order) => math.sin(order * math.pi / 2) * 50;
 
   NodeState _stateOf(int lessonId) {
@@ -514,16 +538,12 @@ class _LearnPageState extends State<LearnPage> {
     return NodeState.locked;
   }
 
-  // Peti: terkunci sampai pelajaran sebelumnya selesai
   ChestState _chestStateOf(int afterLessonId) {
     if (openedChests.contains(afterLessonId)) return ChestState.opened;
     if (completedLessons >= afterLessonId) return ChestState.ready;
     return ChestState.locked;
   }
 
-  // =========================
-  // BUKA PETI + ANIMASI GEMS
-  // =========================
   Offset? _gemsTarget() {
     final box = _gemsKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return null;
@@ -540,7 +560,6 @@ class _LearnPageState extends State<LearnPage> {
 
     final target = _gemsTarget();
 
-    // cadangan: tujuan tidak ditemukan -> langsung tambahkan hadiah
     if (target == null) {
       setState(() => gems += chestParticles * gemsPerParticle);
       return;
@@ -557,7 +576,6 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
-  // Tiap gem yang sampai: tambah angka + ikon gems berdenyut sebentar
   void _onGemArrive() {
     if (!mounted) return;
 
@@ -571,7 +589,6 @@ class _LearnPageState extends State<LearnPage> {
     });
   }
 
-  // Tekan node: buka/tutup popup (node terkunci tidak memanggil ini)
   void _onNodeTap(int lessonId) {
     setState(() {
       selectedLessonId = selectedLessonId == lessonId ? null : lessonId;
@@ -583,22 +600,24 @@ class _LearnPageState extends State<LearnPage> {
     _openLesson(lessonId);
   }
 
-  Future<void> _openLesson(int lessonId) async {
+  Future<void> _openLesson(int lessonNumber) async {
+    final slot = _lessonSlot(lessonNumber);
+
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => LessonPage(lessonId: lessonId)),
+      MaterialPageRoute(
+        builder: (_) =>
+            LessonPage(lessonId: slot.apiLessonId, ttsCode: ttsCode),
+      ),
     );
 
     if (!mounted) return;
 
-    if (result == true && lessonId > completedLessons) {
-      setState(() => completedLessons = lessonId);
+    if (result == true && lessonNumber > completedLessons) {
+      setState(() => completedLessons = lessonNumber);
     }
   }
 
-  // =========================
-  // LANGUAGE FLAG
-  // =========================
   String _getLanguageFlagAsset() {
     switch (widget.selectedLanguage) {
       case 'Japanese':

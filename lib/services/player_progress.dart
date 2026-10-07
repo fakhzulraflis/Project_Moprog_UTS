@@ -67,6 +67,18 @@ class PlayerProgress extends ChangeNotifier {
   String lastStudyDay = '';
   int streakGoal = 7;
 
+  Set<String> studiedDays = {};
+
+  // Kelipatan streakGoal yang sudah pernah dapat reward, supaya reward
+  // tidak diberikan dua kali untuk kelipatan yang sama (misal 7, 14, 21).
+  Set<int> claimedStreakMilestones = {};
+
+  // Diisi sesaat setelah streak baru saja mencapai kelipatan streakGoal,
+  // supaya UI bisa menampilkan perayaan sekali lalu dikosongkan lagi
+  // lewat clearPendingStreakMilestone(). Tidak disimpan ke disk karena
+  // sifatnya cuma notifikasi sekali-tampil, bukan data permanen.
+  int? pendingStreakMilestone;
+
   // Roda hadiah harian
   String lastSpinDay = '';
   int lastSpinPrize = -1;
@@ -107,6 +119,10 @@ class PlayerProgress extends ChangeNotifier {
     questsThisMonth = p.getInt('questsThisMonth') ?? 0;
     monthlyClaimed = p.getBool('monthlyClaimed') ?? false;
 
+    studiedDays = (p.getStringList('studiedDays') ?? []).toSet();
+    claimedStreakMilestones = (p.getStringList('claimedStreakMilestones') ?? [])
+        .map(int.parse)
+        .toSet();
     storedStreak = p.getInt('streak') ?? 0;
     bestStreak = p.getInt('bestStreak') ?? 0;
     lastStudyDay = p.getString('lastStudyDay') ?? '';
@@ -155,6 +171,11 @@ class PlayerProgress extends ChangeNotifier {
       p.setString('month', month),
       p.setInt('questsThisMonth', questsThisMonth),
       p.setBool('monthlyClaimed', monthlyClaimed),
+      p.setStringList('studiedDays', studiedDays.toList()),
+      p.setStringList(
+        'claimedStreakMilestones',
+        claimedStreakMilestones.map((e) => e.toString()).toList(),
+      ),
       p.setInt('streak', storedStreak),
       p.setInt('bestStreak', bestStreak),
       p.setString('lastStudyDay', lastStudyDay),
@@ -401,11 +422,30 @@ class PlayerProgress extends ChangeNotifier {
 
   void recordStudyDay(DateTime now) {
     final today = dayKey(now);
+    studiedDays.add(today);
     if (lastStudyDay == today) return;
 
     storedStreak = lastStudyDay == yesterdayKey(now) ? storedStreak + 1 : 1;
     lastStudyDay = today;
     if (storedStreak > bestStreak) bestStreak = storedStreak;
+
+    if (streakGoal > 0 &&
+        storedStreak % streakGoal == 0 &&
+        claimedStreakMilestones.add(storedStreak)) {
+      applyLoot(ChestLoot(LootType.gems, 20));
+      pendingStreakMilestone = storedStreak;
+    }
+  }
+
+  int get streakCycleProgress {
+    if (streakGoal <= 0 || streak == 0) return 0;
+    final remainder = streak % streakGoal;
+    return remainder == 0 ? streakGoal : remainder;
+  }
+
+  void clearPendingStreakMilestone() {
+    pendingStreakMilestone = null;
+    notifyListeners();
   }
 
   // Dipanggil dari halaman Streak Goal waktu pemain memilih target.
