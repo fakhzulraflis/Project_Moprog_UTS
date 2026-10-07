@@ -1,54 +1,180 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class ProfilePage extends StatelessWidget {
-  final String selectedLanguage;
+import '../pages/complete_profile_page.dart';
+import '../services/language_asset_service.dart';
+import '../services/profile_service.dart';
 
-  const ProfilePage({super.key, required this.selectedLanguage});
+class ProfilePage extends StatefulWidget {
+  // Bahasa cadangan sebelum data profil dari backend selesai dimuat.
+  final String fallbackLanguage;
+
+  // Dipanggil saat tombol "Continue learning" ditekan (pindah ke tab Learn).
+  final VoidCallback? onContinueLearning;
+
+  const ProfilePage({
+    super.key,
+    required String selectedLanguage,
+    this.onContinueLearning,
+  }) : fallbackLanguage = selectedLanguage;
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  static const _months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  UserProfile? _profile;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      _loading = _profile == null;
+      _error = null;
+    });
+    try {
+      final profile = await ProfileService.getProfile();
+      if (!mounted) return;
+      setState(() {
+        _profile = profile;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+  // Bahasa yang dipelajari user (dari database), cadangan dari login.
+  String get selectedLanguage =>
+      _profile?.learningLanguage ?? widget.fallbackLanguage;
+
+  String get _fullname => _profile?.fullname ?? '';
+  String get _username => _profile?.username ?? '';
+
+  String get _memberSince {
+    final date = _profile?.joinedAt;
+    if (date == null) return '-';
+    return '${_months[date.month - 1]} ${date.year}';
+  }
+
+  Future<void> _openCompleteProfile() async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const CompleteProfilePage()),
+    );
+    if (changed == true) _loadProfile();
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF272F33),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_profile == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF272F33),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _error ?? 'Could not load profile.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.baloo2(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: _loadProfile,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF272F33),
 
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: RefreshIndicator(
+          onRefresh: _loadProfile,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
 
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                _buildProfileIdentity(),
+                  _buildProfileIdentity(),
 
-                const SizedBox(height: 4),
+                  const SizedBox(height: 4),
 
-                _buildProfileInfo(),
+                  _buildProfileInfo(),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                _buildStats(),
+                  _buildStats(),
 
-                const SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-                _buildProfileDivider(),
+                  _buildProfileDivider(),
 
-                const SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-                _buildCompleteProfileCard(),
+                  if (!_profile!.isComplete) ...[
+                    _buildCompleteProfileCard(),
 
-                const SizedBox(height: 24),
+                    const SizedBox(height: 24),
+                  ],
 
-                _buildCurrentLanguageCard(),
+                  _buildCurrentLanguageCard(),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                _buildAccountInformationCard(),
-              ],
+                  _buildAccountInformationCard(),
+                ],
+              ),
             ),
           ),
         ),
@@ -77,7 +203,7 @@ class ProfilePage extends StatelessWidget {
 
   Widget _buildAvatar() {
     return Image.asset(
-      'assets/avatar/japduck.png',
+      LanguageAssetService.profileAvatarFor(selectedLanguage),
       fit: BoxFit.contain,
       alignment: Alignment.bottomCenter,
     );
@@ -85,7 +211,7 @@ class ProfilePage extends StatelessWidget {
 
   Widget _buildProfileInfo() {
     return Text(
-      "Joined August 2026",
+      "Joined $_memberSince",
       style: GoogleFonts.baloo2(color: Colors.white70, fontSize: 16),
     );
   }
@@ -94,8 +220,8 @@ class ProfilePage extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: _statItem("0", "Following")),
-        Expanded(child: _statItem("0", "Followers")),
+        Expanded(child: _statItem("${_profile!.followingCount}", "Following")),
+        Expanded(child: _statItem("${_profile!.followersCount}", "Followers")),
         Expanded(child: _buildCoursesStatItem()),
       ],
     );
@@ -150,7 +276,7 @@ class ProfilePage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "FAKHZUL RAFLI S",
+          _fullname,
           style: GoogleFonts.baloo2(
             color: Colors.white,
             fontSize: 30,
@@ -158,7 +284,7 @@ class ProfilePage extends StatelessWidget {
           ),
         ),
         Text(
-          "zupazuu_",
+          _username,
           style: GoogleFonts.baloo2(color: Colors.white54, fontSize: 18),
         ),
       ],
@@ -186,20 +312,8 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  String _getCurrentLanguageFlag() {
-    switch (selectedLanguage.toLowerCase()) {
-      case 'japanese':
-      case 'jepang':
-        return 'assets/flags/japan.png';
-      case 'korean':
-      case 'korea':
-        return 'assets/flags/korea.png';
-      case 'english':
-      case 'inggris':
-      default:
-        return 'assets/flags/inggris.png';
-    }
-  }
+  String _getCurrentLanguageFlag() =>
+      LanguageAssetService.flagFor(selectedLanguage);
 
   Widget _buildCompleteProfileCard() {
     return Container(
@@ -227,7 +341,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "1 STEP LEFT",
+                      "${_profile!.stepsLeft} ${_profile!.stepsLeft == 1 ? "STEP" : "STEPS"} LEFT",
                       style: GoogleFonts.pixelifySans(
                         color: Colors.white54,
                         fontSize: 14,
@@ -245,27 +359,30 @@ class ProfilePage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 15),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF55B6E8),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0xFF3895C5),
-                  offset: Offset(0, 4),
-                  blurRadius: 0,
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                "CONTINUE",
-                style: GoogleFonts.baloo2(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+          GestureDetector(
+            onTap: _openCompleteProfile,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF55B6E8),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0xFF3895C5),
+                    offset: Offset(0, 4),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  "CONTINUE",
+                  style: GoogleFonts.baloo2(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
               ),
             ),
@@ -334,7 +451,7 @@ class ProfilePage extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           GestureDetector(
-            onTap: () {},
+            onTap: widget.onContinueLearning,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -360,8 +477,8 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _buildAccountInformationCard() {
-    final String username = "zupazuu_";
-    final String memberSince = "August 2026";
+    final String username = _username;
+    final String memberSince = _memberSince;
     final String currentLanguage = selectedLanguage;
     final String currentFlag = _getCurrentLanguageFlag();
 
@@ -446,7 +563,7 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
               Image.asset(
-                'assets/avatar/japduck.png',
+                LanguageAssetService.profileAvatarFor(selectedLanguage),
                 height: 110,
                 fit: BoxFit.contain,
               ),

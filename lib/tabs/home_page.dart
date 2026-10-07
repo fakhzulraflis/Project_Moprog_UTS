@@ -29,7 +29,10 @@ class _HomePageState extends State<HomePage> {
       PracticePage(selectedLanguage: widget.selectedLanguage),
       LeaderboardPage(),
       QuestsPage(),
-      ProfilePage(selectedLanguage: widget.selectedLanguage),
+      ProfilePage(
+        selectedLanguage: widget.selectedLanguage,
+        onContinueLearning: () => changeTab(0),
+      ),
     ];
   }
 
