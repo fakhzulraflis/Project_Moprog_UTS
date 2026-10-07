@@ -84,6 +84,68 @@ class _QuestsPageState extends State<QuestsPage> {
     await progress.claimQuest(quest, loot);
   }
 
+  // Tanya dulu sebelum mengganti quest, karena bayar gem dan cuma bisa
+  // sekali sehari.
+  Future<void> rerollQuest(DailyQuest quest) async {
+    final price = PlayerProgress.rerollPrice;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF20272B),
+        title: const Text(
+          'Ganti quest ini?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Quest "${questTitle(quest)}" akan diganti dengan quest lain secara '
+          'acak. Harganya $price gem dan hanya bisa sekali sehari.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('BATAL', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: progress.gems >= price
+                ? () => Navigator.pop(context, true)
+                : null,
+            child: Text(
+              progress.gems >= price ? 'GANTI ($price GEM)' : 'GEM KURANG',
+              style: TextStyle(
+                color: progress.gems >= price
+                    ? const Color(0xFF1CB0F6)
+                    : Colors.white38,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final replacement = await progress.rerollQuest(quest);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            replacement != null
+                ? 'Quest baru: ${questTitle(replacement)}'
+                : 'Belum ada quest pengganti yang cocok. Gem tidak terpakai.',
+          ),
+          backgroundColor: const Color(0xFF20272B),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
+  // Nama Quacko di judul quest mengikuti nama yang diberikan pemain.
+  String questTitle(DailyQuest quest) =>
+      quest.title.replaceAll('Quacko', pet.name);
+
   Future<void> openMonthlyChest() async {
     final loot = await showChestOpening(context, ChestTier.gold);
     if (loot == null) return;
@@ -119,7 +181,7 @@ class _QuestsPageState extends State<QuestsPage> {
               );
             }
 
-            final quests = PlayerProgress.dailyQuests;
+            final quests = progress.dailyQuests;
 
             return ListView(
               padding: const EdgeInsets.all(20),
@@ -215,9 +277,13 @@ class _QuestsPageState extends State<QuestsPage> {
       highlight: pet.mood == DuckMood.hungry || pet.mood == DuckMood.sad,
       preview: CustomPaint(
         size: const Size(64, 64),
-        painter: DuckPainter(mood: pet.mood, accessories: pet.equipped),
+        painter: DuckPainter(
+          mood: pet.mood,
+          stage: pet.stage,
+          accessories: pet.equipped,
+        ),
       ),
-      title: pet.name,
+      title: '${pet.name} · Lv ${pet.level}',
       subtitle: switch (pet.mood) {
         DuckMood.happy => 'Very happy',
         DuckMood.normal => 'Chilling',
@@ -563,7 +629,9 @@ class _QuestsPageState extends State<QuestsPage> {
         children: [
           SizedBox(
             width: 44,
-            child: Image.asset(quest.icon, height: 40, fit: BoxFit.contain),
+            child: quest.image != null
+                ? Image.asset(quest.image!, height: 40, fit: BoxFit.contain)
+                : Icon(quest.iconData, color: quest.iconColor, size: 38),
           ),
 
           const SizedBox(width: 16),
@@ -572,13 +640,33 @@ class _QuestsPageState extends State<QuestsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  quest.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        questTitle(quest),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                    // Tombol ganti quest, hanya muncul kalau masih bisa
+                    if (progress.canReroll(quest))
+                      GestureDetector(
+                        onTap: () => rerollQuest(quest),
+                        child: const Padding(
+                          padding: EdgeInsets.only(left: 6),
+                          child: Icon(
+                            Icons.refresh,
+                            color: Colors.white38,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 buildProgressBar(progress.progressOf(quest), quest.target),

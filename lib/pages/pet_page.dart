@@ -41,6 +41,9 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
   final List<int> floatingHearts = [];
   int heartCounter = 0;
 
+  // Supaya dialog naik level tidak muncul dua kali
+  bool showingLevelUp = false;
+
   // Nilai kenyang & senang berkurang seiring waktu, jadi layar
   // diperbarui berkala.
   Timer? clock;
@@ -142,6 +145,11 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
     return ListenableBuilder(
       listenable: Listenable.merge([pet, progress]),
       builder: (context, _) {
+        if (pet.pendingLevelUp > 0 && !showingLevelUp) {
+          showingLevelUp = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) => celebrate());
+        }
+
         if (!pet.isLoaded || !progress.isLoaded) {
           return const Scaffold(
             backgroundColor: backgroundColor,
@@ -198,9 +206,22 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
             children: [
               buildScene(),
               const SizedBox(height: 16),
+              buildLevel(),
+              const SizedBox(height: 12),
               buildStats(),
               const SizedBox(height: 16),
               buildActions(),
+              const SizedBox(height: 28),
+              Text(
+                'Evolusi ${pet.name}',
+                style: GoogleFonts.baloo2(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              buildEvolution(),
               const SizedBox(height: 28),
               Text(
                 'Lemari ${pet.name}',
@@ -268,6 +289,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
                       size: const Size(170, 170),
                       painter: DuckPainter(
                         mood: mood,
+                        stage: pet.stage,
                         accessories: pet.equipped,
                         wingFlap: idle.value,
                       ),
@@ -299,6 +321,236 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
             ),
         ],
       ),
+    );
+  }
+
+  // Dialog perayaan naik level. Kalau tahapnya berubah, ditampilkan juga
+  // bentuk barunya.
+  Future<void> celebrate() async {
+    if (!mounted) return;
+    final newLevel = pet.pendingLevelUp;
+    final newStage = DuckPet.stageForLevel(newLevel);
+    final grew = newStage != DuckPet.stageForLevel(newLevel - 1);
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.4, end: 1),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.elasticOut,
+                builder: (context, scale, child) =>
+                    Transform.scale(scale: scale, child: child),
+                child: CustomPaint(
+                  size: const Size(130, 130),
+                  painter: DuckPainter(
+                    mood: DuckMood.happy,
+                    stage: newStage,
+                    accessories: pet.equipped,
+                    wingFlap: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Level $newLevel!',
+                style: GoogleFonts.baloo2(
+                  color: yellowColor,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                grew
+                    ? '${pet.name} tumbuh jadi ${DuckPet.stageName(newStage)}!'
+                    : '${pet.name} naik level!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Hadiah: ',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  Image.asset('assets/icons/gems.png', height: 18),
+                  Text(
+                    ' ${DuckPet.gemsPerLevel * newLevel}',
+                    style: const TextStyle(
+                      color: gemColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: yellowColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'MANTAP!',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await pet.clearLevelUp();
+    showingLevelUp = false;
+  }
+
+  // Level dan progress XP Quacko.
+  Widget buildLevel() {
+    final maxed = pet.isMaxLevel;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: yellowColor,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '${pet.level}',
+              style: GoogleFonts.baloo2(
+                color: backgroundColor,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Level ${pet.level} · ${DuckPet.stageName(pet.stage)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: maxed ? 1 : pet.xpIntoLevel / pet.xpToNextLevel,
+                    minHeight: 12,
+                    backgroundColor: const Color(0xFF3A4449),
+                    valueColor: const AlwaysStoppedAnimation(yellowColor),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  maxed
+                      ? 'Level maksimal!'
+                      : '${pet.xpIntoLevel} / ${pet.xpToNextLevel} XP '
+                            'ke level ${pet.level + 1}',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Tiga tahap pertumbuhan. Tahap yang belum tercapai tampil sebagai
+  // bayangan gelap dengan level yang dibutuhkan.
+  Widget buildEvolution() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          for (final stage in DuckStage.values) ...[
+            Expanded(child: buildStageItem(stage)),
+            if (stage != DuckStage.values.last)
+              const Icon(Icons.chevron_right, color: Colors.white24),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget buildStageItem(DuckStage stage) {
+    final unlocked = pet.level >= DuckPet.levelForStage(stage);
+    final current = pet.stage == stage;
+
+    Widget duck = CustomPaint(
+      size: const Size(70, 70),
+      painter: DuckPainter(mood: DuckMood.normal, stage: stage),
+    );
+    if (!unlocked) {
+      duck = ColorFiltered(
+        colorFilter: const ColorFilter.mode(Color(0xFF111619), BlendMode.srcIn),
+        child: duck,
+      );
+    }
+
+    return Column(
+      children: [
+        duck,
+        const SizedBox(height: 6),
+        Text(
+          DuckPet.stageName(stage),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: current ? yellowColor : Colors.white70,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          unlocked
+              ? (current ? 'Sekarang' : 'Terlewati')
+              : 'Lv ${DuckPet.levelForStage(stage)}',
+          style: const TextStyle(color: Colors.white38, fontSize: 11),
+        ),
+      ],
     );
   }
 
@@ -517,6 +769,7 @@ class _PetPageState extends State<PetPage> with TickerProviderStateMixin {
               size: const Size(100, 100),
               painter: DuckPainter(
                 mood: DuckMood.normal,
+                stage: pet.stage,
                 accessories: {item.type},
               ),
             ),

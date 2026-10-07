@@ -4,26 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/reward_chest.dart';
 import '../widgets/spin_wheel.dart';
 import 'duck_pet.dart';
+import 'quest_pool.dart';
 
-// Satu quest harian. Progress-nya dihitung dari data di PlayerProgress,
-// jadi quest otomatis bergerak waktu pemain belajar.
-class DailyQuest {
-  final String id;
-  final String title;
-  final String icon;
-  final int target;
-  final ChestTier tier;
-  final int Function(PlayerProgress p) progressOf;
-
-  const DailyQuest({
-    required this.id,
-    required this.title,
-    required this.icon,
-    required this.target,
-    required this.tier,
-    required this.progressOf,
-  });
-}
+export 'quest_pool.dart' show DailyQuest, QuestPool;
 
 // Menyimpan progress pemain di HP: gem, XP, quest harian, quest mingguan,
 // challenge bulanan, streak, roda hadiah, dan item dari toko.
@@ -40,33 +23,7 @@ class PlayerProgress extends ChangeNotifier {
   static const int monthlyTarget = 30;
   static const int weeklyTarget = 20;
   static const Duration xpBoostDuration = Duration(minutes: 15);
-
-  static final List<DailyQuest> dailyQuests = [
-    DailyQuest(
-      id: 'earn_xp',
-      title: 'Earn 50 XP',
-      icon: 'assets/icons/xp.png',
-      target: 50,
-      tier: ChestTier.bronze,
-      progressOf: (p) => p.xpToday,
-    ),
-    DailyQuest(
-      id: 'complete_lessons',
-      title: 'Complete 3 lessons',
-      icon: 'assets/icons/guidebook.png',
-      target: 3,
-      tier: ChestTier.silver,
-      progressOf: (p) => p.lessonsToday,
-    ),
-    DailyQuest(
-      id: 'correct_answers',
-      title: 'Answer 15 questions correctly',
-      icon: 'assets/icons/dumbell.png',
-      target: 15,
-      tier: ChestTier.bronze,
-      progressOf: (p) => p.correctToday,
-    ),
-  ];
+  static const int rerollPrice = 20;
 
   SharedPreferences? prefs;
   Future<void>? loading;
@@ -84,8 +41,15 @@ class PlayerProgress extends ChangeNotifier {
   int xpToday = 0;
   int lessonsToday = 0;
   int correctToday = 0;
+  int petsToday = 0;
+  int feedsToday = 0;
+  int purchasesToday = 0;
   Set<String> completedToday = {};
   Set<String> claimedToday = {};
+
+  // Quest harian hari ini, dipilih acak dari QuestPool
+  List<String> todayQuestIds = [];
+  bool rerolledToday = false;
 
   // Progress minggu ini (Senin - Minggu)
   String week = '';
@@ -127,6 +91,11 @@ class PlayerProgress extends ChangeNotifier {
     xpToday = p.getInt('xpToday') ?? 0;
     lessonsToday = p.getInt('lessonsToday') ?? 0;
     correctToday = p.getInt('correctToday') ?? 0;
+    petsToday = p.getInt('petsToday') ?? 0;
+    feedsToday = p.getInt('feedsToday') ?? 0;
+    purchasesToday = p.getInt('purchasesToday') ?? 0;
+    todayQuestIds = p.getStringList('todayQuests') ?? [];
+    rerolledToday = p.getBool('rerolledToday') ?? false;
     completedToday = (p.getStringList('completedToday') ?? []).toSet();
     claimedToday = (p.getStringList('claimedToday') ?? []).toSet();
 
@@ -147,7 +116,15 @@ class PlayerProgress extends ChangeNotifier {
     lastSpinPrize = p.getInt('lastSpinPrize') ?? -1;
 
     prefs = p;
-    if (rollOver()) await save();
+    var changed = rollOver();
+
+    // Pengguna lama belum punya daftar quest acak, jadi dibuatkan sekarang
+    if (dailyQuests.length != QuestPool.questsPerDay) {
+      todayQuestIds = QuestPool.pickForDay(day);
+      changed = true;
+    }
+
+    if (changed) await save();
     notifyListeners();
   }
 
@@ -165,6 +142,11 @@ class PlayerProgress extends ChangeNotifier {
       p.setInt('xpToday', xpToday),
       p.setInt('lessonsToday', lessonsToday),
       p.setInt('correctToday', correctToday),
+      p.setInt('petsToday', petsToday),
+      p.setInt('feedsToday', feedsToday),
+      p.setInt('purchasesToday', purchasesToday),
+      p.setStringList('todayQuests', todayQuestIds),
+      p.setBool('rerolledToday', rerolledToday),
       p.setStringList('completedToday', completedToday.toList()),
       p.setStringList('claimedToday', claimedToday.toList()),
       p.setString('week', week),
@@ -219,8 +201,13 @@ class PlayerProgress extends ChangeNotifier {
       xpToday = 0;
       lessonsToday = 0;
       correctToday = 0;
+      petsToday = 0;
+      feedsToday = 0;
+      purchasesToday = 0;
       completedToday = {};
       claimedToday = {};
+      todayQuestIds = QuestPool.pickForDay(day);
+      rerolledToday = false;
       changed = true;
     }
 
@@ -262,6 +249,37 @@ class PlayerProgress extends ChangeNotifier {
   }
 
   // ---------- Quest ----------
+
+  // Quest harian hari ini, sesuai urutan yang dipilih.
+  List<DailyQuest> get dailyQuests =>
+      todayQuestIds.map(QuestPool.byId).whereType<DailyQuest>().toList();
+
+  bool get spunToday => lastSpinDay == day;
+
+  // Quest bisa diganti sekali sehari, selama belum selesai.
+  bool canReroll(DailyQuest quest) =>
+      !rerolledToday && chestStateOf(quest) == ChestState.locked;
+
+  // Ganti satu quest dengan quest lain secara acak, bayar pakai gem.
+  // Mengembalikan quest penggantinya, atau null kalau gagal.
+  Future<DailyQuest?> rerollQuest(DailyQuest quest) async {
+    DailyQuest? replacement;
+    await update(() {
+      if (!canReroll(quest) || gems < rerollPrice) return;
+      replacement = QuestPool.replacementFor(
+        quest,
+        dailyQuests,
+        isDone: (q) => q.progressOf(this) >= q.target,
+      );
+      if (replacement == null) return;
+
+      gems -= rerollPrice;
+      rerolledToday = true;
+      final index = todayQuestIds.indexOf(quest.id);
+      todayQuestIds = [...todayQuestIds]..[index] = replacement!.id;
+    });
+    return replacement;
+  }
 
   int progressOf(DailyQuest quest) =>
       quest.progressOf(this).clamp(0, quest.target);
@@ -345,14 +363,19 @@ class PlayerProgress extends ChangeNotifier {
       recordStudyDay(DateTime.now());
     });
 
-    // Quacko ikut senang kalau pemainnya belajar
-    await DuckPet.instance.onLessonCompleted();
+    // Quacko ikut senang dan dapat XP kalau pemainnya belajar
+    await DuckPet.instance.onLessonCompleted(earned);
     return earned;
   }
 
   Future<void> recordCorrectAnswer() {
     return update(() => correctToday++);
   }
+
+  // Dipanggil DuckPet untuk quest santai.
+  Future<void> recordPet() => update(() => petsToday++);
+
+  Future<void> recordFeed() => update(() => feedsToday++);
 
   // Hati tambahan dipakai sekaligus di awal lesson berikutnya.
   Future<int> takeBonusHearts() async {
@@ -442,6 +465,7 @@ class PlayerProgress extends ChangeNotifier {
       if (gems < price || isXpBoostActive) return;
       gems -= price;
       xpBoostUntil = DateTime.now().add(xpBoostDuration);
+      purchasesToday++;
       ok = true;
     });
     return ok;
@@ -453,6 +477,19 @@ class PlayerProgress extends ChangeNotifier {
       if (gems < price) return;
       gems -= price;
       bonusHearts += amount;
+      purchasesToday++;
+      ok = true;
+    });
+    return ok;
+  }
+
+  // Bayar Mystery Chest. Isinya dibuka di halaman toko.
+  Future<bool> buyMysteryChest(int price) async {
+    var ok = false;
+    await update(() {
+      if (gems < price) return;
+      gems -= price;
+      purchasesToday++;
       ok = true;
     });
     return ok;

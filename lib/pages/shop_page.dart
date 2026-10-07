@@ -74,7 +74,7 @@ class _ShopPageState extends State<ShopPage> {
   }
 
   Future<void> buyMysteryChest() async {
-    final ok = await progress.spendGems(mysteryChestPrice);
+    final ok = await progress.buyMysteryChest(mysteryChestPrice);
     if (!mounted) return;
     if (!ok) {
       showMessage('Gem kamu belum cukup.');

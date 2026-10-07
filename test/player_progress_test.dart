@@ -10,12 +10,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   final progress = PlayerProgress.instance;
 
-  DailyQuest questById(String id) =>
-      PlayerProgress.dailyQuests.firstWhere((q) => q.id == id);
+  DailyQuest questById(String id) => QuestPool.byId(id)!;
+
+  // Quest harian dibuat tetap di test supaya hasilnya bisa diperiksa.
+  const fixedQuests = ['earn_xp', 'complete_lessons', 'pet_duck'];
 
   // Mulai tiap test dengan data HP yang bersih (atau data tertentu).
   Future<void> start([Map<String, Object> saved = const {}]) async {
-    SharedPreferences.setMockInitialValues(saved);
+    SharedPreferences.setMockInitialValues({
+      'day': PlayerProgress.dayKey(DateTime.now()),
+      'todayQuests': fixedQuests,
+      ...saved,
+    });
     progress.resetForTest();
     DuckPet.instance.resetForTest();
     await progress.load();
@@ -25,7 +31,7 @@ void main() {
     await start();
 
     expect(progress.gems, 50);
-    for (final quest in PlayerProgress.dailyQuests) {
+    for (final quest in progress.dailyQuests) {
       expect(progress.chestStateOf(quest), ChestState.locked);
     }
     expect(progress.monthlyChestState, ChestState.locked);
@@ -55,12 +61,16 @@ void main() {
     }
     final quest = questById('complete_lessons');
 
+    // Saldo dicatat dulu, karena 3 lesson juga bikin Quacko naik level
+    // dan dapat hadiah gem
+    final before = progress.gems;
+
     await progress.claimQuest(quest, const ChestLoot(LootType.gems, 20));
-    expect(progress.gems, 70);
+    expect(progress.gems, before + 20);
     expect(progress.chestStateOf(quest), ChestState.claimed);
 
     await progress.claimQuest(quest, const ChestLoot(LootType.gems, 20));
-    expect(progress.gems, 70);
+    expect(progress.gems, before + 20);
   });
 
   test('XP dari peti ikut menggerakkan quest XP', () async {
@@ -309,6 +319,93 @@ void main() {
       await progress.claimSpin(indexOf(PrizeType.xpBoost, 15));
       expect(progress.isXpBoostActive, isTrue);
       expect(progress.xpBoostLeft.inMinutes, greaterThanOrEqualTo(14));
+    });
+  });
+
+  group('quest acak harian', () {
+    test('tiap hari 3 quest: 2 belajar dan 1 santai, grup berbeda', () {
+      for (var d = 1; d <= 28; d++) {
+        final day = PlayerProgress.dayKey(DateTime(2026, 10, d));
+        final quests = QuestPool.pickForDay(day).map(QuestPool.byId).toList();
+
+        expect(quests.length, 3);
+        expect(quests.where((q) => q!.learning).length, 2);
+        expect(quests.map((q) => q!.group).toSet().length, 3);
+      }
+    });
+
+    test('hari yang sama selalu dapat quest yang sama', () {
+      expect(
+        QuestPool.pickForDay('2026-10-07'),
+        QuestPool.pickForDay('2026-10-07'),
+      );
+    });
+
+    test('quest berbeda-beda antar hari', () {
+      final sets = {
+        for (var d = 1; d <= 28; d++)
+          QuestPool.pickForDay(PlayerProgress.dayKey(DateTime(2026, 10, d)))
+              .join(','),
+      };
+      expect(sets.length, greaterThan(5));
+    });
+
+    test('pengguna lama tanpa daftar quest dibuatkan otomatis', () async {
+      await start({'todayQuests': <String>[]});
+      expect(progress.dailyQuests.length, 3);
+    });
+
+    test('quest bisa diganti sekali sehari dengan bayar gem', () async {
+      await start();
+      final old = questById('earn_xp');
+
+      final replacement = await progress.rerollQuest(old);
+      expect(replacement, isNotNull);
+      expect(replacement!.learning, isTrue);
+      // Grup XP diganti, dan grup lesson sudah dipakai quest lain
+      expect(replacement.group, 'correct');
+      expect(progress.todayQuestIds, isNot(contains('earn_xp')));
+      expect(progress.todayQuestIds, contains(replacement.id));
+      expect(progress.gems, 50 - PlayerProgress.rerollPrice);
+
+      // Kesempatan ganti hari ini sudah habis
+      expect(await progress.rerollQuest(replacement), isNull);
+      expect(progress.gems, 50 - PlayerProgress.rerollPrice);
+    });
+
+    test('pengganti quest tidak boleh yang sudah selesai', () async {
+      // Hari ini sudah 1 lesson, jadi "Complete 1 lesson" sudah selesai
+      await start({'lessonsToday': 1});
+
+      for (var i = 0; i < 20; i++) {
+        final pick = QuestPool.replacementFor(questById('correct_answers'), [
+          questById('earn_xp'),
+          questById('correct_answers'),
+        ], isDone: (q) => q.progressOf(progress) >= q.target);
+        expect(pick!.id, 'complete_lessons');
+      }
+    });
+
+    test('quest yang sudah selesai tidak bisa diganti', () async {
+      await start();
+      for (var i = 0; i < 3; i++) {
+        await progress.completeLesson();
+      }
+      expect(progress.canReroll(questById('complete_lessons')), isFalse);
+      expect(progress.canReroll(questById('earn_xp')), isTrue);
+    });
+
+    test('quest santai: putar roda dan belanja di toko', () async {
+      await start();
+
+      expect(progress.progressOf(questById('daily_spin')), 0);
+      await progress.claimSpin(0);
+      expect(progress.progressOf(questById('daily_spin')), 1);
+
+      expect(progress.progressOf(questById('shop_purchase')), 0);
+      await progress.buyMysteryChest(30);
+      expect(progress.progressOf(questById('shop_purchase')), 1);
+      expect(progress.gems, 50 + 5 - 30);
     });
   });
 }
