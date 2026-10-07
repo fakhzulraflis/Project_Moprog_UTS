@@ -189,7 +189,7 @@ class _LessonNodeState extends State<LessonNode> {
 
       case NodeType.trophy:
         return Image.asset(
-          'assets/icons/reachedpath4.png',
+          'assets/path/reachedpath4.png',
           width: 44,
           height: 44,
         );
@@ -197,12 +197,6 @@ class _LessonNodeState extends State<LessonNode> {
   }
 }
 
-// =====================================================
-// EFEK MENGKILAP
-// =====================================================
-// =====================================================
-// EFEK MENGKILAP
-// =====================================================
 class _ShinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -210,7 +204,6 @@ class _ShinePainter extends CustomPainter {
     final h = size.height;
     final rect = Offset.zero & size;
 
-    // 1) Gradasi vertikal: atas terang, bawah sedikit gelap
     canvas.drawRect(
       rect,
       Paint()
@@ -226,7 +219,6 @@ class _ShinePainter extends CustomPainter {
         ).createShader(rect),
     );
 
-    // 2) Pita kilau diagonal dengan tepi lembut
     final bandRect = Rect.fromLTWH(w * 0.22, 0, w * 0.56, h);
     final bandPath = Path()
       ..moveTo(w * 0.52, 0)
@@ -247,7 +239,6 @@ class _ShinePainter extends CustomPainter {
         ).createShader(bandRect),
     );
 
-    // 3) Pantulan cahaya oval di kiri atas
     canvas.save();
     final glossRect = Rect.fromLTWH(w * 0.12, h * 0.07, w * 0.56, h * 0.36);
     canvas.translate(glossRect.center.dx, glossRect.center.dy);
@@ -267,7 +258,6 @@ class _ShinePainter extends CustomPainter {
     );
     canvas.restore();
 
-    // 4) Garis tepi terang tipis di lengkung atas
     final rimRect = Rect.fromLTWH(w * 0.05, h * 0.05, w * 0.90, h * 0.90);
     canvas.drawArc(
       rimRect,
@@ -282,7 +272,6 @@ class _ShinePainter extends CustomPainter {
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.8),
     );
 
-    // 5) Bayangan tipis di lengkung bawah
     canvas.drawArc(
       rimRect,
       math.pi * 0.14,
@@ -301,9 +290,6 @@ class _ShinePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// =====================================================
-// BUBBLE "MULAI" (naik turun)
-// =====================================================
 class _StartBubble extends StatefulWidget {
   final Color color;
 

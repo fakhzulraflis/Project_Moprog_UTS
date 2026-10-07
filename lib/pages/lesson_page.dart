@@ -1,14 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 import '../models/question.dart';
 import '../services/api_service.dart';
 import '../services/player_progress.dart';
 
-// ============================================================
-// WARNA
-// ============================================================
 const Color _bg = Color(0xFF272F33);
 const Color _surface = Color(0xFF1F292E);
 const Color _border = Color(0xFF414F57);
@@ -23,7 +21,6 @@ const Color _blueDark = Color(0xFF1899D6);
 const Color _green = Color(0xFF58CC02);
 const Color _orange = Color(0xFFFF9600);
 
-// Warna pasangan untuk soal matching
 const List<Color> _pairPalette = [
   Color(0xFF1CB0F6),
   Color(0xFFCE82FF),
@@ -35,36 +32,17 @@ const List<Color> _pairPalette = [
 
 Color _pairColor(int index) => _pairPalette[index % _pairPalette.length];
 
-// Warna latar versi tipis dari sebuah warna (opaque)
 Color _tint(Color c, [double amount = 0.14]) =>
     Color.alphaBlend(c.withValues(alpha: amount), _bg);
 
-// ============================================================
-// ASET KARAKTER  (SESUAIKAN nama file, lalu daftarkan folder
-// assets/characters/ di pubspec.yaml)
-// ============================================================
-
-// Karakter di halaman soal: dipakai bergantian tiap soal
-const List<String> _questionCharacters = [
-  'assets/characters/person_1.png',
-  'assets/characters/person_2.png',
-  'assets/characters/person_3.png',
-];
-
-// ============================================================
-// VARIAN LAYAR HASIL
-// Dipilih dari WAKTU per soal + AKURASI. Ubah ambang & teks di sini.
-// ============================================================
-
-// Rata-rata detik per soal
-const double kFastSecondsPerQuestion = 10; // <= ini dianggap cepat
-const double kSlowSecondsPerQuestion = 30; // >= ini dianggap lambat
+const double kFastSecondsPerQuestion = 10;
+const double kSlowSecondsPerQuestion = 30;
 
 class ResultVariant {
   final String title;
   final String subtitle;
-  final String asset; // karakter untuk varian ini
-  final Color color; // warna judul
+  final String asset;
+  final Color color;
 
   const ResultVariant({
     required this.title,
@@ -77,46 +55,45 @@ class ResultVariant {
 const ResultVariant _vPerfect = ResultVariant(
   title: 'Sempurna!',
   subtitle: 'Tidak ada satu pun jawaban yang salah.',
-  asset: 'assets/characters/result_perfect.png',
+  asset: 'assets/chars/result_perfect.png',
   color: _gold,
 );
 
 const ResultVariant _vSuperFast = ResultVariant(
   title: 'Super cepat!',
   subtitle: 'Kamu menyelesaikan pelajaran ini dengan sangat cepat.',
-  asset: 'assets/characters/result_super_fast.png',
+  asset: 'assets/chars/result_super_fast.png',
   color: _gold,
 );
 
 const ResultVariant _vHigh = ResultVariant(
   title: 'Luar biasa!',
   subtitle: 'Akurasimu sangat tinggi. Pertahankan!',
-  asset: 'assets/characters/result_high.png',
+  asset: 'assets/chars/result_high.png',
   color: _green,
 );
 
 const ResultVariant _vGood = ResultVariant(
   title: 'Bagus!',
   subtitle: 'Kamu sudah berada di jalur yang tepat.',
-  asset: 'assets/characters/result_good.png',
+  asset: 'assets/chars/result_good.png',
   color: _green,
 );
 
 const ResultVariant _vSlowSteady = ResultVariant(
   title: 'Pelan tapi pasti!',
   subtitle: 'Kamu teliti, dan hasilnya pun bagus.',
-  asset: 'assets/characters/result_slow.png',
+  asset: 'assets/chars/result_good.png',
   color: _blue,
 );
 
 const ResultVariant _vLow = ResultVariant(
   title: 'Terus berlatih!',
   subtitle: 'Masih ada yang bisa diperbaiki. Coba ulangi pelajaran ini.',
-  asset: 'assets/characters/result_low.png',
+  asset: 'assets/chars/result_low.png',
   color: _orange,
 );
 
-// Aturan dicek dari atas ke bawah; yang pertama cocok dipakai.
 ResultVariant pickResultVariant({
   required int accuracy,
   required double secondsPerQuestion,
@@ -150,19 +127,18 @@ String _formatDuration(Duration d) {
   return '$minutes:${seconds.toString().padLeft(2, '0')}';
 }
 
-// ============================================================
-// LESSON PAGE
-// ============================================================
 class LessonPage extends StatefulWidget {
   final int lessonId;
+  final String ttsCode;
 
-  const LessonPage({super.key, required this.lessonId});
+  const LessonPage({super.key, required this.lessonId, this.ttsCode = 'en-US'});
 
   @override
   State<LessonPage> createState() => _LessonPageState();
 }
 
 class _LessonPageState extends State<LessonPage> {
+  final FlutterTts _flutterTts = FlutterTts();
   List<Question> questions = [];
 
   bool isLoading = true;
@@ -172,14 +148,12 @@ class _LessonPageState extends State<LessonPage> {
   int hearts = 5;
   bool heartHit = false;
 
-  // Statistik sesi (untuk layar hasil)
   int combo = 0;
   int comboDisplay = 2;
   int totalAttempts = 0;
   int correctAttempts = 0;
   final Stopwatch _stopwatch = Stopwatch();
 
-  // Answer states
   String? selectedAnswer;
   String typedAnswer = '';
   final TextEditingController _textController = TextEditingController();
@@ -190,7 +164,6 @@ class _LessonPageState extends State<LessonPage> {
   String? selectedLeft;
   final Map<String, String> matchedPairs = {};
 
-  // Urutan kolom kanan (diacak sekali per soal)
   final Map<int, List<String>> _shuffledRight = {};
 
   bool hasChecked = false;
@@ -215,6 +188,7 @@ class _LessonPageState extends State<LessonPage> {
 
   @override
   void dispose() {
+    _flutterTts.stop();
     _textController.dispose();
     super.dispose();
   }
@@ -223,7 +197,6 @@ class _LessonPageState extends State<LessonPage> {
     try {
       final result = await ApiService.getQuestions(widget.lessonId);
 
-      // Hati tambahan dari peti quest atau toko dipakai di lesson ini
       final bonusHearts = await PlayerProgress.instance.takeBonusHearts();
 
       if (!mounted) return;
@@ -249,7 +222,6 @@ class _LessonPageState extends State<LessonPage> {
     return questions[currentQuestionIndex];
   }
 
-  // Progress naik setelah jawaban benar (bukan saat soal baru dibuka)
   double get progress {
     if (questions.isEmpty) {
       return 0;
@@ -258,6 +230,12 @@ class _LessonPageState extends State<LessonPage> {
     final done = currentQuestionIndex + (hasChecked && isCorrect ? 1 : 0);
 
     return done / questions.length;
+  }
+
+  bool usesChoices(Question q) {
+    return q.type == 'multiple_choice' ||
+        q.type == 'image_choice' ||
+        (q.type == 'fill_blank' && q.choiceOptions.isNotEmpty);
   }
 
   void resetQuestionState() {
@@ -283,13 +261,25 @@ class _LessonPageState extends State<LessonPage> {
         .replaceAll(RegExp(r'\s+'), ' ');
   }
 
-  // ---------- audio ----------
-  // TODO: hubungkan ke layanan suara (API / TTS) milikmu.
   Future<void> _speak(String text, {bool slow = false}) async {
-    debugPrint('SPEAK${slow ? ' (pelan)' : ''}: $text');
+    if (text.trim().isEmpty) return;
+
+    try {
+      await _flutterTts.stop();
+
+      await _flutterTts.setLanguage(widget.ttsCode);
+
+      await _flutterTts.setSpeechRate(slow ? 0.35 : 0.5);
+
+      await _flutterTts.setPitch(1.0);
+      await _flutterTts.setVolume(1.0);
+
+      await _flutterTts.speak(text);
+    } catch (e) {
+      debugPrint('TTS ERROR: $e');
+    }
   }
 
-  // ---------- urutan kolom kanan untuk soal matching ----------
   List<String> _rightItemsFor(Question q) {
     return _shuffledRight.putIfAbsent(q.id, () {
       final original = q.matchingOptions
@@ -298,7 +288,6 @@ class _LessonPageState extends State<LessonPage> {
 
       final items = List<String>.from(original)..shuffle(_random);
 
-      // pastikan urutannya tidak sama dengan urutan kolom kiri
       if (items.length > 1) {
         bool same = true;
         for (int i = 0; i < items.length; i++) {
@@ -328,7 +317,6 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // ---------- cek jawaban ----------
   void checkAnswer() {
     if (hasChecked) return;
 
@@ -343,15 +331,12 @@ class _LessonPageState extends State<LessonPage> {
 
     String answer = '';
 
-    if (question.type == 'multiple_choice' || question.type == 'image_choice') {
+    if (usesChoices(question)) {
       answer = selectedAnswer ?? '';
-    }
-
-    if (question.type == 'translation' || question.type == 'fill_blank') {
+    } else if (question.type == 'translation' ||
+        question.type == 'fill_blank') {
       answer = typedAnswer.trim();
-    }
-
-    if (question.type == 'word_bank' || question.type == 'listening') {
+    } else if (question.type == 'word_bank' || question.type == 'listening') {
       answer = selectedWords.join(' ');
     }
 
@@ -368,7 +353,6 @@ class _LessonPageState extends State<LessonPage> {
   void checkMatching() {
     final pairs = currentQuestion.matchingOptions;
 
-    // benar hanya jika SEMUA pasangan yang dipilih cocok dengan kunci
     final correct = pairs.every(
       (pair) =>
           matchedPairs[pair['left'].toString()] == pair['right'].toString(),
@@ -444,7 +428,6 @@ class _LessonPageState extends State<LessonPage> {
   }
 
   Future<void> showLessonComplete() async {
-    // Hentikan timer sebelum menunggu proses lain
     _stopwatch.stop();
 
     final duration = _stopwatch.elapsed;
@@ -457,7 +440,6 @@ class _LessonPageState extends State<LessonPage> {
         ? 0.0
         : duration.inSeconds / questions.length;
 
-    // Catat ke progress quest. XP bisa 2x lipat kalau XP Boost aktif.
     final xpEarned = await PlayerProgress.instance.completeLesson();
 
     if (!mounted) return;
@@ -496,7 +478,6 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // ---------- konfirmasi keluar ----------
   Future<void> confirmExit() async {
     FocusManager.instance.primaryFocus?.unfocus();
 
@@ -704,9 +685,6 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // ============================================================
-  // TOP BAR
-  // ============================================================
   Widget buildTopBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 22, 20, 6),
@@ -729,7 +707,6 @@ class _LessonPageState extends State<LessonPage> {
               children: [
                 LessonProgressBar(value: progress),
 
-                // label combo di atas progress bar
                 Positioned(
                   left: 2,
                   top: -22,
@@ -785,9 +762,6 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // ============================================================
-  // SOAL
-  // ============================================================
   Widget buildQuestion() {
     final question = currentQuestion;
     final type = question.type;
@@ -797,7 +771,6 @@ class _LessonPageState extends State<LessonPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Judul instruksi
           Text(
             getQuestionInstruction(type),
             style: const TextStyle(
@@ -810,12 +783,12 @@ class _LessonPageState extends State<LessonPage> {
 
           const SizedBox(height: 24),
 
-          // Karakter + balon ucapan (atau tombol audio)
           buildPromptArea(question),
 
           const SizedBox(height: 28),
 
-          if (type == 'multiple_choice') buildMultipleChoice(question),
+          if (usesChoices(question) && type != 'image_choice')
+            buildMultipleChoice(question),
 
           if (type == 'image_choice') buildImageChoice(question),
 
@@ -824,7 +797,8 @@ class _LessonPageState extends State<LessonPage> {
           if (type == 'word_bank' || type == 'listening')
             buildWordBank(question),
 
-          if (type == 'fill_blank') buildFillBlank(),
+          if (type == 'fill_blank' && question.choiceOptions.isEmpty)
+            buildFillBlank(),
 
           if (type == 'matching') buildMatching(question),
         ],
@@ -860,10 +834,8 @@ class _LessonPageState extends State<LessonPage> {
     }
   }
 
-  // ---------- area prompt ----------
   Widget buildPromptArea(Question q) {
-    final character =
-        _questionCharacters[currentQuestionIndex % _questionCharacters.length];
+    const character = 'assets/chars/qua_idle.gif';
 
     switch (q.type) {
       case 'matching':
@@ -926,7 +898,6 @@ class _LessonPageState extends State<LessonPage> {
     }
   }
 
-  // Prompt dengan romaji kecil di atasnya (kalau ada)
   Widget _romanizedText(Question q, {required double fontSize}) {
     final romaji = q.romanization;
 
@@ -958,7 +929,6 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // ---------- pilihan ganda ----------
   _ChoiceStyle _choiceStyle({
     required bool isSelected,
     required bool isRight,
@@ -974,13 +944,20 @@ class _LessonPageState extends State<LessonPage> {
   }
 
   Widget buildMultipleChoice(Question question) {
+    final options = question.choiceOptions;
+
+    final hasRomaji = options.any(
+      (option) => (option.romanization ?? '').isNotEmpty,
+    );
+
     return Column(
-      children: question.stringOptions.map((option) {
-        final isSelected = selectedAnswer == option;
+      children: options.map((option) {
+        final isSelected = selectedAnswer == option.text;
+        final romaji = option.romanization ?? '';
 
         final style = _choiceStyle(
           isSelected: isSelected,
-          isRight: hasChecked && option == question.correctAnswer,
+          isRight: hasChecked && option.text == question.correctAnswer,
           isWrong: hasChecked && isSelected && !isCorrect,
         );
 
@@ -995,21 +972,40 @@ class _LessonPageState extends State<LessonPage> {
               enabled: !hasChecked,
               depth: 4,
               radius: 16,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+              padding: EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: hasRomaji ? 12 : 18,
+              ),
               alignment: Alignment.center,
               onTap: () {
                 setState(() {
-                  selectedAnswer = option;
+                  selectedAnswer = option.text;
                 });
               },
-              child: Text(
-                option,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: style.text,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (romaji.isNotEmpty)
+                    Text(
+                      romaji,
+                      style: TextStyle(
+                        color: style.text.withValues(alpha: 0.6),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+
+                  Text(
+                    option.text,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: style.text,
+                      fontSize: hasRomaji ? 26 : 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1018,7 +1014,6 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // ---------- pilih gambar ----------
   Widget buildImageChoice(Question question) {
     final items = question.imageOptions;
 
@@ -1108,7 +1103,6 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // ---------- kolom input ----------
   OutlineInputBorder _outline(Color color) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),
@@ -1171,23 +1165,27 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // ---------- susun kata / ketuk apa yang kamu dengar ----------
   Widget buildWordBank(Question question) {
-    final words = question.stringOptions;
+    final words = question.choiceOptions;
+
+    final hasRomaji = words.any((word) => (word.romanization ?? '').isNotEmpty);
+
+    final chipHeight = hasRomaji ? 60.0 : 44.0;
+    final pitch = chipHeight + 12;
+
     final chipEdge = hasChecked ? (isCorrect ? _yellow : _red) : _border;
     final chipFace = hasChecked ? _tint(chipEdge, 0.16) : _bg;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Area jawaban (bergaris)
         Container(
           width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 120),
+          constraints: BoxConstraints(minHeight: pitch * 2 + 8),
           child: Stack(
             children: [
               Positioned.fill(
-                child: CustomPaint(painter: _AnswerLinesPainter()),
+                child: CustomPaint(painter: _AnswerLinesPainter(pitch)),
               ),
 
               Padding(
@@ -1196,11 +1194,14 @@ class _LessonPageState extends State<LessonPage> {
                   spacing: 8,
                   runSpacing: 8,
                   children: List.generate(selectedWords.length, (i) {
+                    final source = words[selectedWordIndexes[i]];
+
                     return _wordChip(
-                      selectedWords[i],
+                      source.text,
+                      romaji: source.romanization,
+                      height: chipHeight,
                       edge: chipEdge,
                       face: chipFace,
-                      // ketuk kata di jawaban untuk mengembalikannya
                       onTap: hasChecked
                           ? null
                           : () {
@@ -1219,31 +1220,25 @@ class _LessonPageState extends State<LessonPage> {
 
         const SizedBox(height: 28),
 
-        // Bank kata
         Wrap(
           spacing: 8,
           runSpacing: 8,
           alignment: WrapAlignment.center,
           children: List.generate(words.length, (index) {
+            final word = words[index];
             final isUsed = selectedWordIndexes.contains(index);
 
-            if (isUsed) {
-              return _wordChip(
-                words[index],
-                edge: _border,
-                onTap: null,
-                ghost: true,
-              );
-            }
-
             return _wordChip(
-              words[index],
+              word.text,
+              romaji: word.romanization,
+              height: chipHeight,
               edge: _border,
-              onTap: hasChecked
+              ghost: isUsed,
+              onTap: hasChecked || isUsed
                   ? null
                   : () {
                       setState(() {
-                        selectedWords.add(words[index]);
+                        selectedWords.add(word.text);
 
                         selectedWordIndexes.add(index);
                       });
@@ -1255,34 +1250,66 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
+  Widget _chipLabel(
+    String word,
+    String? romaji, {
+    required Color textColor,
+    required Color romajiColor,
+  }) {
+    final hasRomaji = (romaji ?? '').isNotEmpty;
+
+    return Center(
+      widthFactor: 1,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasRomaji)
+            Text(
+              romaji!,
+              style: TextStyle(
+                color: romajiColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+
+          Text(
+            word,
+            style: TextStyle(
+              color: textColor,
+              fontSize: hasRomaji ? 18 : 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _wordChip(
     String word, {
+    String? romaji,
+    required double height,
     required Color edge,
     required VoidCallback? onTap,
     Color face = _bg,
     bool ghost = false,
   }) {
-    // "ghost" = slot kosong di bank kata (ukurannya sama dengan kata aslinya)
     if (ghost) {
       return Button3D(
         color: _surface,
         lipColor: _surface,
         enabled: false,
         onTap: null,
-        height: 44,
+        height: height,
         depth: 4,
         radius: 12,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Center(
-          widthFactor: 1,
-          child: Text(
-            word,
-            style: const TextStyle(
-              color: Colors.transparent,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        child: _chipLabel(
+          word,
+          romaji,
+          textColor: Colors.transparent,
+          romajiColor: Colors.transparent,
         ),
       );
     }
@@ -1293,25 +1320,19 @@ class _LessonPageState extends State<LessonPage> {
       borderColor: edge,
       enabled: onTap != null,
       onTap: onTap,
-      height: 44,
+      height: height,
       depth: 4,
       radius: 12,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Center(
-        widthFactor: 1,
-        child: Text(
-          word,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+      child: _chipLabel(
+        word,
+        romaji,
+        textColor: Colors.white,
+        romajiColor: Colors.white38,
       ),
     );
   }
 
-  // ---------- mencocokkan ----------
   Widget buildMatching(Question question) {
     final pairs = question.matchingOptions;
 
@@ -1351,7 +1372,6 @@ class _LessonPageState extends State<LessonPage> {
                         : () {
                             setState(() {
                               if (matched) {
-                                // ketuk lagi untuk membatalkan pasangan
                                 matchedPairs.remove(left);
                                 selectedLeft = null;
                               } else {
@@ -1404,7 +1424,6 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // status: 0 = belum dicek, 1 = benar, -1 = salah
   Widget _matchItem({
     required String text,
     required bool selected,
@@ -1467,28 +1486,20 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // ============================================================
-  // TOMBOL PERIKSA
-  // ============================================================
   Widget buildCheckButton() {
     bool canCheck = false;
 
-    final type = currentQuestion.type;
+    final question = currentQuestion;
+    final type = question.type;
 
-    if (type == 'multiple_choice' || type == 'image_choice') {
+    if (usesChoices(question)) {
       canCheck = selectedAnswer != null;
-    }
-
-    if (type == 'translation' || type == 'fill_blank') {
+    } else if (type == 'translation' || type == 'fill_blank') {
       canCheck = typedAnswer.trim().isNotEmpty;
-    }
-
-    if (type == 'word_bank' || type == 'listening') {
+    } else if (type == 'word_bank' || type == 'listening') {
       canCheck = selectedWords.isNotEmpty;
-    }
-
-    if (type == 'matching') {
-      canCheck = matchedPairs.length == currentQuestion.matchingOptions.length;
+    } else if (type == 'matching') {
+      canCheck = matchedPairs.length == question.matchingOptions.length;
     }
 
     return SafeArea(
@@ -1527,9 +1538,6 @@ class _LessonPageState extends State<LessonPage> {
     );
   }
 
-  // ============================================================
-  // PANEL FEEDBACK
-  // ============================================================
   Widget buildFeedbackPanel() {
     final accent = isCorrect ? _yellow : _red;
     final panelBg = isCorrect
@@ -1729,9 +1737,6 @@ class _LessonPageState extends State<LessonPage> {
   }
 }
 
-// ============================================================
-// GAYA PILIHAN (pilihan ganda & pilih gambar)
-// ============================================================
 class _ChoiceStyle {
   final Color face;
   final Color edge;
@@ -1740,9 +1745,6 @@ class _ChoiceStyle {
   const _ChoiceStyle(this.face, this.edge, this.text);
 }
 
-// ============================================================
-// KARAKTER + BALON UCAPAN
-// ============================================================
 class CharacterBubble extends StatelessWidget {
   final String asset;
   final Widget child;
@@ -1763,7 +1765,7 @@ class CharacterBubble extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        CharacterImage(asset: asset, width: 104, height: 124),
+        CharacterImage(asset: asset, width: 150, height: 150),
 
         const SizedBox(width: 16),
 
@@ -1801,7 +1803,6 @@ class _SpeechBubble extends StatelessWidget {
           child: child,
         ),
 
-        // ekor balon yang menunjuk ke karakter
         Positioned(
           left: -9,
           top: 0,
@@ -1825,7 +1826,6 @@ class _SpeechBubble extends StatelessWidget {
   }
 }
 
-// Gambar karakter dengan cadangan jika aset belum ada
 class CharacterImage extends StatelessWidget {
   final String asset;
   final double width;
@@ -1840,31 +1840,18 @@ class CharacterImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      asset,
+    return SizedBox(
       width: width,
       height: height,
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => SizedBox(
-        width: width,
-        height: height,
-        child: Center(
-          child: Icon(
-            Icons.face_rounded,
-            size: math.min(width, height) * 0.5,
-            color: Colors.white24,
-          ),
-        ),
+      child: Image.asset(
+        asset,
+        fit: BoxFit.contain,
+        alignment: Alignment.center,
       ),
     );
   }
 }
 
-// ============================================================
-// TOMBOL AUDIO
-// ============================================================
-
-// Tombol audio persegi biru 3D
 class _AudioSquare extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -1892,7 +1879,6 @@ class _AudioSquare extends StatelessWidget {
   }
 }
 
-// Dua tombol di dalam balon: normal & pelan
 class _BubbleAudioButtons extends StatelessWidget {
   final VoidCallback onNormal;
   final VoidCallback onSlow;
@@ -1927,31 +1913,29 @@ class _BubbleAudioButtons extends StatelessWidget {
   }
 }
 
-// ============================================================
-// GARIS DI AREA JAWABAN (SUSUN KATA)
-// ============================================================
 class _AnswerLinesPainter extends CustomPainter {
+  final double pitch;
+
+  _AnswerLinesPainter(this.pitch);
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = _border
       ..strokeWidth = 2;
 
-    // tinggi satu baris kata = 48 (tombol) + 8 (jarak antar baris)
-    for (double y = 56; y < size.height; y += 56) {
+    for (double y = pitch; y < size.height; y += pitch) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _AnswerLinesPainter oldDelegate) =>
+      oldDelegate.pitch != pitch;
 }
 
-// ============================================================
-// PROGRESS BAR
-// ============================================================
 class LessonProgressBar extends StatelessWidget {
-  final double value; // 0.0 - 1.0
+  final double value;
 
   const LessonProgressBar({super.key, required this.value});
 
@@ -1978,7 +1962,6 @@ class LessonProgressBar extends StatelessWidget {
                 color: _yellow,
                 borderRadius: BorderRadius.circular(10),
               ),
-              // kilau kecil di bagian atas
               child: fillWidth > 24
                   ? Align(
                       alignment: Alignment.topCenter,
@@ -2002,23 +1985,16 @@ class LessonProgressBar extends StatelessWidget {
   }
 }
 
-// ============================================================
-// BUTTON 3D (tombol bergaya Duolingo)
-// ============================================================
 class Button3D extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
   final bool enabled;
-
-  /// true  = aksi dijalankan setelah animasi tekan terlihat (cocok untuk
-  ///         tombol utama). false = aksi langsung dijalankan.
   final bool holdBeforeTap;
-
-  final Color color; // warna permukaan
-  final Color? lipColor; // warna "bibir" bawah (default: versi gelap color)
-  final Color? borderColor; // garis tepi permukaan (opsional)
-  final double? height; // tinggi permukaan (opsional)
-  final double depth; // tebal bibir
+  final Color color;
+  final Color? lipColor;
+  final Color? borderColor;
+  final double? height;
+  final double depth;
   final double radius;
   final EdgeInsetsGeometry? padding;
   final AlignmentGeometry? alignment;
@@ -2047,7 +2023,6 @@ class _Button3DState extends State<Button3D> {
   bool _pressed = false;
   DateTime? _pressStart;
 
-  // Tombol minimal tertahan sebesar ini supaya tap cepat tetap terlihat
   static const Duration minPress = Duration(milliseconds: 120);
 
   bool get _active => widget.enabled && widget.onTap != null;
@@ -2112,7 +2087,6 @@ class _Button3DState extends State<Button3D> {
         child: Stack(
           fit: StackFit.passthrough,
           children: [
-            // bibir bawah
             Positioned.fill(
               top: widget.depth,
               child: DecoratedBox(
@@ -2120,7 +2094,6 @@ class _Button3DState extends State<Button3D> {
               ),
             ),
 
-            // permukaan: margin atas + bawah selalu = depth, jadi tinggi tetap
             AnimatedContainer(
               duration: const Duration(milliseconds: 80),
               curve: Curves.easeOut,
@@ -2146,11 +2119,6 @@ class _Button3DState extends State<Button3D> {
     );
   }
 }
-
-// ============================================================
-// PRESSABLE BUTTON (dipertahankan untuk kompatibilitas;
-// hapus jika tidak dipakai file lain)
-// ============================================================
 
 class PressableButton extends StatefulWidget {
   final Widget child;
@@ -2234,10 +2202,6 @@ class _PressableButtonState extends State<PressableButton> {
     );
   }
 }
-
-// ============================================================
-// OUT OF HEARTS SCREEN
-// ============================================================
 
 class OutOfHeartsScreen extends StatelessWidget {
   final VoidCallback onRetry;
@@ -2412,14 +2376,10 @@ class OutOfHeartsScreen extends StatelessWidget {
   }
 }
 
-// ============================================================
-// LESSON COMPLETE SCREEN
-// ============================================================
-
 class LessonCompleteScreen extends StatelessWidget {
   final ResultVariant variant;
   final int xpEarned;
-  final int accuracy; // 0 - 100
+  final int accuracy;
   final Duration duration;
   final double secondsPerQuestion;
   final VoidCallback onContinue;
@@ -2450,7 +2410,6 @@ class LessonCompleteScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // karakter muncul dengan efek membal
                         TweenAnimationBuilder<double>(
                           tween: Tween(begin: 0, end: 1),
                           duration: const Duration(milliseconds: 600),
@@ -2576,7 +2535,6 @@ class LessonCompleteScreen extends StatelessWidget {
   }
 }
 
-// Kartu statistik: label berwarna di atas, nilai di kotak dalam
 class _ResultStatCard extends StatelessWidget {
   final String label;
   final Color accent;
