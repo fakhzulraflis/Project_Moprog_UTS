@@ -59,7 +59,7 @@ class _ShopPageState extends State<ShopPage> {
     final ok = await progress.buyXpBoost(xpBoostPrice);
     if (!mounted) return;
     showMessage(
-      ok ? 'XP Boost aktif selama 15 menit!' : 'Gem kamu belum cukup.',
+      ok ? 'XP Ganda aktif selama 15 menit!' : 'Gem kamu belum cukup.',
     );
   }
 
@@ -94,7 +94,7 @@ class _ShopPageState extends State<ShopPage> {
         elevation: 0,
         foregroundColor: Colors.white,
         title: Text(
-          'Shop',
+          'Toko',
           style: GoogleFonts.baloo2(
             color: Colors.white,
             fontSize: 26,
@@ -122,7 +122,7 @@ class _ShopPageState extends State<ShopPage> {
 
               buildItem(
                 icon: Image.asset('assets/icons/xp.png', height: 44),
-                title: 'XP Boost',
+                title: 'XP Ganda',
                 description: boostActive
                     ? 'Sedang aktif, sisa '
                           '${progress.xpBoostLeft.inMinutes + 1} menit.'
@@ -134,7 +134,7 @@ class _ShopPageState extends State<ShopPage> {
 
               buildItem(
                 icon: Image.asset('assets/icons/hearts.png', height: 44),
-                title: 'Heart Pack',
+                title: 'Paket Hati',
                 description:
                     '+$heartPackAmount hati tambahan di awal lesson berikutnya.'
                     '${progress.bonusHearts > 0 ? '\nTersimpan: ${progress.bonusHearts} hati' : ''}',
@@ -147,7 +147,7 @@ class _ShopPageState extends State<ShopPage> {
                   size: const Size(48, 43),
                   painter: ChestPainter(tier: ChestTier.silver),
                 ),
-                title: 'Mystery Chest',
+                title: 'Peti Misteri',
                 description:
                     'Peti perak berisi gem, XP, atau hati. '
                     'Isinya acak!',
@@ -158,7 +158,7 @@ class _ShopPageState extends State<ShopPage> {
               const SizedBox(height: 12),
 
               const Text(
-                'Dapatkan gem dengan membuka peti dari Daily Quests.',
+                'Dapatkan gem dengan membuka peti dari Misi Harian.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white54, fontSize: 13),
               ),
@@ -185,7 +185,7 @@ class _ShopPageState extends State<ShopPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'YOUR GEMS',
+                  'GEM KAMU',
                   style: TextStyle(
                     color: Colors.white54,
                     fontSize: 12,

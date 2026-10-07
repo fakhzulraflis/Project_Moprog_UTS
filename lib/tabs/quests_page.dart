@@ -27,18 +27,18 @@ class _QuestsPageState extends State<QuestsPage> {
   Timer? clock;
 
   static const List<String> monthNames = [
-    'JANUARY',
-    'FEBRUARY',
-    'MARCH',
+    'JANUARI',
+    'FEBRUARI',
+    'MARET',
     'APRIL',
-    'MAY',
-    'JUNE',
-    'JULY',
-    'AUGUST',
+    'MEI',
+    'JUNI',
+    'JULI',
+    'AGUSTUS',
     'SEPTEMBER',
-    'OCTOBER',
+    'OKTOBER',
     'NOVEMBER',
-    'DECEMBER',
+    'DESEMBER',
   ];
 
   @override
@@ -65,10 +65,10 @@ class _QuestsPageState extends State<QuestsPage> {
     final left = midnight.difference(now);
 
     if (left.inHours >= 1) {
-      return '${left.inHours} ${left.inHours == 1 ? 'HOUR' : 'HOURS'}';
+      return '${left.inHours} JAM';
     }
     final minutes = left.inMinutes < 1 ? 1 : left.inMinutes;
-    return '$minutes ${minutes == 1 ? 'MINUTE' : 'MINUTES'}';
+    return '$minutes MENIT';
   }
 
   // Sisa hari sampai challenge bulanan berakhir, termasuk hari ini.
@@ -93,11 +93,11 @@ class _QuestsPageState extends State<QuestsPage> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF20272B),
         title: const Text(
-          'Ganti quest ini?',
+          'Ganti misi ini?',
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          'Quest "${questTitle(quest)}" akan diganti dengan quest lain secara '
+          'Misi "${questTitle(quest)}" akan diganti dengan misi lain secara '
           'acak. Harganya $price gem dan hanya bisa sekali sehari.',
           style: const TextStyle(color: Colors.white70),
         ),
@@ -132,8 +132,8 @@ class _QuestsPageState extends State<QuestsPage> {
         SnackBar(
           content: Text(
             replacement != null
-                ? 'Quest baru: ${questTitle(replacement)}'
-                : 'Belum ada quest pengganti yang cocok. Gem tidak terpakai.',
+                ? 'Misi baru: ${questTitle(replacement)}'
+                : 'Belum ada misi pengganti yang cocok. Gem tidak terpakai.',
           ),
           backgroundColor: const Color(0xFF20272B),
           behavior: SnackBarBehavior.floating,
@@ -190,7 +190,7 @@ class _QuestsPageState extends State<QuestsPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Quests',
+                        'Misi',
                         style: GoogleFonts.baloo2(
                           color: Colors.white,
                           fontSize: 28,
@@ -227,7 +227,7 @@ class _QuestsPageState extends State<QuestsPage> {
 
                 const SizedBox(height: 30),
 
-                buildSectionHeader('Daily Quests', dailyTimeLeft),
+                buildSectionHeader('Misi Harian', dailyTimeLeft),
 
                 const SizedBox(height: 12),
 
@@ -254,10 +254,7 @@ class _QuestsPageState extends State<QuestsPage> {
 
                 const SizedBox(height: 30),
 
-                buildSectionHeader(
-                  'Weekly Quest',
-                  weeklyDaysLeft == 1 ? '1 DAY' : '$weeklyDaysLeft DAYS',
-                ),
+                buildSectionHeader('Misi Mingguan', '$weeklyDaysLeft HARI'),
 
                 const SizedBox(height: 12),
 
@@ -285,11 +282,11 @@ class _QuestsPageState extends State<QuestsPage> {
       ),
       title: '${pet.name} · Lv ${pet.level}',
       subtitle: switch (pet.mood) {
-        DuckMood.happy => 'Very happy',
-        DuckMood.normal => 'Chilling',
-        DuckMood.hungry => 'Hungry!',
-        DuckMood.sad => 'Misses you',
-        DuckMood.sleeping => 'Sleeping',
+        DuckMood.happy => 'Senang banget',
+        DuckMood.normal => 'Santai',
+        DuckMood.hungry => 'Lapar!',
+        DuckMood.sad => 'Kangen kamu',
+        DuckMood.sleeping => 'Tidur',
       },
     );
   }
@@ -299,8 +296,8 @@ class _QuestsPageState extends State<QuestsPage> {
       onTap: () => openPage(const DailySpinPage()),
       highlight: progress.canSpin,
       preview: const SpinWheel(size: 64),
-      title: 'Daily Spin',
-      subtitle: progress.canSpin ? 'Ready to spin!' : 'Come back tomorrow',
+      title: 'Roda Harian',
+      subtitle: progress.canSpin ? 'Siap diputar!' : 'Besok lagi',
     );
   }
 
@@ -379,7 +376,7 @@ class _QuestsPageState extends State<QuestsPage> {
                 Row(
                   children: [
                     Text(
-                      '$streak day streak',
+                      '$streak hari beruntun',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -388,7 +385,7 @@ class _QuestsPageState extends State<QuestsPage> {
                     ),
                     const Spacer(),
                     Text(
-                      'Best: ${progress.bestStreak}',
+                      'Terbaik: ${progress.bestStreak}',
                       style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 12,
@@ -402,8 +399,8 @@ class _QuestsPageState extends State<QuestsPage> {
                 const SizedBox(height: 6),
                 Text(
                   studied
-                      ? 'You studied today. Nice work!'
-                      : 'Finish 1 lesson today to keep your streak.',
+                      ? 'Kamu sudah belajar hari ini. Mantap!'
+                      : 'Selesaikan 1 lesson hari ini supaya tidak putus.',
                   style: TextStyle(
                     color: studied ? const Color(0xFF58CC02) : Colors.white70,
                     fontSize: 12,
@@ -462,7 +459,7 @@ class _QuestsPageState extends State<QuestsPage> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'XP Boost active: 2x XP, $minutes min left',
+              'XP Ganda aktif: XP 2x lipat, sisa $minutes menit',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -492,7 +489,7 @@ class _QuestsPageState extends State<QuestsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${monthNames[DateTime.now().month - 1]} CHALLENGE',
+                        'TANTANGAN ${monthNames[DateTime.now().month - 1]}',
                         style: GoogleFonts.baloo2(
                           color: Colors.white70,
                           fontSize: 12,
@@ -501,7 +498,7 @@ class _QuestsPageState extends State<QuestsPage> {
                         ),
                       ),
                       Text(
-                        'Golden Pond Adventure',
+                        'Petualangan Kolam Emas',
                         style: GoogleFonts.baloo2(
                           color: Colors.white,
                           fontSize: 22,
@@ -519,9 +516,7 @@ class _QuestsPageState extends State<QuestsPage> {
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            monthlyDaysLeft == 1
-                                ? '1 DAY'
-                                : '$monthlyDaysLeft DAYS',
+                            '$monthlyDaysLeft HARI',
                             style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 13,
@@ -556,7 +551,7 @@ class _QuestsPageState extends State<QuestsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Complete ${PlayerProgress.monthlyTarget} quests',
+                  'Selesaikan ${PlayerProgress.monthlyTarget} misi',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -698,7 +693,7 @@ class _QuestsPageState extends State<QuestsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Complete ${PlayerProgress.weeklyTarget} lessons this week',
+            'Selesaikan ${PlayerProgress.weeklyTarget} lesson minggu ini',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -707,7 +702,7 @@ class _QuestsPageState extends State<QuestsPage> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Resets every Monday. Finish it to open a silver chest.',
+            'Reset setiap Senin. Selesaikan untuk membuka peti perak.',
             style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 12),

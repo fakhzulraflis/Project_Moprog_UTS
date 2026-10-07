@@ -109,13 +109,13 @@ class SpinPrize {
   String get description {
     switch (type) {
       case PrizeType.gems:
-        return '+$amount Gems';
+        return '+$amount Gem';
       case PrizeType.hearts:
-        return '+$amount Bonus ${amount == 1 ? 'Heart' : 'Hearts'}';
+        return '+$amount Hati Bonus';
       case PrizeType.xp:
         return '+$amount XP';
       case PrizeType.xpBoost:
-        return 'XP Boost $amount menit';
+        return 'XP Ganda $amount menit';
       case PrizeType.none:
         return 'Zonk! Coba lagi besok';
     }

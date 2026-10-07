@@ -19,7 +19,7 @@ class DailyQuest {
   final bool learning;
 
   // Quest dengan grup yang sama tidak muncul bersamaan di hari yang sama,
-  // misalnya "Earn 50 XP" dan "Earn 100 XP".
+  // misalnya "Kumpulkan 50 XP" dan "Kumpulkan 100 XP".
   final String group;
 
   // Ikon berupa gambar dari assets, atau ikon bawaan Flutter.
@@ -50,7 +50,7 @@ class QuestPool {
     // ---------- Quest belajar ----------
     DailyQuest(
       id: 'earn_xp',
-      title: 'Earn 50 XP',
+      title: 'Kumpulkan 50 XP',
       image: 'assets/icons/xp.png',
       target: 50,
       tier: ChestTier.bronze,
@@ -60,7 +60,7 @@ class QuestPool {
     ),
     DailyQuest(
       id: 'earn_xp_big',
-      title: 'Earn 100 XP',
+      title: 'Kumpulkan 100 XP',
       image: 'assets/icons/xp.png',
       target: 100,
       tier: ChestTier.silver,
@@ -70,7 +70,7 @@ class QuestPool {
     ),
     DailyQuest(
       id: 'complete_lesson',
-      title: 'Complete 1 lesson',
+      title: 'Selesaikan 1 lesson',
       image: 'assets/icons/guidebook.png',
       target: 1,
       tier: ChestTier.bronze,
@@ -80,7 +80,7 @@ class QuestPool {
     ),
     DailyQuest(
       id: 'complete_lessons',
-      title: 'Complete 3 lessons',
+      title: 'Selesaikan 3 lesson',
       image: 'assets/icons/guidebook.png',
       target: 3,
       tier: ChestTier.silver,
@@ -90,7 +90,7 @@ class QuestPool {
     ),
     DailyQuest(
       id: 'correct_answers',
-      title: 'Answer 15 questions correctly',
+      title: 'Jawab 15 soal dengan benar',
       image: 'assets/icons/dumbell.png',
       target: 15,
       tier: ChestTier.bronze,
@@ -100,7 +100,7 @@ class QuestPool {
     ),
     DailyQuest(
       id: 'correct_answers_big',
-      title: 'Answer 30 questions correctly',
+      title: 'Jawab 30 soal dengan benar',
       image: 'assets/icons/dumbell.png',
       target: 30,
       tier: ChestTier.silver,
@@ -112,7 +112,7 @@ class QuestPool {
     // ---------- Quest santai ----------
     DailyQuest(
       id: 'pet_duck',
-      title: 'Pet Quacko 3 times',
+      title: 'Elus Quacko 3 kali',
       iconData: Icons.pan_tool_alt,
       iconColor: Color(0xFFFF6B9A),
       target: 3,
@@ -123,7 +123,7 @@ class QuestPool {
     ),
     DailyQuest(
       id: 'feed_duck',
-      title: 'Feed Quacko',
+      title: 'Beri makan Quacko',
       iconData: Icons.bakery_dining,
       iconColor: Color(0xFFFF9A1F),
       target: 1,
@@ -134,7 +134,7 @@ class QuestPool {
     ),
     DailyQuest(
       id: 'daily_spin',
-      title: 'Spin the Daily Spin',
+      title: 'Putar Roda Harian',
       iconData: Icons.casino,
       iconColor: Color(0xFF7B61FF),
       target: 1,
@@ -145,7 +145,7 @@ class QuestPool {
     ),
     DailyQuest(
       id: 'shop_purchase',
-      title: 'Buy 1 item in the Shop',
+      title: 'Beli 1 barang di Toko',
       iconData: Icons.storefront,
       iconColor: Color(0xFF1CB0F6),
       target: 1,

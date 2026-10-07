@@ -71,11 +71,11 @@ class ChestLoot {
   String get label {
     switch (type) {
       case LootType.gems:
-        return 'Gems';
+        return 'Gem';
       case LootType.xp:
         return 'XP';
       case LootType.hearts:
-        return amount == 1 ? 'Bonus Heart' : 'Bonus Hearts';
+        return 'Hati Bonus';
     }
   }
 
@@ -106,11 +106,11 @@ class ChestLoot {
 String chestName(ChestTier tier) {
   switch (tier) {
     case ChestTier.bronze:
-      return 'Bronze Chest';
+      return 'Peti Perunggu';
     case ChestTier.silver:
-      return 'Silver Chest';
+      return 'Peti Perak';
     case ChestTier.gold:
-      return 'Golden Chest';
+      return 'Peti Emas';
   }
 }
 
@@ -504,7 +504,7 @@ class _ChestOpeningScreenState extends State<ChestOpeningScreen>
                           ),
                         ),
                         child: const Text(
-                          'CLAIM',
+                          'AMBIL',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
