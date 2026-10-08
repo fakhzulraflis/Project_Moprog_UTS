@@ -13,6 +13,7 @@ import '../widgets/inventory_button.dart';
 import '../widgets/lesson_node.dart';
 import '../widgets/lesson_popup.dart';
 import '../widgets/unit_header.dart';
+import '../services/question_service.dart';
 
 class _Slot {
   final int unit;
@@ -78,9 +79,18 @@ class _LearnPageState extends State<LearnPage> {
   @override
   void initState() {
     super.initState();
-
     _scroll.addListener(_onScroll);
-    _loadPath();
+
+    final cached = CourseService.peek(languageCode);
+
+    if (cached != null) {
+      units = cached.units;
+      ttsCode = cached.ttsCode;
+      _slots = _buildSlots();
+      isLoading = false;
+    } else {
+      _loadPath();
+    }
   }
 
   @override
@@ -128,6 +138,8 @@ class _LearnPageState extends State<LearnPage> {
         selectedLessonId = null;
         isLoading = false;
       });
+
+      QuestionService.prefetch(units.expand((unit) => unit.lessonIds).take(10));
     } catch (e) {
       if (!mounted) return;
 

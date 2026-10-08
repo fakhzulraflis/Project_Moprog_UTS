@@ -5,7 +5,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 import '../models/question.dart';
-import '../services/api_service.dart';
+import '../services/question_service.dart';
 import '../services/inventory_service.dart';
 import '../services/player_progress.dart';
 
@@ -271,7 +271,7 @@ class _LessonPageState extends State<LessonPage> {
 
   Future<void> loadQuestions() async {
     try {
-      final result = await ApiService.getQuestions(widget.lessonId);
+      final result = await QuestionService.getQuestions(widget.lessonId);
 
       final bonusHearts = await PlayerProgress.instance.takeBonusHearts();
 
