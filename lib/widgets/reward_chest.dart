@@ -467,9 +467,12 @@ class _ChestOpeningScreenState extends State<ChestOpeningScreen>
                 const SizedBox(height: 24),
 
                 SizedBox(
+                  width: double.infinity,
                   height: 260,
                   child: Stack(
                     alignment: Alignment.center,
+                    // Cahaya di belakang peti boleh melebar keluar area ini
+                    clipBehavior: Clip.none,
                     children: [
                       // Cahaya di belakang peti setelah terbuka
                       if (opened)

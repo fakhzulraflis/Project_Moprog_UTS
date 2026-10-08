@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/duck_painter.dart';
 import '../widgets/reward_chest.dart';
 import 'player_progress.dart';
+import 'progress_sync.dart';
 
 // Data aksesoris di lemari Quacko.
 class AccessoryInfo {
@@ -99,6 +100,11 @@ class DuckPet extends ChangeNotifier {
     pendingLevelUp = p.getInt('pet_pendingLevelUp') ?? 0;
 
     prefs = p;
+
+    // Quacko baru: langsung disimpan supaya tanggal adopsinya tetap
+    // (dan ikut tersimpan di akun user)
+    if (!p.containsKey('pet_adoptedAt')) await save();
+
     notifyListeners();
   }
 
@@ -127,6 +133,16 @@ class DuckPet extends ChangeNotifier {
       p.setInt('pet_xp', xp),
       p.setInt('pet_pendingLevelUp', pendingLevelUp),
     ]);
+
+    // Kirim juga ke database supaya Quacko tersimpan di akun user
+    ProgressSync.instance.schedulePush();
+  }
+
+  // Muat ulang dari HP. Dipakai setelah progres diganti dari server.
+  Future<void> reload() {
+    prefs = null;
+    loading = null;
+    return load();
   }
 
   // ---------- Level ----------
