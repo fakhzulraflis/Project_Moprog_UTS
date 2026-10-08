@@ -59,27 +59,66 @@ class UserProfile {
   }
 }
 
-class SuggestedUser {
+// User lain (publik): hasil pencarian, daftar following/followers, dan popup profil.
+class FriendUser {
   final int id;
   final String fullname;
   final String username;
   final String learningLanguage;
+  final String? avatarCharacter;
+  final DateTime? joinedAt;
+  final int followingCount;
+  final int followersCount;
+  final int likeCount;
   final bool isFollowing;
+  final bool liked;
 
-  const SuggestedUser({
+  const FriendUser({
     required this.id,
     required this.fullname,
     required this.username,
     required this.learningLanguage,
-    required this.isFollowing,
+    this.avatarCharacter,
+    this.joinedAt,
+    this.followingCount = 0,
+    this.followersCount = 0,
+    this.likeCount = 0,
+    this.isFollowing = false,
+    this.liked = false,
   });
 
-  factory SuggestedUser.fromJson(Map<String, dynamic> json) => SuggestedUser(
+  FriendUser copyWith({
+    int? followersCount,
+    int? likeCount,
+    bool? isFollowing,
+    bool? liked,
+  }) => FriendUser(
+    id: id,
+    fullname: fullname,
+    username: username,
+    learningLanguage: learningLanguage,
+    avatarCharacter: avatarCharacter,
+    joinedAt: joinedAt,
+    followingCount: followingCount,
+    followersCount: followersCount ?? this.followersCount,
+    likeCount: likeCount ?? this.likeCount,
+    isFollowing: isFollowing ?? this.isFollowing,
+    liked: liked ?? this.liked,
+  );
+
+  factory FriendUser.fromJson(Map<String, dynamic> json) => FriendUser(
     id: (json['id'] as num).toInt(),
     fullname: (json['fullname'] ?? '').toString(),
     username: (json['username'] ?? '').toString(),
     learningLanguage: (json['learning_language'] ?? 'English').toString(),
+    avatarCharacter: json['avatar_character'] as String?,
+    joinedAt: DateTime.tryParse((json['joined_at'] ?? '').toString())
+        ?.toLocal(),
+    followingCount: (json['following_count'] as num?)?.toInt() ?? 0,
+    followersCount: (json['followers_count'] as num?)?.toInt() ?? 0,
+    likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
     isFollowing: json['is_following'] == true,
+    liked: json['liked'] == true,
   );
 }
 
@@ -130,12 +169,26 @@ class ProfileService {
     return _decode(response);
   }
 
-  static Future<Map<String, dynamic>> _post(String path) async {
+  static Future<Map<String, dynamic>> _post(
+    String path, [
+    Map<String, dynamic>? body,
+  ]) => _send('POST', path, body);
+
+  static Future<Map<String, dynamic>> _send(
+    String method,
+    String path, [
+    Map<String, dynamic>? body,
+  ]) async {
     await AuthSession.instance.load();
-    final response = await http.post(
+    final request = http.Request(
+      method,
       Uri.parse('${ApiService.baseUrl}$path'),
-      headers: _headers,
-    );
+    )..headers.addAll(_headers);
+    if (body != null) {
+      request.headers['Content-Type'] = 'application/json';
+      request.body = jsonEncode(body);
+    }
+    final response = await http.Response.fromStream(await request.send());
     return _decode(response);
   }
 
@@ -166,20 +219,57 @@ class ProfileService {
   }
 
   static Future<void> setAvatar(String key) async {
-    await AuthSession.instance.load();
-    final response = await http.put(
-      Uri.parse('${ApiService.baseUrl}/profile/avatar'),
-      headers: {..._headers, 'Content-Type': 'application/json'},
-      body: jsonEncode({'avatar_character': key}),
-    );
-    _decode(response);
+    await _send('PUT', '/profile/avatar', {'avatar_character': key});
   }
 
-  static Future<List<SuggestedUser>> getSuggestions() async {
-    final body = await _get('/profile/suggestions');
-    return ((body['data'] as List?) ?? [])
-        .map((e) => SuggestedUser.fromJson(e as Map<String, dynamic>))
-        .toList();
+  static List<FriendUser> _users(Map<String, dynamic> body) =>
+      ((body['data'] as List?) ?? [])
+          .map((e) => FriendUser.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+  // Tanpa [query]: saran user. Dengan [query]: user yang cocok.
+  static Future<List<FriendUser>> searchUsers([String query = '']) async =>
+      _users(await _get('/users/search?q=${Uri.encodeQueryComponent(query)}'));
+
+  static Future<FriendUser> getUser(int id) async {
+    final body = await _get('/users/$id');
+    return FriendUser.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
+  static Future<List<FriendUser>> getFollowing() async =>
+      _users(await _get('/profile/following'));
+
+  static Future<List<FriendUser>> getFollowers() async =>
+      _users(await _get('/profile/followers'));
+
+  static Future<List<FriendUser>> getBlocked() async =>
+      _users(await _get('/profile/blocked'));
+
+  // Mengembalikan data user yang sudah diperbarui (jumlah like dan status).
+  static Future<FriendUser> toggleUserLike(int userId) async {
+    final body = await _post('/users/$userId/like');
+    return FriendUser.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
+  // Mengembalikan true kalau sekarang diblokir.
+  static Future<bool> toggleBlock(int userId) async {
+    final body = await _post('/users/$userId/block');
+    return body['blocked'] == true;
+  }
+
+  static Future<void> reportUser(int userId, String reason) async {
+    await _post('/users/$userId/report', {'reason': reason});
+  }
+
+  static Future<void> setLanguage(String language) async {
+    await _send('PATCH', '/profile/language', {'learning_language': language});
+  }
+
+  // Mencabut token di server. Kegagalan jaringan tidak menghalangi sign out.
+  static Future<void> signOutOnServer() async {
+    try {
+      await _post('/logout');
+    } catch (_) {}
   }
 
   static Future<List<CommunityPost>> getPosts() async {
