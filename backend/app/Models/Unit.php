@@ -14,6 +14,10 @@ class Unit extends Model
         'order',
     ];
 
+    protected $casts = [
+        'guidebook' => 'array',
+    ];
+
     public function section(): BelongsTo
     {
         return $this->belongsTo(Section::class);

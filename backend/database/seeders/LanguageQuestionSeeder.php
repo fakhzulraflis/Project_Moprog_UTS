@@ -81,11 +81,6 @@ abstract class LanguageQuestionSeeder extends Seeder
 
     protected function pic(string $label, string $file): array
     {
-        return ['label' => $label, 'image' => "assets/foods/{$file}.png"];
-    }
-
-    protected function img(string $label, string $folder, string $file): array
-    {
-        return ['label' => $label, 'image' => "assets/{$folder}/{$file}.png"];
+        return ['label' => $label, 'image' => "assets/lesson/{$file}.png"];
     }
 }

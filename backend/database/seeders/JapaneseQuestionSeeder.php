@@ -14,6 +14,8 @@ class JapaneseQuestionSeeder extends LanguageQuestionSeeder
         return [
             'Makanan Dasar' => $this->lessonOne(),
             'Minuman Dasar' => $this->lessonTwo(),
+            'Sapaan' => $this->lessonThree(),
+            'Tantangan Dasar' => $this->lessonFour(),
         ];
     }
 
@@ -408,6 +410,379 @@ class JapaneseQuestionSeeder extends LanguageQuestionSeeder
                 audio: 'ください',
                 romaji: 'kudasai',
                 meaning: 'tolong'
+            ),
+        ];
+    }
+
+    // ---------------- Pelajaran 3: Sapaan ----------------
+    private function lessonThree(): array
+    {
+        return [
+            $this->q(
+                1,
+                'image_choice',
+                'こんにちは',
+                'halo',
+                [
+                    $this->pic('halo', 'hello'),
+                    $this->pic('selamat tinggal', 'goodbye'),
+                    $this->pic('terima kasih', 'thank_you'),
+                    $this->pic('maaf', 'sorry'),
+                ],
+                audio: 'こんにちは',
+                romaji: 'konnichiwa',
+                meaning: 'halo'
+            ),
+
+            $this->q(
+                2,
+                'multiple_choice',
+                'halo',
+                'こんにちは',
+                [
+                    $this->o('さようなら', 'sayounara'),
+                    $this->o('こんにちは', 'konnichiwa'),
+                    $this->o('ありがとう', 'arigatou'),
+                    $this->o('すみません', 'sumimasen'),
+                ]
+            ),
+
+            $this->q(
+                3,
+                'image_choice',
+                'さようなら',
+                'selamat tinggal',
+                [
+                    $this->pic('halo', 'hello'),
+                    $this->pic('terima kasih', 'thank_you'),
+                    $this->pic('selamat tinggal', 'goodbye'),
+                    $this->pic('maaf', 'sorry'),
+                ],
+                audio: 'さようなら',
+                romaji: 'sayounara',
+                meaning: 'selamat tinggal'
+            ),
+
+            $this->q(
+                4,
+                'listening',
+                'こんにちは',
+                'こんにちは',
+                [
+                    $this->o('さようなら', 'sayounara'),
+                    $this->o('こんにちは', 'konnichiwa'),
+                    $this->o('ありがとう', 'arigatou'),
+                    $this->o('すみません', 'sumimasen'),
+                ],
+                audio: 'こんにちは',
+                meaning: 'Halo.'
+            ),
+
+            $this->q(
+                5,
+                'word_bank',
+                'Terima kasih.',
+                'ありがとう',
+                [
+                    $this->o('ありがとう', 'arigatou'),
+                    $this->o('こんにちは', 'konnichiwa'),
+                    $this->o('さようなら', 'sayounara'),
+                    $this->o('すみません', 'sumimasen'),
+                ]
+            ),
+
+            $this->q(
+                6,
+                'multiple_choice',
+                'ありがとう',
+                'terima kasih',
+                [
+                    'maaf',
+                    'selamat tinggal',
+                    'terima kasih',
+                    'halo',
+                ],
+                audio: 'ありがとう',
+                romaji: 'arigatou',
+                meaning: 'terima kasih'
+            ),
+
+            $this->q(
+                7,
+                'matching',
+                'Cocokkan kata bahasa Indonesia dengan bahasa Jepang.',
+                'halo=こんにちは,selamat tinggal=さようなら,terima kasih=ありがとう',
+                [
+                    [
+                        'left' => 'halo',
+                        'right' => 'こんにちは (konnichiwa)',
+                    ],
+                    [
+                        'left' => 'selamat tinggal',
+                        'right' => 'さようなら (sayounara)',
+                    ],
+                    [
+                        'left' => 'terima kasih',
+                        'right' => 'ありがとう (arigatou)',
+                    ],
+                ]
+            ),
+
+            $this->q(
+                8,
+                'translation',
+                'Terima kasih.',
+                'ありがとう'
+            ),
+
+            $this->q(
+                9,
+                'image_choice',
+                'ありがとう',
+                'terima kasih',
+                [
+                    $this->pic('maaf', 'sorry'),
+                    $this->pic('terima kasih', 'thank_you'),
+                    $this->pic('halo', 'hello'),
+                    $this->pic('selamat tinggal', 'goodbye'),
+                ],
+                audio: 'ありがとう',
+                romaji: 'arigatou',
+                meaning: 'terima kasih'
+            ),
+
+            $this->q(
+                10,
+                'listening',
+                'ありがとう',
+                'ありがとう',
+                [
+                    $this->o('すみません', 'sumimasen'),
+                    $this->o('こんにちは', 'konnichiwa'),
+                    $this->o('ありがとう', 'arigatou'),
+                    $this->o('さようなら', 'sayounara'),
+                ],
+                audio: 'ありがとう',
+                meaning: 'Terima kasih.'
+            ),
+
+            $this->q(
+                11,
+                'fill_blank',
+                'おはよう ___。',
+                'ございます',
+                [
+                    $this->o('ございます', 'gozaimasu'),
+                    $this->o('ありがとう', 'arigatou'),
+                    $this->o('こんにちは', 'konnichiwa'),
+                    $this->o('さようなら', 'sayounara'),
+                ],
+                romaji: 'ohayou ___.',
+                meaning: 'selamat pagi'
+            ),
+
+            $this->q(
+                12,
+                'multiple_choice',
+                'すみません',
+                'maaf',
+                [
+                    'halo',
+                    'terima kasih',
+                    'maaf',
+                    'selamat tinggal',
+                ],
+                audio: 'すみません',
+                romaji: 'sumimasen',
+                meaning: 'maaf'
+            ),
+        ];
+    }
+
+    // ---------------- Pelajaran 4: Tantangan Dasar ----------------
+    private function lessonFour(): array
+    {
+        return [
+            $this->q(
+                1,
+                'image_choice',
+                'ごはん',
+                'nasi',
+                [
+                    $this->pic('nasi', 'rice'),
+                    $this->pic('ayam', 'chicken'),
+                    $this->pic('ikan', 'fish'),
+                    $this->pic('telur', 'egg'),
+                ],
+                audio: 'ごはん',
+                romaji: 'gohan',
+                meaning: 'nasi'
+            ),
+
+            $this->q(
+                2,
+                'multiple_choice',
+                'susu',
+                'ぎゅうにゅう',
+                [
+                    $this->o('みず', 'mizu'),
+                    $this->o('ぎゅうにゅう', 'gyuunyuu'),
+                    $this->o('コーヒー', 'koohii'),
+                    $this->o('おちゃ', 'ocha'),
+                ]
+            ),
+
+            $this->q(
+                3,
+                'image_choice',
+                'ありがとう',
+                'terima kasih',
+                [
+                    $this->pic('maaf', 'sorry'),
+                    $this->pic('terima kasih', 'thank_you'),
+                    $this->pic('halo', 'hello'),
+                    $this->pic('selamat tinggal', 'goodbye'),
+                ],
+                audio: 'ありがとう',
+                romaji: 'arigatou',
+                meaning: 'terima kasih'
+            ),
+
+            $this->q(
+                4,
+                'listening',
+                'Dengarkan kalimat berikut.',
+                'みずを のみます',
+                [
+                    $this->o('みず', 'mizu'),
+                    $this->o('のみます', 'nomimasu'),
+                    $this->o('ごはん', 'gohan'),
+                    $this->o('たべます', 'tabemasu'),
+                    $this->o('を', 'o'),
+                ],
+                audio: 'みずをのみます',
+                meaning: 'Saya minum air.'
+            ),
+
+            $this->q(
+                5,
+                'word_bank',
+                'Saya makan nasi.',
+                'ごはん を たべます',
+                [
+                    $this->o('を', 'o'),
+                    $this->o('たべます', 'tabemasu'),
+                    $this->o('ごはん', 'gohan'),
+                    $this->o('のみます', 'nomimasu'),
+                    $this->o('パン', 'pan'),
+                ]
+            ),
+
+            $this->q(
+                6,
+                'multiple_choice',
+                'さようなら',
+                'selamat tinggal',
+                [
+                    'halo',
+                    'terima kasih',
+                    'selamat tinggal',
+                    'maaf',
+                ],
+                audio: 'さようなら',
+                romaji: 'sayounara',
+                meaning: 'selamat tinggal'
+            ),
+
+            $this->q(
+                7,
+                'matching',
+                'Cocokkan kata bahasa Indonesia dengan bahasa Jepang.',
+                'nasi=ごはん,air=みず,terima kasih=ありがとう',
+                [
+                    [
+                        'left' => 'nasi',
+                        'right' => 'ごはん (gohan)',
+                    ],
+                    [
+                        'left' => 'air',
+                        'right' => 'みず (mizu)',
+                    ],
+                    [
+                        'left' => 'terima kasih',
+                        'right' => 'ありがとう (arigatou)',
+                    ],
+                ]
+            ),
+
+            $this->q(
+                8,
+                'translation',
+                'Saya minum kopi.',
+                'コーヒー を のみます'
+            ),
+
+            $this->q(
+                9,
+                'image_choice',
+                'バナナ',
+                'pisang',
+                [
+                    $this->pic('pisang', 'banana'),
+                    $this->pic('roti', 'bread'),
+                    $this->pic('telur', 'egg'),
+                    $this->pic('nasi', 'rice'),
+                ],
+                audio: 'バナナ',
+                romaji: 'banana',
+                meaning: 'pisang'
+            ),
+
+            $this->q(
+                10,
+                'listening',
+                'Dengarkan kalimat berikut.',
+                'パンを たべます',
+                [
+                    $this->o('パン', 'pan'),
+                    $this->o('たべます', 'tabemasu'),
+                    $this->o('のみます', 'nomimasu'),
+                    $this->o('ごはん', 'gohan'),
+                    $this->o('を', 'o'),
+                ],
+                audio: 'パンをたべます',
+                meaning: 'Saya makan roti.'
+            ),
+
+            $this->q(
+                11,
+                'fill_blank',
+                'おはよう ___。',
+                'ございます',
+                [
+                    $this->o('ございます', 'gozaimasu'),
+                    $this->o('ありがとう', 'arigatou'),
+                    $this->o('こんにちは', 'konnichiwa'),
+                    $this->o('さようなら', 'sayounara'),
+                ],
+                romaji: 'ohayou ___.',
+                meaning: 'selamat pagi'
+            ),
+
+            $this->q(
+                12,
+                'multiple_choice',
+                'すみません',
+                'maaf',
+                [
+                    'halo',
+                    'terima kasih',
+                    'maaf',
+                    'selamat tinggal',
+                ],
+                audio: 'すみません',
+                romaji: 'sumimasen',
+                meaning: 'maaf'
             ),
         ];
     }

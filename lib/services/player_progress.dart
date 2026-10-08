@@ -8,12 +8,6 @@ import 'quest_pool.dart';
 
 export 'quest_pool.dart' show DailyQuest, QuestPool;
 
-// Menyimpan progress pemain di HP: gem, XP, quest harian, quest mingguan,
-// challenge bulanan, streak, roda hadiah, dan item dari toko.
-// Data tersimpan walaupun aplikasi ditutup.
-//
-// Dipakai sebagai satu objek bersama (PlayerProgress.instance) supaya
-// halaman lesson, quests, dan shop membaca data yang sama.
 class PlayerProgress extends ChangeNotifier {
   PlayerProgress._();
 
@@ -30,13 +24,13 @@ class PlayerProgress extends ChangeNotifier {
 
   bool get isLoaded => prefs != null;
 
-  // Saldo dan item
   int gems = 50;
   int totalXp = 0;
   int bonusHearts = 0;
   DateTime? xpBoostUntil;
 
-  // Progress hari ini
+  Set<int> completedLessonIds = {};
+
   String day = '';
   int xpToday = 0;
   int lessonsToday = 0;
@@ -47,21 +41,17 @@ class PlayerProgress extends ChangeNotifier {
   Set<String> completedToday = {};
   Set<String> claimedToday = {};
 
-  // Quest harian hari ini, dipilih acak dari QuestPool
   List<String> todayQuestIds = [];
   bool rerolledToday = false;
 
-  // Progress minggu ini (Senin - Minggu)
   String week = '';
   int lessonsThisWeek = 0;
   bool weeklyClaimed = false;
 
-  // Progress bulan ini
   String month = '';
   int questsThisMonth = 0;
   bool monthlyClaimed = false;
 
-  // Streak: jumlah hari berturut-turut menyelesaikan minimal 1 lesson
   int storedStreak = 0;
   int bestStreak = 0;
   String lastStudyDay = '';
@@ -69,21 +59,13 @@ class PlayerProgress extends ChangeNotifier {
 
   Set<String> studiedDays = {};
 
-  // Kelipatan streakGoal yang sudah pernah dapat reward, supaya reward
-  // tidak diberikan dua kali untuk kelipatan yang sama (misal 7, 14, 21).
   Set<int> claimedStreakMilestones = {};
 
-  // Diisi sesaat setelah streak baru saja mencapai kelipatan streakGoal,
-  // supaya UI bisa menampilkan perayaan sekali lalu dikosongkan lagi
-  // lewat clearPendingStreakMilestone(). Tidak disimpan ke disk karena
-  // sifatnya cuma notifikasi sekali-tampil, bukan data permanen.
   int? pendingStreakMilestone;
 
-  // Roda hadiah harian
   String lastSpinDay = '';
   int lastSpinPrize = -1;
 
-  // Muat data dari HP. Aman dipanggil berkali-kali, hanya dimuat sekali.
   Future<void> load() {
     return loading ??= loadFromDisk();
   }
@@ -94,10 +76,15 @@ class PlayerProgress extends ChangeNotifier {
     gems = p.getInt('gems') ?? 50;
     totalXp = p.getInt('totalXp') ?? 0;
     bonusHearts = p.getInt('bonusHearts') ?? 0;
+
     final boost = p.getInt('xpBoostUntil');
     xpBoostUntil = boost == null
         ? null
         : DateTime.fromMillisecondsSinceEpoch(boost);
+
+    completedLessonIds = (p.getStringList('completedLessonIds') ?? [])
+        .map(int.parse)
+        .toSet();
 
     day = p.getString('day') ?? '';
     xpToday = p.getInt('xpToday') ?? 0;
@@ -120,9 +107,11 @@ class PlayerProgress extends ChangeNotifier {
     monthlyClaimed = p.getBool('monthlyClaimed') ?? false;
 
     studiedDays = (p.getStringList('studiedDays') ?? []).toSet();
+
     claimedStreakMilestones = (p.getStringList('claimedStreakMilestones') ?? [])
         .map(int.parse)
         .toSet();
+
     storedStreak = p.getInt('streak') ?? 0;
     bestStreak = p.getInt('bestStreak') ?? 0;
     lastStudyDay = p.getString('lastStudyDay') ?? '';
@@ -132,20 +121,24 @@ class PlayerProgress extends ChangeNotifier {
     lastSpinPrize = p.getInt('lastSpinPrize') ?? -1;
 
     prefs = p;
+
     var changed = rollOver();
 
-    // Pengguna lama belum punya daftar quest acak, jadi dibuatkan sekarang
     if (dailyQuests.length != QuestPool.questsPerDay) {
       todayQuestIds = QuestPool.pickForDay(day);
       changed = true;
     }
 
-    if (changed) await save();
+    if (changed) {
+      await save();
+    }
+
     notifyListeners();
   }
 
   Future<void> save() async {
     final p = prefs!;
+
     await Future.wait([
       p.setInt('gems', gems),
       p.setInt('totalXp', totalXp),
@@ -154,6 +147,10 @@ class PlayerProgress extends ChangeNotifier {
         p.remove('xpBoostUntil')
       else
         p.setInt('xpBoostUntil', xpBoostUntil!.millisecondsSinceEpoch),
+      p.setStringList(
+        'completedLessonIds',
+        completedLessonIds.map((e) => e.toString()).toList(),
+      ),
       p.setString('day', day),
       p.setInt('xpToday', xpToday),
       p.setInt('lessonsToday', lessonsToday),
@@ -185,8 +182,6 @@ class PlayerProgress extends ChangeNotifier {
     ]);
   }
 
-  // Semua perubahan data lewat sini: pastikan data sudah dimuat, cek
-  // apakah sudah ganti hari, jalankan perubahan, lalu simpan.
   Future<void> update(void Function() change) async {
     await load();
     rollOver();
@@ -203,16 +198,12 @@ class PlayerProgress extends ChangeNotifier {
   static String monthKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}';
 
-  // Minggu ditandai dengan tanggal hari Senin-nya.
   static String weekKey(DateTime d) =>
       dayKey(DateTime(d.year, d.month, d.day - (d.weekday - 1)));
 
   static String yesterdayKey(DateTime d) =>
       dayKey(DateTime(d.year, d.month, d.day - 1));
 
-  // Reset quest harian kalau sudah ganti hari, quest mingguan kalau sudah
-  // ganti minggu, dan challenge bulanan kalau sudah ganti bulan.
-  // Mengembalikan true kalau ada yang direset.
   bool rollOver([DateTime? now]) {
     now ??= DateTime.now();
     var changed = false;
@@ -249,17 +240,15 @@ class PlayerProgress extends ChangeNotifier {
     return changed;
   }
 
-  // Dipanggil tiap menit oleh halaman quests, supaya quest langsung
-  // ter-reset tepat tengah malam walaupun halamannya sedang dibuka.
   Future<void> refresh() async {
     await load();
+
     if (rollOver()) {
       notifyListeners();
       await save();
     }
   }
 
-  // Quest yang baru saja mencapai target dihitung ke challenge bulanan.
   void checkQuestCompletion() {
     for (final quest in dailyQuests) {
       if (quest.progressOf(this) >= quest.target &&
@@ -269,36 +258,40 @@ class PlayerProgress extends ChangeNotifier {
     }
   }
 
-  // ---------- Quest ----------
-
-  // Quest harian hari ini, sesuai urutan yang dipilih.
   List<DailyQuest> get dailyQuests =>
       todayQuestIds.map(QuestPool.byId).whereType<DailyQuest>().toList();
 
   bool get spunToday => lastSpinDay == day;
 
-  // Quest bisa diganti sekali sehari, selama belum selesai.
   bool canReroll(DailyQuest quest) =>
       !rerolledToday && chestStateOf(quest) == ChestState.locked;
 
-  // Ganti satu quest dengan quest lain secara acak, bayar pakai gem.
-  // Mengembalikan quest penggantinya, atau null kalau gagal.
   Future<DailyQuest?> rerollQuest(DailyQuest quest) async {
     DailyQuest? replacement;
+
     await update(() {
-      if (!canReroll(quest) || gems < rerollPrice) return;
+      if (!canReroll(quest) || gems < rerollPrice) {
+        return;
+      }
+
       replacement = QuestPool.replacementFor(
         quest,
         dailyQuests,
         isDone: (q) => q.progressOf(this) >= q.target,
       );
-      if (replacement == null) return;
+
+      if (replacement == null) {
+        return;
+      }
 
       gems -= rerollPrice;
       rerolledToday = true;
+
       final index = todayQuestIds.indexOf(quest.id);
+
       todayQuestIds = [...todayQuestIds]..[index] = replacement!.id;
     });
+
     return replacement;
   }
 
@@ -306,14 +299,20 @@ class PlayerProgress extends ChangeNotifier {
       quest.progressOf(this).clamp(0, quest.target);
 
   ChestState chestStateOf(DailyQuest quest) {
-    if (claimedToday.contains(quest.id)) return ChestState.claimed;
+    if (claimedToday.contains(quest.id)) {
+      return ChestState.claimed;
+    }
+
     return quest.progressOf(this) >= quest.target
         ? ChestState.ready
         : ChestState.locked;
   }
 
   ChestState get monthlyChestState {
-    if (monthlyClaimed) return ChestState.claimed;
+    if (monthlyClaimed) {
+      return ChestState.claimed;
+    }
+
     return questsThisMonth >= monthlyTarget
         ? ChestState.ready
         : ChestState.locked;
@@ -321,14 +320,20 @@ class PlayerProgress extends ChangeNotifier {
 
   Future<void> claimQuest(DailyQuest quest, ChestLoot loot) {
     return update(() {
-      if (chestStateOf(quest) != ChestState.ready) return;
+      if (chestStateOf(quest) != ChestState.ready) {
+        return;
+      }
+
       claimedToday.add(quest.id);
       applyLoot(loot);
     });
   }
 
   ChestState get weeklyChestState {
-    if (weeklyClaimed) return ChestState.claimed;
+    if (weeklyClaimed) {
+      return ChestState.claimed;
+    }
+
     return lessonsThisWeek >= weeklyTarget
         ? ChestState.ready
         : ChestState.locked;
@@ -336,7 +341,10 @@ class PlayerProgress extends ChangeNotifier {
 
   Future<void> claimWeekly(ChestLoot loot) {
     return update(() {
-      if (weeklyChestState != ChestState.ready) return;
+      if (weeklyChestState != ChestState.ready) {
+        return;
+      }
+
       weeklyClaimed = true;
       applyLoot(loot);
     });
@@ -344,7 +352,10 @@ class PlayerProgress extends ChangeNotifier {
 
   Future<void> claimMonthly(ChestLoot loot) {
     return update(() {
-      if (monthlyChestState != ChestState.ready) return;
+      if (monthlyChestState != ChestState.ready) {
+        return;
+      }
+
       monthlyClaimed = true;
       applyLoot(loot);
     });
@@ -355,15 +366,12 @@ class PlayerProgress extends ChangeNotifier {
       case LootType.gems:
         gems += loot.amount;
       case LootType.xp:
-        // XP dari peti tidak ikut dikali boost
         totalXp += loot.amount;
         xpToday += loot.amount;
       case LootType.hearts:
         bonusHearts += loot.amount;
     }
   }
-
-  // ---------- Dipanggil dari halaman lesson ----------
 
   bool get isXpBoostActive =>
       xpBoostUntil != null && DateTime.now().isBefore(xpBoostUntil!);
@@ -372,20 +380,53 @@ class PlayerProgress extends ChangeNotifier {
       ? xpBoostUntil!.difference(DateTime.now())
       : Duration.zero;
 
-  // Mengembalikan jumlah XP yang didapat (sudah termasuk boost).
-  Future<int> completeLesson() async {
-    var earned = xpPerLesson;
+  bool isLessonCompleted(int lessonId) {
+    return completedLessonIds.contains(lessonId);
+  }
+
+  int completedLessonsInUnit(List<int> lessonIds) {
+    return lessonIds.where(completedLessonIds.contains).length;
+  }
+
+  bool isUnitCompleted(List<int> lessonIds) {
+    if (lessonIds.isEmpty) {
+      return false;
+    }
+
+    return lessonIds.every(completedLessonIds.contains);
+  }
+
+  Future<int> completeLesson(int lessonId) async {
+    var earned = 0;
+    var completedNow = false;
+
     await update(() {
-      if (isXpBoostActive) earned *= 2;
+      if (completedLessonIds.contains(lessonId)) {
+        return;
+      }
+
+      completedLessonIds.add(lessonId);
+
+      earned = xpPerLesson;
+
+      if (isXpBoostActive) {
+        earned *= 2;
+      }
+
       totalXp += earned;
       xpToday += earned;
       lessonsToday++;
       lessonsThisWeek++;
+
       recordStudyDay(DateTime.now());
+
+      completedNow = true;
     });
 
-    // Quacko ikut senang dan dapat XP kalau pemainnya belajar
-    await DuckPet.instance.onLessonCompleted(earned);
+    if (completedNow) {
+      await DuckPet.instance.onLessonCompleted(earned);
+    }
+
     return earned;
   }
 
@@ -393,28 +434,31 @@ class PlayerProgress extends ChangeNotifier {
     return update(() => correctToday++);
   }
 
-  // Dipanggil DuckPet untuk quest santai.
-  Future<void> recordPet() => update(() => petsToday++);
+  Future<void> recordPet() {
+    return update(() => petsToday++);
+  }
 
-  Future<void> recordFeed() => update(() => feedsToday++);
+  Future<void> recordFeed() {
+    return update(() => feedsToday++);
+  }
 
-  // Hati tambahan dipakai sekaligus di awal lesson berikutnya.
   Future<int> takeBonusHearts() async {
     var taken = 0;
+
     await update(() {
       taken = bonusHearts;
       bonusHearts = 0;
     });
+
     return taken;
   }
 
-  // ---------- Streak ----------
-
-  // Streak yang masih berlaku. Kalau kemarin tidak belajar, streak putus.
   int get streak {
     final now = DateTime.now();
+
     final active =
         lastStudyDay == dayKey(now) || lastStudyDay == yesterdayKey(now);
+
     return active ? storedStreak : 0;
   }
 
@@ -422,24 +466,37 @@ class PlayerProgress extends ChangeNotifier {
 
   void recordStudyDay(DateTime now) {
     final today = dayKey(now);
+
     studiedDays.add(today);
-    if (lastStudyDay == today) return;
+
+    if (lastStudyDay == today) {
+      return;
+    }
 
     storedStreak = lastStudyDay == yesterdayKey(now) ? storedStreak + 1 : 1;
+
     lastStudyDay = today;
-    if (storedStreak > bestStreak) bestStreak = storedStreak;
+
+    if (storedStreak > bestStreak) {
+      bestStreak = storedStreak;
+    }
 
     if (streakGoal > 0 &&
         storedStreak % streakGoal == 0 &&
         claimedStreakMilestones.add(storedStreak)) {
       applyLoot(ChestLoot(LootType.gems, 20));
+
       pendingStreakMilestone = storedStreak;
     }
   }
 
   int get streakCycleProgress {
-    if (streakGoal <= 0 || streak == 0) return 0;
+    if (streakGoal <= 0 || streak == 0) {
+      return 0;
+    }
+
     final remainder = streak % streakGoal;
+
     return remainder == 0 ? streakGoal : remainder;
   }
 
@@ -448,22 +505,22 @@ class PlayerProgress extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Dipanggil dari halaman Streak Goal waktu pemain memilih target.
   Future<void> setStreakGoal(int days) {
     return update(() => streakGoal = days);
   }
 
-  // ---------- Roda hadiah harian ----------
-
   bool get canSpin => lastSpinDay != dayKey(DateTime.now());
 
-  // Hadiah langsung disimpan sebelum animasi roda berputar, jadi keluar dari
-  // halaman di tengah animasi tidak bisa dipakai untuk memutar ulang.
   Future<bool> claimSpin(int index) async {
     var ok = false;
+
     await update(() {
-      if (!canSpin) return;
+      if (!canSpin) {
+        return;
+      }
+
       final prize = SpinPrize.all[index];
+
       lastSpinDay = dayKey(DateTime.now());
       lastSpinPrize = index;
 
@@ -475,67 +532,87 @@ class PlayerProgress extends ChangeNotifier {
         case PrizeType.xp:
           applyLoot(ChestLoot(LootType.xp, prize.amount));
         case PrizeType.xpBoost:
-          // Kalau boost masih aktif, waktunya ditambah
           final from = isXpBoostActive ? xpBoostUntil! : DateTime.now();
+
           xpBoostUntil = from.add(Duration(minutes: prize.amount));
         case PrizeType.none:
           break;
       }
+
       ok = true;
     });
+
     return ok;
   }
 
-  // ---------- Toko ----------
-
-  // Mengurangi gem kalau cukup. Mengembalikan false kalau gem kurang.
   Future<bool> spendGems(int price) async {
     var ok = false;
+
     await update(() {
-      if (gems < price) return;
+      if (gems < price) {
+        return;
+      }
+
       gems -= price;
       ok = true;
     });
+
     return ok;
   }
 
   Future<bool> buyXpBoost(int price) async {
     var ok = false;
+
     await update(() {
-      if (gems < price || isXpBoostActive) return;
+      if (gems < price || isXpBoostActive) {
+        return;
+      }
+
       gems -= price;
       xpBoostUntil = DateTime.now().add(xpBoostDuration);
       purchasesToday++;
       ok = true;
     });
+
     return ok;
   }
 
   Future<bool> buyBonusHearts(int price, int amount) async {
     var ok = false;
+
     await update(() {
-      if (gems < price) return;
+      if (gems < price) {
+        return;
+      }
+
       gems -= price;
       bonusHearts += amount;
       purchasesToday++;
       ok = true;
     });
+
     return ok;
   }
 
-  // Bayar Mystery Chest. Isinya dibuka di halaman toko.
   Future<bool> buyMysteryChest(int price) async {
     var ok = false;
+
     await update(() {
-      if (gems < price) return;
+      if (gems < price) {
+        return;
+      }
+
       gems -= price;
       purchasesToday++;
       ok = true;
     });
+
     return ok;
   }
 
-  Future<void> addLoot(ChestLoot loot) => update(() => applyLoot(loot));
+  Future<void> addLoot(ChestLoot loot) {
+    return update(() => applyLoot(loot));
+  }
 
   @visibleForTesting
   void resetForTest() {

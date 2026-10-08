@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../models/unit_data.dart';
+import '../pages/guidebook_page.dart';
 import '../pages/lesson_page.dart';
 import '../services/course_service.dart';
+import '../services/player_progress.dart';
 import '../widgets/chest_node.dart';
 import '../widgets/gem_burst.dart';
 import '../widgets/lesson_node.dart';
@@ -46,16 +48,16 @@ class _LearnPageState extends State<LearnPage> {
 
   List<UnitData> units = [];
   List<_Slot> _slots = [];
+
   bool isLoading = true;
   String? errorMessage;
   String ttsCode = 'en-US';
 
-  int completedLessons = 0;
   int? selectedLessonId;
   int headerIndex = 0;
 
-  int gems = 0;
   bool gemPulse = false;
+
   final Set<int> openedChests = {};
 
   static const double zoom = 0.85;
@@ -72,15 +74,19 @@ class _LearnPageState extends State<LearnPage> {
   static const Color backgroundColor = Color(0xFF272F33);
   static const Color dividerColor = Color(0xFF52656D);
 
+  PlayerProgress get progress => PlayerProgress.instance;
+
   @override
   void initState() {
     super.initState();
+
     _scroll.addListener(_onScroll);
     _loadPath();
   }
 
   @override
   void dispose() {
+    _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
   }
@@ -95,6 +101,8 @@ class _LearnPageState extends State<LearnPage> {
       case 'Korea':
         return 'ko';
 
+      case 'English':
+      case 'Inggris':
       default:
         return 'en';
     }
@@ -107,6 +115,8 @@ class _LearnPageState extends State<LearnPage> {
     });
 
     try {
+      await progress.load();
+
       final result = await CourseService.getPath(languageCode);
 
       if (!mounted) return;
@@ -116,7 +126,6 @@ class _LearnPageState extends State<LearnPage> {
         ttsCode = result.ttsCode;
         _slots = _buildSlots();
         headerIndex = 0;
-        completedLessons = 0;
         selectedLessonId = null;
         openedChests.clear();
         isLoading = false;
@@ -133,12 +142,14 @@ class _LearnPageState extends State<LearnPage> {
 
   List<_Slot> _buildSlots() {
     final out = <_Slot>[];
+
     int lessonNumber = 0;
     int order = 0;
 
     for (int u = 0; u < units.length; u++) {
       final unit = units[u];
-      int idx = 0;
+
+      int index = 0;
 
       for (int j = 0; j < unit.lessonCount; j++) {
         lessonNumber++;
@@ -146,8 +157,8 @@ class _LearnPageState extends State<LearnPage> {
         out.add(
           _Slot(
             unit: u,
-            index: idx++,
-            order: order++,
+            index: index,
+            order: order,
             isChest: false,
             lessonId: lessonNumber,
             apiLessonId: unit.lessonIds[j],
@@ -155,18 +166,24 @@ class _LearnPageState extends State<LearnPage> {
           ),
         );
 
+        index++;
+        order++;
+
         if (unit.chestAfter.contains(j + 1)) {
           out.add(
             _Slot(
               unit: u,
-              index: idx++,
-              order: order++,
+              index: index,
+              order: order,
               isChest: true,
               lessonId: lessonNumber,
               apiLessonId: unit.lessonIds[j],
               lessonIndex: -1,
             ),
           );
+
+          index++;
+          order++;
         }
       }
     }
@@ -174,41 +191,85 @@ class _LearnPageState extends State<LearnPage> {
     return out;
   }
 
-  _Slot _lessonSlot(int lessonNumber) =>
-      _slots.firstWhere((s) => !s.isChest && s.lessonId == lessonNumber);
+  _Slot? _findLessonSlot(int lessonNumber) {
+    for (final slot in _slots) {
+      if (!slot.isChest && slot.lessonId == lessonNumber) {
+        return slot;
+      }
+    }
 
-  double _unitHeight(int u) =>
-      (u > 0 ? dividerHeight : 0) + topPad + units[u].slotCount * slotHeight;
+    return null;
+  }
 
-  double _unitStart(int u) {
+  _Slot? _findPreviousLessonSlot(int lessonNumber) {
+    if (lessonNumber <= 1) {
+      return null;
+    }
+
+    for (final slot in _slots) {
+      if (!slot.isChest && slot.lessonId == lessonNumber - 1) {
+        return slot;
+      }
+    }
+
+    return null;
+  }
+
+  _Slot? _findChestSlot(int lessonNumber) {
+    for (final slot in _slots) {
+      if (slot.isChest && slot.lessonId == lessonNumber) {
+        return slot;
+      }
+    }
+
+    return null;
+  }
+
+  double _unitHeight(int unitIndex) {
+    return (unitIndex > 0 ? dividerHeight : 0) +
+        topPad +
+        units[unitIndex].slotCount * slotHeight;
+  }
+
+  double _unitStart(int unitIndex) {
     double y = 0;
-    for (int i = 0; i < u; i++) {
+
+    for (int i = 0; i < unitIndex; i++) {
       y += _unitHeight(i);
     }
+
     return y;
   }
 
-  double _slotTop(_Slot s) =>
-      _unitStart(s.unit) +
-      (s.unit > 0 ? dividerHeight : 0) +
-      topPad +
-      s.index * slotHeight;
+  double _slotTop(_Slot slot) {
+    return _unitStart(slot.unit) +
+        (slot.unit > 0 ? dividerHeight : 0) +
+        topPad +
+        slot.index * slotHeight;
+  }
 
-  double _popupTop(_Slot s) => _slotTop(s) + slotHeight - 4;
+  double _popupTop(_Slot slot) {
+    return _slotTop(slot) + slotHeight - 4;
+  }
 
   void _onScroll() {
     if (units.isEmpty) return;
 
     final offset = _scroll.offset;
-    int idx = 0;
+
+    int index = 0;
 
     for (int u = 1; u < units.length; u++) {
       if (offset + headerSwitchOffset >= _unitStart(u) + dividerHeight / 2) {
-        idx = u;
+        index = u;
       }
     }
 
-    if (idx != headerIndex) setState(() => headerIndex = idx);
+    if (index != headerIndex) {
+      setState(() {
+        headerIndex = index;
+      });
+    }
   }
 
   @override
@@ -257,29 +318,34 @@ class _LearnPageState extends State<LearnPage> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final w = constraints.maxWidth / zoom;
-            final h = constraints.maxHeight / zoom;
+    return AnimatedBuilder(
+      animation: progress,
+      builder: (context, child) {
+        return Scaffold(
+          backgroundColor: backgroundColor,
+          body: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth / zoom;
+                final height = constraints.maxHeight / zoom;
 
-            return OverflowBox(
-              alignment: Alignment.topLeft,
-              minWidth: w,
-              maxWidth: w,
-              minHeight: h,
-              maxHeight: h,
-              child: Transform.scale(
-                scale: zoom,
-                alignment: Alignment.topLeft,
-                child: _buildContent(),
-              ),
-            );
-          },
-        ),
-      ),
+                return OverflowBox(
+                  alignment: Alignment.topLeft,
+                  minWidth: width,
+                  maxWidth: width,
+                  minHeight: height,
+                  maxHeight: height,
+                  child: Transform.scale(
+                    scale: zoom,
+                    alignment: Alignment.topLeft,
+                    child: _buildContent(),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -308,9 +374,9 @@ class _LearnPageState extends State<LearnPage> {
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(width: 5),
-                  const Text(
-                    '0',
-                    style: TextStyle(
+                  Text(
+                    '${progress.storedStreak}',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
@@ -329,7 +395,7 @@ class _LearnPageState extends State<LearnPage> {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    '$gems',
+                    '${progress.gems}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -343,9 +409,9 @@ class _LearnPageState extends State<LearnPage> {
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(width: 5),
-                  const Text(
-                    '5',
-                    style: TextStyle(
+                  Text(
+                    '${5 + progress.bonusHearts}',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
@@ -355,7 +421,6 @@ class _LearnPageState extends State<LearnPage> {
             ],
           ),
         ),
-
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
           child: UnitHeader(
@@ -363,12 +428,18 @@ class _LearnPageState extends State<LearnPage> {
             color: current.color,
             sectionLabel: 'BAGIAN ${current.section}, UNIT ${current.unit}',
             title: current.title,
-            onGuidebookTap: () {},
+            onGuidebookTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      GuidebookPage(unit: current, ttsCode: ttsCode),
+                ),
+              );
+            },
           ),
         ),
-
         const SizedBox(height: 4),
-
         Expanded(
           child: SingleChildScrollView(
             controller: _scroll,
@@ -381,12 +452,17 @@ class _LearnPageState extends State<LearnPage> {
 
   Widget _buildPath() {
     final baseHeight = _unitStart(units.length);
+
     double totalHeight = baseHeight;
 
     if (selectedLessonId != null) {
-      final popupBottom =
-          _popupTop(_lessonSlot(selectedLessonId!)) + popupSpace;
-      totalHeight = math.max(baseHeight, popupBottom);
+      final selectedSlot = _findLessonSlot(selectedLessonId!);
+
+      if (selectedSlot != null) {
+        final popupBottom = _popupTop(selectedSlot) + popupSpace;
+
+        totalHeight = math.max(baseHeight, popupBottom);
+      }
     }
 
     final children = <Widget>[];
@@ -395,15 +471,25 @@ class _LearnPageState extends State<LearnPage> {
       children.add(_buildDivider(u));
     }
 
-    for (final s in _slots) {
-      children.add(s.isChest ? _buildChestSlot(s) : _buildLessonSlot(s));
+    for (final slot in _slots) {
+      if (slot.isChest) {
+        children.add(_buildChestSlot(slot));
+      } else {
+        children.add(_buildLessonSlot(slot));
+      }
     }
 
-    if (selectedLessonId != null) children.add(_buildPopup(selectedLessonId!));
+    if (selectedLessonId != null) {
+      children.add(_buildPopup(selectedLessonId!));
+    }
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
-      onTap: () => setState(() => selectedLessonId = null),
+      onTap: () {
+        setState(() {
+          selectedLessonId = null;
+        });
+      },
       child: SizedBox(
         width: double.infinity,
         height: totalHeight,
@@ -412,9 +498,12 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
-  Widget _buildDivider(int u) {
+  Widget _buildDivider(int unitIndex) {
+    final unit = units[unitIndex];
+    final completed = _completedLessonsInUnit(unitIndex);
+
     return Positioned(
-      top: _unitStart(u),
+      top: _unitStart(unitIndex),
       left: 16,
       right: 16,
       height: dividerHeight,
@@ -423,13 +512,27 @@ class _LearnPageState extends State<LearnPage> {
           const Expanded(child: Divider(color: dividerColor, thickness: 2)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Text(
-              units[u].title,
-              style: const TextStyle(
-                color: dividerColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  unit.title,
+                  style: const TextStyle(
+                    color: dividerColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '$completed/${unit.lessonCount}',
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
           const Expanded(child: Divider(color: dividerColor, thickness: 2)),
@@ -438,12 +541,11 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
-  Widget _buildLessonSlot(_Slot s) {
-    final unit = units[s.unit];
-    final id = s.lessonId;
-    final state = _stateOf(id);
-    final isLast = s.lessonIndex == unit.lessonCount - 1;
-    final isSelected = selectedLessonId == id;
+  Widget _buildLessonSlot(_Slot slot) {
+    final unit = units[slot.unit];
+    final state = _stateOf(slot);
+    final isLast = slot.lessonIndex == unit.lessonCount - 1;
+    final isSelected = selectedLessonId == slot.lessonId;
 
     final type = isLast
         ? NodeType.trophy
@@ -452,7 +554,7 @@ class _LearnPageState extends State<LearnPage> {
         : NodeType.star;
 
     return Positioned(
-      top: _slotTop(s),
+      top: _slotTop(slot),
       left: 0,
       right: 0,
       height: slotHeight,
@@ -463,22 +565,24 @@ class _LearnPageState extends State<LearnPage> {
         minHeight: 0,
         maxHeight: double.infinity,
         child: Transform.translate(
-          offset: Offset(_dxOf(s.order), 0),
+          offset: Offset(_dxOf(slot.order), 0),
           child: LessonNode(
             state: state,
             type: type,
             color: unit.nodeColor,
             showStartBubble: !isSelected,
-            onTap: () => _onNodeTap(id),
+            onTap: () {
+              _onNodeTap(slot.lessonId);
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildChestSlot(_Slot s) {
+  Widget _buildChestSlot(_Slot slot) {
     return Positioned(
-      top: _slotTop(s),
+      top: _slotTop(slot),
       left: 0,
       right: 0,
       height: slotHeight,
@@ -489,69 +593,166 @@ class _LearnPageState extends State<LearnPage> {
         minHeight: 0,
         maxHeight: double.infinity,
         child: Transform.translate(
-          offset: Offset(_dxOf(s.order), 0),
+          offset: Offset(_dxOf(slot.order), 0),
           child: ChestNode(
-            state: _chestStateOf(s.lessonId),
-            onOpen: (origin) => _openChest(s.lessonId, origin),
+            state: _chestStateOf(slot),
+            onOpen: (origin) {
+              _openChest(slot.lessonId, origin);
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildPopup(int id) {
-    final s = _lessonSlot(id);
-    final unit = units[s.unit];
-    final state = _stateOf(id);
+  Widget _buildPopup(int lessonNumber) {
+    final slot = _findLessonSlot(lessonNumber);
+
+    if (slot == null) {
+      return const SizedBox.shrink();
+    }
+
+    final unit = units[slot.unit];
+    final state = _stateOf(slot);
 
     return Positioned(
-      top: _popupTop(s),
+      top: _popupTop(slot),
       left: 24,
       right: 24,
       child: GestureDetector(
         onTap: () {},
         child: LessonPopup(
-          title: unit.lessonTitles[s.lessonIndex],
-          subtitle: 'Pelajaran ${s.lessonIndex + 1} dari ${unit.lessonCount}',
+          title: unit.lessonTitles[slot.lessonIndex],
+          subtitle:
+              'Pelajaran ${slot.lessonIndex + 1} dari ${unit.lessonCount}',
           buttonLabel: state == NodeState.completed
-              ? 'LATIH LAGI +5 XP'
+              ? 'LATIH LAGI'
               : 'MULAI +10 XP',
           color: unit.nodeColor,
           textColor: _popupTextColor(unit.nodeColor),
-          pointerDx: _dxOf(s.order),
-          onStart: () => _startLesson(id),
+          pointerDx: _dxOf(slot.order),
+          onStart: () {
+            _startLesson(lessonNumber);
+          },
         ),
       ),
     );
   }
 
-  Color _popupTextColor(Color c) {
-    final hsl = HSLColor.fromColor(c);
+  Color _popupTextColor(Color color) {
+    final hsl = HSLColor.fromColor(color);
+
     return hsl.withLightness(0.14).toColor();
   }
 
-  double _dxOf(int order) => math.sin(order * math.pi / 2) * 50;
+  double _dxOf(int order) {
+    return math.sin(order * math.pi / 2) * 50;
+  }
 
-  NodeState _stateOf(int lessonId) {
-    if (lessonId <= completedLessons) return NodeState.completed;
-    if (lessonId == completedLessons + 1) return NodeState.current;
+  NodeState _stateOf(_Slot slot) {
+    if (progress.isLessonCompleted(slot.apiLessonId)) {
+      return NodeState.completed;
+    }
+
+    if (_isLessonUnlocked(slot)) {
+      return NodeState.current;
+    }
+
     return NodeState.locked;
   }
 
-  ChestState _chestStateOf(int afterLessonId) {
-    if (openedChests.contains(afterLessonId)) return ChestState.opened;
-    if (completedLessons >= afterLessonId) return ChestState.ready;
-    return ChestState.locked;
+  bool _isLessonUnlocked(_Slot slot) {
+    if (slot.lessonId == 1) {
+      return true;
+    }
+
+    final previous = _findPreviousLessonSlot(slot.lessonId);
+
+    if (previous == null) {
+      return false;
+    }
+
+    return progress.isLessonCompleted(previous.apiLessonId);
+  }
+
+  ChestState _chestStateOf(_Slot slot) {
+    if (openedChests.contains(slot.lessonId)) {
+      return ChestState.opened;
+    }
+
+    if (!progress.isLessonCompleted(slot.apiLessonId)) {
+      return ChestState.locked;
+    }
+
+    return ChestState.ready;
+  }
+
+  int _completedLessonsInUnit(int unitIndex) {
+    final lessonIds = units[unitIndex].lessonIds;
+
+    int count = 0;
+
+    for (final lessonId in lessonIds) {
+      if (progress.isLessonCompleted(lessonId)) {
+        count++;
+      }
+    }
+
+    return count;
+  }
+
+  bool _isUnitCompleted(int unitIndex) {
+    final lessonIds = units[unitIndex].lessonIds;
+
+    if (lessonIds.isEmpty) {
+      return false;
+    }
+
+    for (final lessonId in lessonIds) {
+      if (!progress.isLessonCompleted(lessonId)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool _isUnitUnlocked(int unitIndex) {
+    if (unitIndex == 0) {
+      return true;
+    }
+
+    return _isUnitCompleted(unitIndex - 1);
   }
 
   Offset? _gemsTarget() {
-    final box = _gemsKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return null;
-    return box.localToGlobal(box.size.center(Offset.zero));
+    final renderObject = _gemsKey.currentContext?.findRenderObject();
+
+    if (renderObject is! RenderBox) {
+      return null;
+    }
+
+    if (!renderObject.hasSize) {
+      return null;
+    }
+
+    return renderObject.localToGlobal(renderObject.size.center(Offset.zero));
   }
 
-  void _openChest(int afterLessonId, Offset origin) {
-    if (openedChests.contains(afterLessonId)) return;
+  Future<void> _openChest(int afterLessonId, Offset origin) async {
+    if (openedChests.contains(afterLessonId)) {
+      return;
+    }
+
+    final slot = _findChestSlot(afterLessonId);
+
+    if (slot == null) {
+      return;
+    }
+
+    if (!progress.isLessonCompleted(slot.apiLessonId)) {
+      return;
+    }
 
     setState(() {
       openedChests.add(afterLessonId);
@@ -561,7 +762,10 @@ class _LearnPageState extends State<LearnPage> {
     final target = _gemsTarget();
 
     if (target == null) {
-      setState(() => gems += chestParticles * gemsPerParticle);
+      await progress.update(() {
+        progress.gems += chestParticles * gemsPerParticle;
+      });
+
       return;
     }
 
@@ -576,32 +780,78 @@ class _LearnPageState extends State<LearnPage> {
     );
   }
 
-  void _onGemArrive() {
-    if (!mounted) return;
+  Future<void> _onGemArrive() async {
+    if (!mounted) {
+      return;
+    }
+
+    await progress.update(() {
+      progress.gems += gemsPerParticle;
+    });
+
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
-      gems += gemsPerParticle;
       gemPulse = true;
     });
 
     Future.delayed(const Duration(milliseconds: 120), () {
-      if (mounted) setState(() => gemPulse = false);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        gemPulse = false;
+      });
     });
   }
 
-  void _onNodeTap(int lessonId) {
+  void _onNodeTap(int lessonNumber) {
+    final slot = _findLessonSlot(lessonNumber);
+
+    if (slot == null) {
+      return;
+    }
+
+    if (!_isLessonUnlocked(slot)) {
+      return;
+    }
+
     setState(() {
-      selectedLessonId = selectedLessonId == lessonId ? null : lessonId;
+      if (selectedLessonId == lessonNumber) {
+        selectedLessonId = null;
+      } else {
+        selectedLessonId = lessonNumber;
+      }
     });
   }
 
-  void _startLesson(int lessonId) {
-    setState(() => selectedLessonId = null);
-    _openLesson(lessonId);
+  void _startLesson(int lessonNumber) {
+    final slot = _findLessonSlot(lessonNumber);
+
+    if (slot == null) {
+      return;
+    }
+
+    if (!_isLessonUnlocked(slot)) {
+      return;
+    }
+
+    setState(() {
+      selectedLessonId = null;
+    });
+
+    _openLesson(lessonNumber);
   }
 
   Future<void> _openLesson(int lessonNumber) async {
-    final slot = _lessonSlot(lessonNumber);
+    final slot = _findLessonSlot(lessonNumber);
+
+    if (slot == null) {
+      return;
+    }
 
     final result = await Navigator.push<bool>(
       context,
@@ -611,10 +861,18 @@ class _LearnPageState extends State<LearnPage> {
       ),
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
-    if (result == true && lessonNumber > completedLessons) {
-      setState(() => completedLessons = lessonNumber);
+    if (result == true) {
+      await progress.load();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {});
     }
   }
 

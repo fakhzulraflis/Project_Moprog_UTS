@@ -40,6 +40,7 @@ dependencies:
   flutter_svg: ^2.3.0
   flutter_tts: ^4.2.5
   audioplayers: ^6.8.1
+  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:
@@ -71,7 +72,7 @@ flutter:
     - assets/app/
     - assets/path/
     - assets/landing/
-    - assets/foods/
+    - assets/lesson/
     - assets/chars/
     - assets/sounds/
     - assets/

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/guide_block.dart';
 import '../models/unit_data.dart';
 import 'api_service.dart';
 
@@ -81,6 +82,7 @@ class CourseService {
             lessonTitles: titles,
             lessonIds: ids,
             chestAfter: _chestAfter(unit, titles.length),
+            guidebook: _guidebook(unit),
           ),
         );
       }
@@ -104,5 +106,18 @@ class CourseService {
     }
 
     return [];
+  }
+
+  static List<GuideBlock> _guidebook(Map<String, dynamic> unit) {
+    final raw = unit['guidebook'];
+
+    if (raw is! List) {
+      return [];
+    }
+
+    return raw
+        .whereType<Map>()
+        .map((block) => GuideBlock.fromJson(Map<String, dynamic>.from(block)))
+        .toList();
   }
 }
