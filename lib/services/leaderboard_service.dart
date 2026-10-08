@@ -1,20 +1,19 @@
 import '../models/leaderboard_user.dart';
 import '../models/league.dart';
 import 'api_service.dart';
+import 'auth_session.dart';
 
 abstract class LeaderboardService {
-  static LeaderboardService instance =
-      _ApiLeaderboardService();
+  static LeaderboardService instance = _ApiLeaderboardService();
 
   Future<League> getCurrentLeague();
 
-  Future<List<LeaderboardUser>> getWeeklyLeaderboard();
+  // Semua pemain, dari XP tertinggi ke terendah.
+  Future<List<LeaderboardUser>> getLeaderboard();
 }
 
-class _ApiLeaderboardService
-    implements LeaderboardService {
-  static const League _currentLeague =
-      League.bronze;
+class _ApiLeaderboardService implements LeaderboardService {
+  static const League _currentLeague = League.bronze;
 
   @override
   Future<League> getCurrentLeague() async {
@@ -22,20 +21,19 @@ class _ApiLeaderboardService
   }
 
   @override
-  Future<List<LeaderboardUser>>
-      getWeeklyLeaderboard() async {
-    final data =
-        await ApiService.getLeaderboard();
+  Future<List<LeaderboardUser>> getLeaderboard() async {
+    await AuthSession.instance.load();
 
-    return data
-        .map(
-          (json) => LeaderboardUser.fromJson(
-            json,
-          ),
-        )
-        .toList()
-      ..sort(
-        (a, b) => a.rank.compareTo(b.rank),
-      );
+    final data = await ApiService.getLeaderboard();
+    final me = AuthSession.instance.userId?.toString();
+
+    final users = data
+        .map((json) => LeaderboardUser.fromJson(json, currentUserId: me))
+        .toList();
+
+    // Server sudah mengurutkan; ini hanya memastikan urutannya benar.
+    users.sort((a, b) => a.rank.compareTo(b.rank));
+
+    return users;
   }
 }

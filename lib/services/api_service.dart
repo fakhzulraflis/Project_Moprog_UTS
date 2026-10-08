@@ -5,13 +5,14 @@ import 'package:http/http.dart' as http;
 
 import '../models/question.dart';
 import '../models/vocabulary.dart';
+import 'auth_session.dart';
 
 class ApiService {
   static String get baseUrl {
     const override = String.fromEnvironment('API_URL');
     if (override.isNotEmpty) return override;
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://192.168.68.118:8000/api';
+      return 'http://10.0.2.2:8000/api';
     }
     return 'http://127.0.0.1:8000/api';
   }
@@ -220,8 +221,20 @@ class ApiService {
     }
   }
 
+  // Dikirim bersama token (kalau sudah login) supaya server bisa menandai
+  // baris milik kita dan menyembunyikan user yang saling blokir.
   static Future<List<Map<String, dynamic>>> getLeaderboard() async {
-    final response = await http.get(Uri.parse('$baseUrl/leaderboard'));
+    final token = AuthSession.instance.token;
+
+    final response = await http
+        .get(
+          Uri.parse('$baseUrl/leaderboard'),
+          headers: {
+            'Accept': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        )
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode == 200) {
       final jsonData = jsonDecode(response.body);

@@ -1,13 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../widgets/reward_chest.dart';
 import '../widgets/spin_wheel.dart';
-import 'api_service.dart';
-import 'auth_session.dart';
 import 'duck_pet.dart';
 import 'inventory_service.dart';
 import 'progress_sync.dart';
@@ -38,6 +33,11 @@ class PlayerProgress extends ChangeNotifier {
   DateTime? xpBoostUntil;
 
   Set<int> completedLessonIds = {};
+
+  // Peti di Learn page yang sudah dibuka (diberi nama dengan id lesson
+  // sebelum peti). Disimpan supaya peti tidak bisa dibuka ulang setiap
+  // aplikasi dibuka.
+  Set<int> openedChestIds = {};
 
   String day = '';
   int xpToday = 0;
@@ -91,7 +91,13 @@ class PlayerProgress extends ChangeNotifier {
         : DateTime.fromMillisecondsSinceEpoch(boost);
 
     completedLessonIds = (p.getStringList('completedLessonIds') ?? [])
-        .map(int.parse)
+        .map(int.tryParse)
+        .whereType<int>()
+        .toSet();
+
+    openedChestIds = (p.getStringList('openedChests') ?? [])
+        .map(int.tryParse)
+        .whereType<int>()
         .toSet();
 
     day = p.getString('day') ?? '';
@@ -132,6 +138,17 @@ class PlayerProgress extends ChangeNotifier {
 
     var changed = rollOver();
 
+    // XP tidak boleh lebih kecil dari XP lesson yang sudah selesai, dan tidak
+    // boleh lebih kecil dari XP akun di server. Dengan begitu XP terus
+    // bertambah dari angka yang sudah tercatat, bukan mulai dari 0 lagi.
+    final xpFloor = completedLessonIds.length * xpPerLesson;
+    final serverXp = ProgressSync.instance.serverXp;
+    final minimumXp = xpFloor > serverXp ? xpFloor : serverXp;
+    if (totalXp < minimumXp) {
+      totalXp = minimumXp;
+      changed = true;
+    }
+
     if (dailyQuests.length != QuestPool.questsPerDay) {
       todayQuestIds = QuestPool.pickForDay(day);
       changed = true;
@@ -158,6 +175,10 @@ class PlayerProgress extends ChangeNotifier {
       p.setStringList(
         'completedLessonIds',
         completedLessonIds.map((e) => e.toString()).toList(),
+      ),
+      p.setStringList(
+        'openedChests',
+        openedChestIds.map((e) => e.toString()).toList(),
       ),
       p.setString('day', day),
       p.setInt('xpToday', xpToday),
@@ -463,6 +484,20 @@ class PlayerProgress extends ChangeNotifier {
     return lessonIds.every(completedLessonIds.contains);
   }
 
+  bool isChestOpened(int lessonId) => openedChestIds.contains(lessonId);
+
+  // Menandai peti terbuka. Mengembalikan false kalau peti itu sudah pernah
+  // dibuka, supaya hadiahnya tidak diberikan dua kali.
+  Future<bool> markChestOpened(int lessonId) async {
+    var firstTime = false;
+
+    await update(() {
+      firstTime = openedChestIds.add(lessonId);
+    });
+
+    return firstTime;
+  }
+
   Future<int> completeLesson(int lessonId) async {
     var earned = 0;
     var completedNow = false;
@@ -492,28 +527,13 @@ class PlayerProgress extends ChangeNotifier {
 
     if (completedNow) {
       await DuckPet.instance.onLessonCompleted(earned);
-      await _syncXpToServer();
+
+      // Kirim sekarang (tidak menunggu jeda) supaya XP baru langsung
+      // terlihat di leaderboard.
+      await ProgressSync.instance.pushNow();
     }
 
     return earned;
-  }
-
-  Future<void> _syncXpToServer() async {
-    if (!AuthSession.instance.isLoggedIn) {
-      return;
-    }
-
-    try {
-      await http.put(
-        Uri.parse('${ApiService.baseUrl}/profile/xp'),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${AuthSession.instance.token}',
-        },
-        body: jsonEncode({'xp': totalXp}),
-      );
-    } catch (_) {}
   }
 
   Future<void> recordCorrectAnswer() {

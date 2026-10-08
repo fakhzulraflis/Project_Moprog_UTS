@@ -198,6 +198,24 @@ class _UserCardDialogState extends State<_UserCardDialog> {
     );
   }
 
+  Widget _stat(String icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Image.asset(icon, height: 16),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: GoogleFonts.baloo2(
+            color: Colors.white70,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final u = _user;
@@ -255,6 +273,8 @@ class _UserCardDialogState extends State<_UserCardDialog> {
                         fontSize: 14,
                       ),
                     ),
+                    _stat('assets/icons/xp.png', '${u.xp} XP'),
+                    _stat('assets/icons/streak.png', '${u.streak} day streak'),
                   ],
                 ),
               ),

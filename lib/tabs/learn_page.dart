@@ -59,8 +59,6 @@ class _LearnPageState extends State<LearnPage> {
 
   bool gemPulse = false;
 
-  final Set<int> openedChests = {};
-
   static const double zoom = 0.85;
 
   static const int chestParticles = 10;
@@ -128,7 +126,6 @@ class _LearnPageState extends State<LearnPage> {
         _slots = _buildSlots();
         headerIndex = 0;
         selectedLessonId = null;
-        openedChests.clear();
         isLoading = false;
       });
     } catch (e) {
@@ -678,7 +675,7 @@ class _LearnPageState extends State<LearnPage> {
   }
 
   ChestState _chestStateOf(_Slot slot) {
-    if (openedChests.contains(slot.lessonId)) {
+    if (progress.isChestOpened(slot.apiLessonId)) {
       return ChestState.opened;
     }
 
@@ -742,10 +739,6 @@ class _LearnPageState extends State<LearnPage> {
   }
 
   Future<void> _openChest(int afterLessonId, Offset origin) async {
-    if (openedChests.contains(afterLessonId)) {
-      return;
-    }
-
     final slot = _findChestSlot(afterLessonId);
 
     if (slot == null) {
@@ -756,8 +749,15 @@ class _LearnPageState extends State<LearnPage> {
       return;
     }
 
+    // Dicatat dulu dan disimpan per user. Kalau peti ini sudah pernah dibuka,
+    // hadiahnya tidak diberikan lagi.
+    if (!await progress.markChestOpened(slot.apiLessonId)) {
+      return;
+    }
+
+    if (!mounted) return;
+
     setState(() {
-      openedChests.add(afterLessonId);
       selectedLessonId = null;
     });
 

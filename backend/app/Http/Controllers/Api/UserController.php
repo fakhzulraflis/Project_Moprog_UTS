@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\UserProgress;
+use App\Support\ProgressStats;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -200,8 +202,11 @@ class UserController extends Controller
         $followerCounts = DB::table('follows')->whereIn('followed_id', $ids)->select('followed_id', DB::raw('count(*) as c'))->groupBy('followed_id')->pluck('c', 'followed_id');
         $followingCounts = DB::table('follows')->whereIn('follower_id', $ids)->select('follower_id', DB::raw('count(*) as c'))->groupBy('follower_id')->pluck('c', 'follower_id');
         $blocked = DB::table('user_blocks')->where('blocker_id', $me->id)->whereIn('blocked_id', $ids)->pluck('blocked_id');
+        $progress = UserProgress::whereIn('user_id', $ids)->get()->keyBy('user_id');
 
         return $users->filter()->map(fn (User $u) => [
+            'xp' => (int) $u->xp,
+            'streak' => ProgressStats::fromData($progress->get($u->id)?->data)['streak'],
             'id' => $u->id,
             'fullname' => $u->name,
             'username' => $u->username,

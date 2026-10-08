@@ -16,9 +16,20 @@ enum StoreType { intValue, doubleValue, boolValue, stringValue, stringList }
 // Penghubung ke backend. Dibuat abstract supaya waktu testing bisa diganti
 // versi palsu tanpa server.
 abstract class ProgressApi {
-  // null artinya user ini belum pernah menyimpan progres di server
-  Future<Map<String, dynamic>?> fetch();
+  Future<RemoteProgress> fetch();
   Future<void> save(Map<String, dynamic> progress);
+}
+
+// Isi jawaban server untuk progres sebuah akun.
+class RemoteProgress {
+  // null artinya user ini belum pernah menyimpan progres di server
+  final Map<String, dynamic>? progress;
+
+  // XP akun di server. Dipakai sebagai titik awal XP di HP, supaya XP yang
+  // sudah tercatat (misalnya di leaderboard) tidak kembali ke 0.
+  final int xp;
+
+  const RemoteProgress({this.progress, this.xp = 0});
 }
 
 class HttpProgressApi implements ProgressApi {
@@ -32,7 +43,7 @@ class HttpProgressApi implements ProgressApi {
   };
 
   @override
-  Future<Map<String, dynamic>?> fetch() async {
+  Future<RemoteProgress> fetch() async {
     final response = await http
         .get(Uri.parse('${ApiService.baseUrl}/progress'), headers: headers)
         .timeout(timeout);
@@ -40,7 +51,10 @@ class HttpProgressApi implements ProgressApi {
       throw Exception('Gagal mengambil progres: ${response.statusCode}');
     }
     final data = jsonDecode(response.body)['data'] as Map<String, dynamic>;
-    return data['progress'] as Map<String, dynamic>?;
+    return RemoteProgress(
+      progress: data['progress'] as Map<String, dynamic>?,
+      xp: (data['xp'] as num?)?.toInt() ?? 0,
+    );
   }
 
   @override
@@ -82,9 +96,25 @@ class ProgressSync {
   // Menandai milik siapa progres yang sedang tersimpan di HP ini.
   static const String ownerKey = 'progress_owner';
 
+  // true selama ada perubahan di HP yang belum berhasil terkirim ke server
+  // (misalnya karena bermain saat offline).
+  static const String dirtyKey = 'progress_dirty';
+
+  // Aturan penggabungan yang sama dengan backend (ProgressStats): kunci ini
+  // hanya boleh bertambah, jadi progres belajar tidak bisa hilang.
+  static const Set<String> unionKeys = {
+    'completedLessonIds',
+    'studiedDays',
+    'claimedStreakMilestones',
+    'openedChests',
+  };
+  static const Set<String> maxKeys = {'totalXp', 'bestStreak'};
+
   // Semua kunci progres beserta tipenya (dari PlayerProgress dan DuckPet).
   static const Map<String, StoreType> keys = {
     // PlayerProgress
+    'completedLessonIds': StoreType.stringList,
+    'openedChests': StoreType.stringList,
     'gems': StoreType.intValue,
     'totalXp': StoreType.intValue,
     'bonusHearts': StoreType.intValue,
@@ -114,6 +144,8 @@ class ProgressSync {
     'streakGoal': StoreType.intValue,
     'lastSpinDay': StoreType.stringValue,
     'lastSpinPrize': StoreType.intValue,
+    // Kosakata yang salah (halaman Latihan)
+    'practice_mistake_vocabulary_ids': StoreType.stringList,
     // DuckPet
     'pet_name': StoreType.stringValue,
     'pet_fullness': StoreType.doubleValue,
@@ -132,12 +164,16 @@ class ProgressSync {
   // tidak tertimpa progres kosong atau progres milik user lain.
   bool ready = false;
 
+  // XP akun di server untuk user yang sedang login. Menjadi batas bawah XP di HP.
+  int serverXp = 0;
+
   Timer? pending;
 
   // ---------- Login & logout ----------
 
   Future<void> onLogin() async {
     ready = false;
+    serverXp = 0;
     pending?.cancel();
     pending = null;
 
@@ -146,8 +182,9 @@ class ProgressSync {
 
     final prefs = await SharedPreferences.getInstance();
     final owner = prefs.getInt(ownerKey);
+    final dirty = prefs.getBool(dirtyKey) ?? false;
 
-    Map<String, dynamic>? remote;
+    RemoteProgress remote;
     try {
       remote = await api.fetch();
     } catch (_) {
@@ -159,11 +196,28 @@ class ProgressSync {
       return;
     }
 
-    if (remote != null) {
-      // User ini sudah punya progres di server: pasang di HP
-      await restore(remote, userId);
+    serverXp = remote.xp;
+    final data = remote.progress;
+
+    if (data != null) {
+      // User ini sudah punya progres di server
+      final unsent = owner == userId && dirty;
+
+      if (unsent) {
+        // HP ini punya perubahan yang belum sempat terkirim (misalnya main
+        // saat offline). Digabung dengan data server, bukan ditimpa.
+        await restore(
+          mergeProgress(local: await snapshot(), remote: data),
+          userId,
+        );
+        await prefs.setBool(dirtyKey, true);
+      } else {
+        await restore(data, userId);
+      }
+
       ready = true;
       await reloadAll();
+      if (unsent) await pushNow();
       return;
     }
 
@@ -183,16 +237,44 @@ class ProgressSync {
     await pushNow();
   }
 
+  // Gabungan progres HP dan server. Kunci yang hanya boleh bertambah
+  // digabung; sisanya memakai nilai dari HP karena itu yang terbaru.
+  static Map<String, dynamic> mergeProgress({
+    required Map<String, dynamic> local,
+    required Map<String, dynamic> remote,
+  }) {
+    final merged = <String, dynamic>{...remote, ...local};
+
+    for (final key in unionKeys) {
+      if (!local.containsKey(key) && !remote.containsKey(key)) continue;
+      merged[key] = <String>{
+        ...?(remote[key] as List?)?.map((e) => e.toString()),
+        ...?(local[key] as List?)?.map((e) => e.toString()),
+      }.toList();
+    }
+
+    for (final key in maxKeys) {
+      if (!local.containsKey(key) && !remote.containsKey(key)) continue;
+      final a = (remote[key] as num?)?.toInt() ?? 0;
+      final b = (local[key] as num?)?.toInt() ?? 0;
+      merged[key] = a > b ? a : b;
+    }
+
+    return merged;
+  }
+
   // Kirim perubahan terakhir sebelum token dihapus.
   Future<void> onLogout() async {
     await flush();
     ready = false;
+    serverXp = 0;
   }
 
   // ---------- Mengirim ke server ----------
 
   // Dipanggil setiap PlayerProgress / DuckPet menyimpan data.
   void schedulePush() {
+    if (AuthSession.instance.isLoggedIn) unawaited(markDirty());
     if (!ready || !AuthSession.instance.isLoggedIn) return;
     pending?.cancel();
     pending = Timer(pushDelay, pushNow);
@@ -212,12 +294,21 @@ class ProgressSync {
     if (!ready || !AuthSession.instance.isLoggedIn) return false;
     try {
       await api.save(await snapshot());
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(dirtyKey, false);
       return true;
     } catch (_) {
       // Gagal (misalnya offline). Data tetap aman di HP dan akan terkirim
-      // bersama perubahan berikutnya.
+      // bersama perubahan berikutnya, atau digabung saat login berikutnya.
+      await markDirty();
       return false;
     }
+  }
+
+  // Menandai ada perubahan di HP yang belum terkirim ke server.
+  Future<void> markDirty() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(dirtyKey) != true) await prefs.setBool(dirtyKey, true);
   }
 
   // ---------- Membaca & memasang data di HP ----------
@@ -257,6 +348,7 @@ class ProgressSync {
       }
     }
     await prefs.setInt(ownerKey, userId);
+    await prefs.setBool(dirtyKey, false);
   }
 
   // Hapus progres di HP, lalu tandai sebagai milik user ini.
@@ -266,6 +358,7 @@ class ProgressSync {
       await prefs.remove(key);
     }
     await prefs.setInt(ownerKey, userId);
+    await prefs.setBool(dirtyKey, false);
   }
 
   // Muat ulang PlayerProgress dan DuckPet dari HP.
