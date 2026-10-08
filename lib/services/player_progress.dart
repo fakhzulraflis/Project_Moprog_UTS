@@ -10,6 +10,7 @@ import 'api_service.dart';
 import 'auth_session.dart';
 import 'duck_pet.dart';
 import 'inventory_service.dart';
+import 'progress_sync.dart';
 import 'quest_pool.dart';
 
 export 'quest_pool.dart' show DailyQuest, QuestPool;
@@ -188,6 +189,17 @@ class PlayerProgress extends ChangeNotifier {
       p.setString('lastSpinDay', lastSpinDay),
       p.setInt('lastSpinPrize', lastSpinPrize),
     ]);
+
+    // Kirim juga ke database supaya progres tersimpan di akun user
+    ProgressSync.instance.schedulePush();
+  }
+
+  // Muat ulang dari HP. Dipakai setelah progres diganti dari server
+  // (misalnya waktu login atau ganti akun).
+  Future<void> reload() {
+    prefs = null;
+    loading = null;
+    return load();
   }
 
   // Semua perubahan data lewat sini: pastikan data sudah dimuat, cek

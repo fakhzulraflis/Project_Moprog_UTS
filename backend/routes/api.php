@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AccountRegistrationController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\LessonController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\PasswordResetController;
@@ -35,6 +36,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index']);
     Route::post('/inventory', [InventoryController::class, 'store']);
     Route::post('/inventory/{id}/use', [InventoryController::class, 'use'])->whereNumber('id');
+
+    // Progres halaman Misi (gem, XP, misi, streak, roda, Quacko) per user
+    Route::get('/progress', [ProgressController::class, 'show']);
+    Route::put('/progress', [ProgressController::class, 'update']);
 
     // Profil user + syarat "Complete your profile"
     Route::get('/profile', [ProfileController::class, 'show']);

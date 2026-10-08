@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'inventory_service.dart';
 import 'profile_service.dart';
+import 'progress_sync.dart';
 
 // Menyimpan siapa yang sedang login, beserta token dari backend.
 // Token dikirim ke API yang butuh login (misalnya inventory), supaya
@@ -37,6 +38,10 @@ class AuthSession {
     // Inventory user sebelumnya dibuang, lalu dimuat ulang untuk user ini.
     // Tidak ditunggu supaya masuk ke aplikasi tidak jadi lambat.
     InventoryService.instance.reload();
+
+    // Progres halaman Misi milik user ini diambil dari database. Ditunggu
+    // supaya halaman Misi langsung menampilkan data yang benar.
+    await ProgressSync.instance.onLogin();
   }
 
   // Muat sesi yang tersimpan di HP (kalau ada).
@@ -50,6 +55,8 @@ class AuthSession {
 
   // Keluar: cabut token di server (kalau bisa), lalu hapus sesi di HP.
   Future<void> signOut() async {
+    // Kirim progres terakhir selagi token masih ada
+    await ProgressSync.instance.onLogout();
     await ProfileService.signOutOnServer();
     token = null;
     userId = null;
