@@ -1,13 +1,72 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import 'api_service.dart';
+import 'auth_session.dart';
 import '../models/leaderboard_user.dart';
 import '../models/league.dart';
 
 abstract class LeaderboardService {
-  static LeaderboardService instance = _DummyLeaderboardService();
+  static LeaderboardService instance = ApiLeaderboardService();
   Future<League> getCurrentLeague();
   Future<List<LeaderboardUser>> getWeeklyLeaderboard();
 }
 
-class _DummyLeaderboardService implements LeaderboardService {
+// ambil leaderboard dari GET /api/leaderboard.
+class ApiLeaderboardService implements LeaderboardService {
+  @override
+  Future<League> getCurrentLeague() async {
+    final myXp = await _fetchMyXp();
+    return _leagueForXp(myXp);
+  }
+
+  @override
+  Future<List<LeaderboardUser>> getWeeklyLeaderboard() async {
+    final response = await http.get(
+      Uri.parse('${ApiService.baseUrl}/leaderboard'),
+      headers: const {'Accept': 'application/json'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Gagal memuat leaderboard (${response.statusCode})');
+    }
+
+    final decoded = jsonDecode(response.body);
+    final List<dynamic> rows = decoded['data'] as List<dynamic>;
+    final myId = AuthSession.instance.userId?.toString();
+
+    return rows
+        .map(
+          (row) => LeaderboardUser.fromJson(
+            row as Map<String, dynamic>,
+            currentUserId: myId,
+          ),
+        )
+        .toList();
+  }
+
+  Future<int> _fetchMyXp() async {
+    final myId = AuthSession.instance.userId?.toString();
+    if (myId == null) return 0;
+
+    final users = await getWeeklyLeaderboard();
+    final me = users.where((u) => u.id == myId).toList();
+    return me.isEmpty ? 0 : me.first.xp;
+  }
+
+  static League _leagueForXp(int xp) {
+    if (xp >= 4000) return League.amethyst;
+    if (xp >= 2000) return League.emerald;
+    if (xp >= 1000) return League.ruby;
+    if (xp >= 500) return League.sapphire;
+    if (xp >= 250) return League.gold;
+    if (xp >= 100) return League.silver;
+    return League.bronze;
+  }
+}
+
+class DummyLeaderboardService implements LeaderboardService {
   static const _currentUserId = 'u7';
   static const _currentLeague = League.bronze;
 
@@ -15,33 +74,7 @@ class _DummyLeaderboardService implements LeaderboardService {
     {'id': 'u1', 'rank': 1, 'name': 'Aditya', 'xp': 420},
     {'id': 'u2', 'rank': 2, 'name': 'Bunga', 'xp': 388},
     {'id': 'u3', 'rank': 3, 'name': 'Citra', 'xp': 356},
-    {'id': 'u4', 'rank': 4, 'name': 'Dimas', 'xp': 310},
-    {'id': 'u5', 'rank': 5, 'name': 'Eka', 'xp': 295},
-    {'id': 'u6', 'rank': 6, 'name': 'Fajar', 'xp': 270},
-    {'id': 'u7', 'rank': 7, 'name': 'Kamu', 'xp': 240},
-    {'id': 'u8', 'rank': 8, 'name': 'Gita', 'xp': 210},
-    {'id': 'u9', 'rank': 9, 'name': 'Hadi', 'xp': 190},
-    {'id': 'u10', 'rank': 10, 'name': 'Indah', 'xp': 175},
-    {'id': 'u11', 'rank': 11, 'name': 'Joko', 'xp': 160},
-    {'id': 'u12', 'rank': 12, 'name': 'Kirana', 'xp': 150},
-    {'id': 'u13', 'rank': 13, 'name': 'Lestari', 'xp': 140},
-    {'id': 'u14', 'rank': 14, 'name': 'Made', 'xp': 130},
-    {'id': 'u15', 'rank': 15, 'name': 'Nadia', 'xp': 120},
-    {'id': 'u16', 'rank': 16, 'name': 'Oscar', 'xp': 110},
-    {'id': 'u17', 'rank': 17, 'name': 'Putri', 'xp': 100},
-    {'id': 'u18', 'rank': 18, 'name': 'Qori', 'xp': 92},
-    {'id': 'u19', 'rank': 19, 'name': 'Rizky', 'xp': 85},
-    {'id': 'u20', 'rank': 20, 'name': 'Sari', 'xp': 78},
-    {'id': 'u21', 'rank': 21, 'name': 'Tono', 'xp': 70},
-    {'id': 'u22', 'rank': 22, 'name': 'Umar', 'xp': 62},
-    {'id': 'u23', 'rank': 23, 'name': 'Vina', 'xp': 55},
-    {'id': 'u24', 'rank': 24, 'name': 'Wawan', 'xp': 48},
-    {'id': 'u25', 'rank': 25, 'name': 'Xena', 'xp': 40},
-    {'id': 'u26', 'rank': 26, 'name': 'Yudi', 'xp': 33},
-    {'id': 'u27', 'rank': 27, 'name': 'Zahra', 'xp': 26},
-    {'id': 'u28', 'rank': 28, 'name': 'Andi', 'xp': 20},
-    {'id': 'u29', 'rank': 29, 'name': 'Bagas', 'xp': 14},
-    {'id': 'u30', 'rank': 30, 'name': 'Cindy', 'xp': 8},
+    {'id': 'u7', 'rank': 7, 'name': 'Saya', 'xp': 240},
   ];
 
   @override
