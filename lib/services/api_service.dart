@@ -219,4 +219,26 @@ class ApiService {
       throw Exception('Failed to load vocabularies: ${response.statusCode}');
     }
   }
+
+  static Future<List<Map<String, dynamic>>> getLeaderboard() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/leaderboard'),
+    );
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+
+      final List<dynamic> data = jsonData['data'];
+
+      return data
+          .map(
+            (item) => Map<String, dynamic>.from(item),
+          )
+          .toList();
+    }
+
+    throw Exception(
+      'Failed to load leaderboard: ${response.statusCode}',
+    );
+  }
 }

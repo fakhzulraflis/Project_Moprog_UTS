@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\LanguageController;
+use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\VocabularyController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,9 @@ Route::get('/lessons/{lessonId}/questions', [QuestionController::class, 'index']
 
 Route::get('/languages', [LanguageController::class, 'index']);
 Route::get('/languages/{code}/path', [LanguageController::class, 'path']);
+
+// Leaderboard: publik, siapapun boleh lihat tanpa login
+Route::get('/leaderboard', [LeaderboardController::class, 'index']);
 
 // Inventory: hanya bisa diakses user yang login (pakai token Sanctum)
 Route::middleware('auth:sanctum')->group(function () {
@@ -45,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/users/{id}/block', [UserController::class, 'toggleBlock'])->whereNumber('id');
     Route::post('/users/{id}/report', [UserController::class, 'report'])->whereNumber('id');
     Route::put('/profile/avatar', [ProfileController::class, 'updateAvatar']);
+    Route::put('/profile/xp', [ProfileController::class, 'updateXp']);
+    Route::get('/profile/suggestions', [ProfileController::class, 'suggestions']);
     Route::post('/users/{id}/follow', [ProfileController::class, 'toggleFollow'])->whereNumber('id');
     Route::get('/posts', [ProfileController::class, 'posts']);
     Route::post('/posts/{id}/like', [ProfileController::class, 'toggleLike'])->whereNumber('id');
