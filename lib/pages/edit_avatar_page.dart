@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/avatar_catalog.dart';
 import '../services/profile_service.dart';
 import '../widgets/animated_avatar.dart';
+import '../widgets/press_button.dart';
 
 // Memilih karakter untuk foto profil. Mengembalikan true ke halaman
 // sebelumnya kalau pilihan berhasil disimpan.
@@ -205,42 +206,9 @@ class _EditAvatarPageState extends State<EditAvatarPage> {
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-        child: GestureDetector(
+        child: PressButton.primary(
+          label: _saving ? 'SAVING...' : 'SAVE',
           onTap: _saving ? null : _save,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF55B6E8),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0xFF3895C5),
-                  offset: Offset(0, 4),
-                  blurRadius: 0,
-                ),
-              ],
-            ),
-            child: Center(
-              child: _saving
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(
-                      'SAVE',
-                      style: GoogleFonts.baloo2(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-            ),
-          ),
         ),
       ),
     );

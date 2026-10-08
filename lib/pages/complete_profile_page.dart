@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../services/avatar_catalog.dart';
 import '../services/profile_service.dart';
+import '../widgets/press_button.dart';
 
 // Syarat melengkapi profil: ikuti minimal 1 user dan sukai minimal 1 postingan.
 class CompleteProfilePage extends StatefulWidget {
@@ -13,7 +14,7 @@ class CompleteProfilePage extends StatefulWidget {
 }
 
 class _CompleteProfilePageState extends State<CompleteProfilePage> {
-  List<SuggestedUser> _users = [];
+  List<FriendUser> _users = [];
   List<CommunityPost> _posts = [];
   bool _loading = true;
   String? _error;
@@ -31,7 +32,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
       _error = null;
     });
     try {
-      final users = await ProfileService.getSuggestions();
+      final users = await ProfileService.searchUsers();
       final posts = await ProfileService.getPosts();
       if (!mounted) return;
       setState(() {
@@ -62,13 +63,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
       if (!mounted) return;
       _changed = true;
       setState(() {
-        _users[index] = SuggestedUser(
-          id: user.id,
-          fullname: user.fullname,
-          username: user.username,
-          learningLanguage: user.learningLanguage,
-          isFollowing: following,
-        );
+        _users[index] = user.copyWith(isFollowing: following);
       });
     } catch (e) {
       _showError(e);
@@ -242,10 +237,25 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
               ],
             ),
           ),
-          _pillButton(
-            label: user.isFollowing ? 'FOLLOWING' : 'FOLLOW',
-            active: user.isFollowing,
-            onTap: () => _toggleFollow(index),
+          SizedBox(
+            width: 120,
+            child: user.isFollowing
+                ? PressButton.outline(
+                    label: 'FOLLOWING',
+                    height: 40,
+                    depth: 4,
+                    fontSize: 14,
+                    padding: EdgeInsets.zero,
+                    onTap: () => _toggleFollow(index),
+                  )
+                : PressButton.primary(
+                    label: 'FOLLOW',
+                    height: 40,
+                    depth: 4,
+                    fontSize: 14,
+                    padding: EdgeInsets.zero,
+                    onTap: () => _toggleFollow(index),
+                  ),
           ),
         ],
       ),
@@ -288,34 +298,6 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _pillButton({
-    required String label,
-    required bool active,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? Colors.transparent : const Color(0xFF55B6E8),
-          border: Border.all(
-            color: active ? Colors.white24 : const Color(0xFF55B6E8),
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.baloo2(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
       ),
     );
   }

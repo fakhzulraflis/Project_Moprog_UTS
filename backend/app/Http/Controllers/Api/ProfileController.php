@@ -62,18 +62,39 @@ class ProfileController extends Controller
 
         $users = User::query()
             ->where('id', '!=', $me->id)
+            ->whereNotIn('id', UserController::hiddenIds($me->id))
             ->orderByDesc('id')
             ->limit(20)
             ->get()
-            ->map(fn (User $u) => [
-                'id' => $u->id,
-                'fullname' => $u->name,
-                'username' => $u->username,
-                'learning_language' => $u->learning_language ?? 'English',
-                'is_following' => $followingIds->contains($u->id),
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'fullname' => $user->name,
+                'username' => $user->username,
+                'learning_language' => $user->learning_language ?? 'English',
+                'is_following' => $followingIds->contains($user->id),
             ]);
 
         return response()->json(['data' => $users]);
+    }
+
+    // PATCH /api/profile/language (ganti bahasa yang dipelajari)
+    public function updateLanguage(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'learning_language' => ['required', 'string', 'in:English,Japanese,Korean'],
+        ]);
+
+        $me = $request->user();
+        $me->update([
+            'learning_language' => $validated['learning_language'],
+            'avatar_path' => match ($validated['learning_language']) {
+                'Japanese' => 'assets/app/japanese.gif',
+                'Korean' => 'assets/app/korean.gif',
+                default => 'assets/app/english.gif',
+            },
+        ]);
+
+        return response()->json(['data' => $this->payload($me)]);
     }
 
     // POST /api/users/{id}/follow  (toggle: ikuti / berhenti mengikuti)
@@ -86,7 +107,7 @@ class ProfileController extends Controller
         }
 
         $target = User::find($id);
-        if (! $target) {
+        if (! $target || UserController::hiddenIds($me->id)->contains($id)) {
             return response()->json(['message' => 'User not found.'], 404);
         }
 

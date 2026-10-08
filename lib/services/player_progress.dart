@@ -1,8 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../widgets/reward_chest.dart';
 import '../widgets/spin_wheel.dart';
+import 'api_service.dart';
+import 'auth_session.dart';
 import 'duck_pet.dart';
 import 'inventory_service.dart';
 import 'quest_pool.dart';
@@ -422,7 +427,27 @@ class PlayerProgress extends ChangeNotifier {
 
     // Quacko ikut senang dan dapat XP kalau pemainnya belajar
     await DuckPet.instance.onLessonCompleted(earned);
+
+    _syncXpToServer();
+
     return earned;
+  }
+
+  Future<void> _syncXpToServer() async {
+    if (!AuthSession.instance.isLoggedIn) return;
+    try {
+      await http.put(
+        Uri.parse('${ApiService.baseUrl}/profile/xp'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${AuthSession.instance.token}',
+        },
+        body: jsonEncode({'xp': totalXp}),
+      );
+    } catch (_) {
+
+    }
   }
 
   Future<void> recordCorrectAnswer() {
