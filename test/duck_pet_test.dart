@@ -8,13 +8,11 @@ void main() {
   final pet = DuckPet.instance;
   final progress = PlayerProgress.instance;
 
-  // Jam palsu yang bisa dimajukan, supaya bisa menguji efek waktu
-  // tanpa menunggu berjam-jam.
   late DateTime now;
 
   Future<void> start([Map<String, Object> saved = const {}]) async {
     SharedPreferences.setMockInitialValues(saved);
-    now = DateTime(2026, 10, 1, 7); // jam 7 pagi
+    now = DateTime(2026, 10, 1, 7);
     pet.clock = () => now;
     pet.resetForTest();
     progress.resetForTest();
@@ -37,15 +35,15 @@ void main() {
     await start();
 
     skip(const Duration(hours: 5));
-    expect(pet.fullness, 60); // 80 - 4 x 5
-    expect(pet.happiness, 65); // 80 - 3 x 5
+    expect(pet.fullness, 60);
+    expect(pet.happiness, 65);
     expect(pet.mood, DuckMood.normal);
   });
 
   test('Quacko lapar kalau lama tidak diberi makan', () async {
     await start();
 
-    skip(const Duration(hours: 14)); // jam 9 malam
+    skip(const Duration(hours: 14));
     expect(pet.fullness, 24);
     expect(pet.mood, DuckMood.hungry);
   });
@@ -68,7 +66,7 @@ void main() {
 
   test('memberi roti memotong gem dan menambah kenyang', () async {
     await start();
-    skip(const Duration(hours: 10)); // kenyang jadi 40
+    skip(const Duration(hours: 10));
 
     expect(await pet.feed(), isNull);
     expect(progress.gems, 50 - DuckPet.breadPrice);
@@ -104,7 +102,7 @@ void main() {
   test('menyelesaikan lesson membuat Quacko lebih senang', () async {
     await start({'pet_happiness': 50.0});
 
-    await progress.completeLesson();
+    await progress.completeLesson(1);
     expect(pet.happiness, 65);
   });
 
@@ -124,7 +122,6 @@ void main() {
     expect(pet.equipped, {DuckAccessory.crown});
     expect(progress.gems, 500 - hat.price - crown.price);
 
-    // Aksesoris yang sudah dimiliki tidak perlu dibeli lagi
     await pet.toggleAccessory(DuckAccessory.partyHat);
     expect(pet.equipped, {DuckAccessory.partyHat});
     expect(progress.gems, 500 - hat.price - crown.price);
@@ -162,10 +159,12 @@ void main() {
     test('lesson, roti, dan elus memberi XP ke Quacko', () async {
       await start({'pet_fullness': 40.0});
 
-      await progress.completeLesson();
+      await progress.completeLesson(1);
       expect(pet.xp, 10);
+
       await pet.feed();
       expect(pet.xp, 10 + DuckPet.feedXp);
+
       await pet.pet();
       expect(pet.xp, 10 + DuckPet.feedXp + DuckPet.petXp);
     });
@@ -174,7 +173,7 @@ void main() {
       await start({'pet_xp': 25});
       expect(pet.level, 1);
 
-      await progress.completeLesson(); // +10 XP, jadi 35
+      await progress.completeLesson(1);
       expect(pet.level, 2);
       expect(pet.pendingLevelUp, 2);
       expect(progress.gems, 50 + DuckPet.gemsPerLevel * 2);
@@ -185,6 +184,7 @@ void main() {
 
     test('lompat beberapa level sekaligus, hadiahnya dijumlah', () async {
       await start();
+
       expect(pet.gainXp(180), 20 + 30 + 40);
       expect(pet.level, 4);
       expect(pet.stage, DuckStage.teen);
@@ -197,6 +197,7 @@ void main() {
         await pet.pet();
         skip(DuckPet.petCooldown);
       }
+
       await pet.feed();
 
       expect(progress.petsToday, 3);
