@@ -148,6 +148,7 @@ class _WordDragData {
 
 class _LessonPageState extends State<LessonPage> {
   final FlutterTts _flutterTts = FlutterTts();
+
   final AudioPlayer _correctPlayer = AudioPlayer();
   final AudioPlayer _wrongPlayer = AudioPlayer();
   final AudioPlayer _completePlayer = AudioPlayer();
@@ -166,10 +167,12 @@ class _LessonPageState extends State<LessonPage> {
   int comboDisplay = 2;
   int totalAttempts = 0;
   int correctAttempts = 0;
+
   final Stopwatch _stopwatch = Stopwatch();
 
   String? selectedAnswer;
   String typedAnswer = '';
+
   final TextEditingController _textController = TextEditingController();
 
   List<String> selectedWords = [];
@@ -210,6 +213,7 @@ class _LessonPageState extends State<LessonPage> {
     _completePlayer.dispose();
     _failPlayer.dispose();
     _textController.dispose();
+
     super.dispose();
   }
 
@@ -313,6 +317,7 @@ class _LessonPageState extends State<LessonPage> {
   void resetQuestionState() {
     selectedAnswer = null;
     typedAnswer = '';
+
     _textController.clear();
 
     selectedWords = [];
@@ -326,11 +331,37 @@ class _LessonPageState extends State<LessonPage> {
   }
 
   String normalizeAnswer(String answer) {
-    return answer
+    String normalized = answer
         .trim()
         .toLowerCase()
         .replaceAll(RegExp(r'[.!?,]'), '')
         .replaceAll(RegExp(r'\s+'), ' ');
+
+    normalized = normalized
+        .replaceAll(RegExp(r"\bi'm\b"), 'i am')
+        .replaceAll(RegExp(r"\bim\b"), 'i am')
+        .replaceAll(RegExp(r"\byou're\b"), 'you are')
+        .replaceAll(RegExp(r"\byoure\b"), 'you are')
+        .replaceAll(RegExp(r"\bhe's\b"), 'he is')
+        .replaceAll(RegExp(r"\bhes\b"), 'he is')
+        .replaceAll(RegExp(r"\bshe's\b"), 'she is')
+        .replaceAll(RegExp(r"\bshes\b"), 'she is')
+        .replaceAll(RegExp(r"\bit's\b"), 'it is')
+        .replaceAll(RegExp(r"\bits\b"), 'it is')
+        .replaceAll(RegExp(r"\bwe're\b"), 'we are')
+        .replaceAll(RegExp(r"\bwere\b"), 'we are')
+        .replaceAll(RegExp(r"\bthey're\b"), 'they are')
+        .replaceAll(RegExp(r"\btheyre\b"), 'they are')
+        .replaceAll(RegExp(r"\bcan't\b"), 'cannot')
+        .replaceAll(RegExp(r"\bcant\b"), 'cannot')
+        .replaceAll(RegExp(r"\bdon't\b"), 'do not')
+        .replaceAll(RegExp(r"\bdont\b"), 'do not')
+        .replaceAll(RegExp(r"\bdoesn't\b"), 'does not')
+        .replaceAll(RegExp(r"\bdoesnt\b"), 'does not')
+        .replaceAll(RegExp(r"\bisn't\b"), 'is not')
+        .replaceAll(RegExp(r'\bisnt\b'), 'is not');
+
+    return normalized.trim();
   }
 
   Future<void> _speak(String text, {bool slow = false}) async {
@@ -362,13 +393,17 @@ class _LessonPageState extends State<LessonPage> {
 
       if (items.length > 1) {
         bool same = true;
+
         for (int i = 0; i < items.length; i++) {
           if (items[i] != original[i]) {
             same = false;
             break;
           }
         }
-        if (same) items.add(items.removeAt(0));
+
+        if (same) {
+          items.add(items.removeAt(0));
+        }
       }
 
       return items;
@@ -377,8 +412,11 @@ class _LessonPageState extends State<LessonPage> {
 
   String? _ownerOf(String right) {
     for (final entry in matchedPairs.entries) {
-      if (entry.value == right) return entry.key;
+      if (entry.value == right) {
+        return entry.key;
+      }
     }
+
     return null;
   }
 
@@ -419,7 +457,6 @@ class _LessonPageState extends State<LessonPage> {
     final correct =
         normalizeAnswer(answer) == normalizeAnswer(question.correctAnswer);
 
-    // Play immediately based on the actual result.
     _playSound(correct ? 'correct' : 'wrong');
 
     _applyResult(correct);
@@ -439,7 +476,9 @@ class _LessonPageState extends State<LessonPage> {
   }
 
   void _applyResult(bool correct) {
-    if (correct) PlayerProgress.instance.recordCorrectAnswer();
+    if (correct) {
+      PlayerProgress.instance.recordCorrectAnswer();
+    }
 
     setState(() {
       hasChecked = true;
@@ -450,7 +489,10 @@ class _LessonPageState extends State<LessonPage> {
       if (correct) {
         correctAttempts++;
         combo++;
-        if (combo >= 2) comboDisplay = combo;
+
+        if (combo >= 2) {
+          comboDisplay = combo;
+        }
       } else {
         combo = 0;
       }
@@ -468,7 +510,9 @@ class _LessonPageState extends State<LessonPage> {
       }
     });
 
-    if (!correct) _pulseHeart();
+    if (!correct) {
+      _pulseHeart();
+    }
 
     if (!correct && hearts == 0) {
       _playSound('fail');
@@ -482,10 +526,16 @@ class _LessonPageState extends State<LessonPage> {
   }
 
   void _pulseHeart() {
-    setState(() => heartHit = true);
+    setState(() {
+      heartHit = true;
+    });
 
     Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) setState(() => heartHit = false);
+      if (mounted) {
+        setState(() {
+          heartHit = false;
+        });
+      }
     });
   }
 
@@ -496,7 +546,6 @@ class _LessonPageState extends State<LessonPage> {
 
     if (!isCorrect) {
       setState(resetQuestionState);
-
       return;
     }
 
@@ -524,7 +573,9 @@ class _LessonPageState extends State<LessonPage> {
         ? 0.0
         : duration.inSeconds / questions.length;
 
-    final xpEarned = await PlayerProgress.instance.completeLesson();
+    final xpEarned = await PlayerProgress.instance.completeLesson(
+      widget.lessonId,
+    );
 
     if (!mounted) return;
 
@@ -587,9 +638,7 @@ class _LessonPageState extends State<LessonPage> {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 const Text(
                   'Kalau keluar sekarang, progres pelajaran ini akan hilang.',
                   textAlign: TextAlign.center,
@@ -599,9 +648,7 @@ class _LessonPageState extends State<LessonPage> {
                     height: 1.4,
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
                 SizedBox(
                   width: double.infinity,
                   child: Button3D(
@@ -623,9 +670,7 @@ class _LessonPageState extends State<LessonPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 6),
-
                 TextButton(
                   onPressed: () => Navigator.pop(sheetContext, true),
                   child: const Text(
@@ -691,7 +736,9 @@ class _LessonPageState extends State<LessonPage> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) confirmExit();
+        if (!didPop) {
+          confirmExit();
+        }
       },
       child: Scaffold(
         backgroundColor: _bg,
@@ -699,7 +746,6 @@ class _LessonPageState extends State<LessonPage> {
           child: Column(
             children: [
               buildTopBar(),
-
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
@@ -733,7 +779,6 @@ class _LessonPageState extends State<LessonPage> {
                   ),
                 ),
               ),
-
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
                 transitionBuilder: (child, animation) {
@@ -782,15 +827,12 @@ class _LessonPageState extends State<LessonPage> {
               size: 30,
             ),
           ),
-
           const SizedBox(width: 4),
-
           Expanded(
             child: Stack(
               clipBehavior: Clip.none,
               children: [
                 LessonProgressBar(value: progress),
-
                 Positioned(
                   left: 2,
                   top: -22,
@@ -811,9 +853,7 @@ class _LessonPageState extends State<LessonPage> {
               ],
             ),
           ),
-
           const SizedBox(width: 16),
-
           AnimatedScale(
             scale: heartHit ? 1.35 : 1.0,
             duration: const Duration(milliseconds: 150),
@@ -827,9 +867,7 @@ class _LessonPageState extends State<LessonPage> {
                   errorBuilder: (_, __, ___) =>
                       const Icon(Icons.favorite, color: _red, size: 26),
                 ),
-
                 const SizedBox(width: 6),
-
                 Text(
                   InventoryService.instance.isActive(ItemEffect.unlimitedHearts)
                       ? '∞'
@@ -866,26 +904,17 @@ class _LessonPageState extends State<LessonPage> {
               height: 1.25,
             ),
           ),
-
           const SizedBox(height: 24),
-
           buildPromptArea(question),
-
           const SizedBox(height: 28),
-
           if (usesChoices(question) && type != 'image_choice')
             buildMultipleChoice(question),
-
           if (type == 'image_choice') buildImageChoice(question),
-
           if (type == 'translation') buildTranslation(),
-
           if (type == 'word_bank' || type == 'listening')
             buildWordBank(question),
-
           if (type == 'fill_blank' && question.choiceOptions.isEmpty)
             buildFillBlank(),
-
           if (type == 'matching') buildMatching(question),
         ],
       ),
@@ -925,7 +954,9 @@ class _LessonPageState extends State<LessonPage> {
 
     switch (q.type) {
       case 'matching':
-        if (q.prompt.isEmpty) return const SizedBox.shrink();
+        if (q.prompt.isEmpty) {
+          return const SizedBox.shrink();
+        }
 
         return Text(
           q.prompt,
@@ -1001,7 +1032,6 @@ class _LessonPageState extends State<LessonPage> {
               letterSpacing: 0.5,
             ),
           ),
-
         Text(
           q.prompt,
           style: TextStyle(
@@ -1020,11 +1050,17 @@ class _LessonPageState extends State<LessonPage> {
     required bool isRight,
     required bool isWrong,
   }) {
-    if (isWrong) return _ChoiceStyle(_tint(_red, 0.18), _red, _red);
+    if (isWrong) {
+      return _ChoiceStyle(_tint(_red, 0.18), _red, _red);
+    }
 
-    if (isRight) return _ChoiceStyle(_tint(_yellow, 0.18), _yellow, _yellow);
+    if (isRight) {
+      return _ChoiceStyle(_tint(_yellow, 0.18), _yellow, _yellow);
+    }
 
-    if (isSelected) return _ChoiceStyle(_tint(_yellow), _yellow, _yellow);
+    if (isSelected) {
+      return _ChoiceStyle(_tint(_yellow), _yellow, _yellow);
+    }
 
     return const _ChoiceStyle(_bg, _border, Colors.white);
   }
@@ -1039,6 +1075,7 @@ class _LessonPageState extends State<LessonPage> {
     return Column(
       children: options.map((option) {
         final isSelected = selectedAnswer == option.text;
+
         final romaji = option.romanization ?? '';
 
         final style = _choiceStyle(
@@ -1081,7 +1118,6 @@ class _LessonPageState extends State<LessonPage> {
                         letterSpacing: 0.5,
                       ),
                     ),
-
                   Text(
                     option.text,
                     textAlign: TextAlign.center,
@@ -1112,6 +1148,7 @@ class _LessonPageState extends State<LessonPage> {
           runSpacing: 12,
           children: items.map((item) {
             final label = item['label']?.toString() ?? '';
+
             final image = item['image']?.toString();
 
             final isSelected = selectedAnswer == label;
@@ -1145,9 +1182,7 @@ class _LessonPageState extends State<LessonPage> {
                       width: double.infinity,
                       child: _optionImage(image),
                     ),
-
                     const SizedBox(height: 10),
-
                     Text(
                       label,
                       textAlign: TextAlign.center,
@@ -1168,11 +1203,15 @@ class _LessonPageState extends State<LessonPage> {
   }
 
   Widget _optionImage(String? src) {
-    Widget fallback() => const Center(
-      child: Icon(Icons.image_not_supported_rounded, color: Colors.white24),
-    );
+    Widget fallback() {
+      return const Center(
+        child: Icon(Icons.image_not_supported_rounded, color: Colors.white24),
+      );
+    }
 
-    if (src == null || src.isEmpty) return fallback();
+    if (src == null || src.isEmpty) {
+      return fallback();
+    }
 
     if (src.startsWith('http')) {
       return Image.network(
@@ -1253,17 +1292,23 @@ class _LessonPageState extends State<LessonPage> {
 
   void _addWord(int index) {
     if (hasChecked) return;
-    if (selectedWordIndexes.contains(index)) return;
+    if (selectedWordIndexes.contains(index)) {
+      return;
+    }
 
     setState(() {
       selectedWords.add(currentQuestion.choiceOptions[index].text);
+
       selectedWordIndexes.add(index);
     });
   }
 
   void _removeWord(int position) {
     if (hasChecked) return;
-    if (position < 0 || position >= selectedWords.length) return;
+
+    if (position < 0 || position >= selectedWords.length) {
+      return;
+    }
 
     setState(() {
       selectedWords.removeAt(position);
@@ -1273,7 +1318,10 @@ class _LessonPageState extends State<LessonPage> {
 
   void _insertWordFromBank(int bankIndex, int position) {
     if (hasChecked) return;
-    if (selectedWordIndexes.contains(bankIndex)) return;
+
+    if (selectedWordIndexes.contains(bankIndex)) {
+      return;
+    }
 
     final word = currentQuestion.choiceOptions[bankIndex].text;
 
@@ -1281,13 +1329,17 @@ class _LessonPageState extends State<LessonPage> {
       final safePosition = position.clamp(0, selectedWords.length);
 
       selectedWords.insert(safePosition, word);
+
       selectedWordIndexes.insert(safePosition, bankIndex);
     });
   }
 
   void _returnWordToBank(int position) {
     if (hasChecked) return;
-    if (position < 0 || position >= selectedWords.length) return;
+
+    if (position < 0 || position >= selectedWords.length) {
+      return;
+    }
 
     setState(() {
       selectedWords.removeAt(position);
@@ -1297,16 +1349,24 @@ class _LessonPageState extends State<LessonPage> {
 
   void _moveWord(int oldIndex, int newIndex) {
     if (hasChecked) return;
-    if (oldIndex < 0 || oldIndex >= selectedWords.length) return;
-    if (newIndex < 0 || newIndex >= selectedWords.length) return;
+
+    if (oldIndex < 0 || oldIndex >= selectedWords.length) {
+      return;
+    }
+
+    if (newIndex < 0 || newIndex >= selectedWords.length) {
+      return;
+    }
 
     if (oldIndex == newIndex) return;
 
     setState(() {
       final word = selectedWords.removeAt(oldIndex);
+
       final sourceIndex = selectedWordIndexes.removeAt(oldIndex);
 
       selectedWords.insert(newIndex, word);
+
       selectedWordIndexes.insert(newIndex, sourceIndex);
     });
   }
@@ -1317,6 +1377,7 @@ class _LessonPageState extends State<LessonPage> {
     final hasRomaji = words.any((word) => (word.romanization ?? '').isNotEmpty);
 
     final chipHeight = hasRomaji ? 60.0 : 44.0;
+
     final pitch = chipHeight + 12;
 
     final chipEdge = hasChecked ? (isCorrect ? _yellow : _red) : _border;
@@ -1326,9 +1387,6 @@ class _LessonPageState extends State<LessonPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // =========================
-        // AREA JAWABAN
-        // =========================
         DragTarget<_WordDragData>(
           onWillAcceptWithDetails: (details) {
             return !hasChecked;
@@ -1357,7 +1415,6 @@ class _LessonPageState extends State<LessonPage> {
                   Positioned.fill(
                     child: CustomPaint(painter: _AnswerLinesPainter(pitch)),
                   ),
-
                   Padding(
                     padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
                     child: selectedWords.isEmpty
@@ -1398,20 +1455,16 @@ class _LessonPageState extends State<LessonPage> {
             );
           },
         ),
-
         const SizedBox(height: 28),
-
         DragTarget<_WordDragData>(
           onWillAcceptWithDetails: (details) {
             return !hasChecked && !details.data.fromBank;
           },
-
           onAcceptWithDetails: (details) {
             final data = details.data;
 
             _returnWordToBank(data.index);
           },
-
           builder: (context, candidateData, rejectedData) {
             final isHovering = candidateData.isNotEmpty;
 
@@ -1426,7 +1479,6 @@ class _LessonPageState extends State<LessonPage> {
                   width: 2,
                 ),
               ),
-
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -1477,7 +1529,6 @@ class _LessonPageState extends State<LessonPage> {
 
     return Draggable<_WordDragData>(
       data: _WordDragData(fromBank: true, index: index),
-
       feedback: Material(
         color: Colors.transparent,
         child: _wordChip(
@@ -1489,9 +1540,7 @@ class _LessonPageState extends State<LessonPage> {
           onTap: null,
         ),
       ),
-
       childWhenDragging: Opacity(opacity: 0.25, child: chip),
-
       child: chip,
     );
   }
@@ -1508,13 +1557,11 @@ class _LessonPageState extends State<LessonPage> {
       onWillAcceptWithDetails: (details) {
         return !hasChecked && !details.data.fromBank;
       },
-
       onAcceptWithDetails: (details) {
         final data = details.data;
 
         _moveWord(data.index, position);
       },
-
       builder: (context, candidateData, rejectedData) {
         final isHovering = candidateData.isNotEmpty;
 
@@ -1567,7 +1614,6 @@ class _LessonPageState extends State<LessonPage> {
 
     return Draggable<_WordDragData>(
       data: _WordDragData(fromBank: false, index: position),
-
       feedback: Material(
         color: Colors.transparent,
         child: _wordChip(
@@ -1579,9 +1625,7 @@ class _LessonPageState extends State<LessonPage> {
           onTap: null,
         ),
       ),
-
       childWhenDragging: Opacity(opacity: 0.25, child: chip),
-
       child: chip,
     );
   }
@@ -1608,7 +1652,6 @@ class _LessonPageState extends State<LessonPage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-
           Text(
             word,
             style: TextStyle(
@@ -1684,9 +1727,7 @@ class _LessonPageState extends State<LessonPage> {
           'Pilih kata di kiri, lalu pasangannya di kanan.',
           style: TextStyle(color: Colors.white54, fontSize: 14),
         ),
-
         const SizedBox(height: 20),
-
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1694,6 +1735,7 @@ class _LessonPageState extends State<LessonPage> {
               child: Column(
                 children: leftItems.map((left) {
                   final matched = matchedPairs.containsKey(left);
+
                   final partner = matchedPairs[left];
 
                   return _matchItem(
@@ -1709,6 +1751,7 @@ class _LessonPageState extends State<LessonPage> {
                             setState(() {
                               if (matched) {
                                 matchedPairs.remove(left);
+
                                 selectedLeft = null;
                               } else {
                                 selectedLeft = left;
@@ -1719,13 +1762,12 @@ class _LessonPageState extends State<LessonPage> {
                 }).toList(),
               ),
             ),
-
             const SizedBox(width: 12),
-
             Expanded(
               child: Column(
                 children: rightItems.map((right) {
                   final owner = _ownerOf(right);
+
                   final matched = owner != null;
 
                   return _matchItem(
@@ -1743,9 +1785,11 @@ class _LessonPageState extends State<LessonPage> {
                             setState(() {
                               if (matched) {
                                 matchedPairs.remove(owner);
+
                                 selectedLeft = null;
                               } else if (selectedLeft != null) {
                                 matchedPairs[selectedLeft!] = right;
+
                                 selectedLeft = null;
                               }
                             });
@@ -1773,6 +1817,7 @@ class _LessonPageState extends State<LessonPage> {
 
     if (selected) {
       face = _tint(Colors.white, 0.10);
+
       edge = Colors.white;
     }
 
@@ -1784,12 +1829,14 @@ class _LessonPageState extends State<LessonPage> {
 
     if (status == 1) {
       face = _tint(_yellow, 0.18);
+
       edge = _yellow;
       textColor = _yellow;
     }
 
     if (status == -1) {
       face = _tint(_red, 0.18);
+
       edge = _red;
       textColor = _red;
     }
@@ -1826,6 +1873,7 @@ class _LessonPageState extends State<LessonPage> {
     bool canCheck = false;
 
     final question = currentQuestion;
+
     final type = question.type;
 
     if (usesChoices(question)) {
@@ -1876,6 +1924,7 @@ class _LessonPageState extends State<LessonPage> {
 
   Widget buildFeedbackPanel() {
     final accent = isCorrect ? _yellow : _red;
+
     final panelBg = isCorrect
         ? const Color(0xFF3A3410)
         : const Color(0xFF3B1D1D);
@@ -1887,6 +1936,7 @@ class _LessonPageState extends State<LessonPage> {
         : feedbackTitle;
 
     final meaning = currentQuestion.meaning;
+
     final showMeaning = isCorrect && meaning != null && meaning.isNotEmpty;
 
     return SafeArea(
@@ -1919,9 +1969,7 @@ class _LessonPageState extends State<LessonPage> {
                     size: 26,
                   ),
                 ),
-
                 const SizedBox(width: 14),
-
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1937,10 +1985,8 @@ class _LessonPageState extends State<LessonPage> {
                           ),
                         ),
                       ),
-
                       if (showMeaning) ...[
                         const SizedBox(height: 4),
-
                         const Text(
                           'Artinya:',
                           style: TextStyle(
@@ -1949,9 +1995,7 @@ class _LessonPageState extends State<LessonPage> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-
                         const SizedBox(height: 2),
-
                         Text(
                           meaning,
                           style: const TextStyle(
@@ -1961,10 +2005,8 @@ class _LessonPageState extends State<LessonPage> {
                           ),
                         ),
                       ],
-
                       if (!isCorrect) ...[
                         const SizedBox(height: 4),
-
                         const Text(
                           'Jawaban yang benar:',
                           style: TextStyle(
@@ -1973,9 +2015,7 @@ class _LessonPageState extends State<LessonPage> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-
                         const SizedBox(height: 2),
-
                         Text(
                           currentQuestion.correctAnswer,
                           style: const TextStyle(
@@ -1990,9 +2030,7 @@ class _LessonPageState extends State<LessonPage> {
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
-
             Opacity(
               opacity: hearts > 0 ? 1 : 0.5,
               child: SizedBox(
@@ -2102,9 +2140,7 @@ class CharacterBubble extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         CharacterImage(asset: asset, width: 150, height: 110),
-
         const SizedBox(width: 10),
-
         Expanded(
           child: _SpeechBubble(padding: bubblePadding, child: child),
         ),
@@ -2138,7 +2174,6 @@ class _SpeechBubble extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: child,
         ),
-
         Positioned(
           left: -9,
           top: 0,
@@ -2239,9 +2274,7 @@ class _BubbleAudioButtons extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: _flat(Icons.volume_up_rounded, onNormal)),
-
           Container(width: 2, color: _border),
-
           Expanded(child: _flat(Icons.slow_motion_video_rounded, onSlow)),
         ],
       ),
@@ -2266,8 +2299,9 @@ class _AnswerLinesPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _AnswerLinesPainter oldDelegate) =>
-      oldDelegate.pitch != pitch;
+  bool shouldRepaint(covariant _AnswerLinesPainter oldDelegate) {
+    return oldDelegate.pitch != pitch;
+  }
 }
 
 class LessonProgressBar extends StatelessWidget {
@@ -2365,6 +2399,7 @@ class _Button3DState extends State<Button3D> {
 
   Color _darken(Color c, [double amount = 0.15]) {
     final hsl = HSLColor.fromColor(c);
+
     return hsl
         .withLightness((hsl.lightness - amount).clamp(0.0, 1.0))
         .toColor();
@@ -2375,7 +2410,11 @@ class _Button3DState extends State<Button3D> {
 
     _pressStart = DateTime.now();
 
-    if (!_pressed) setState(() => _pressed = true);
+    if (!_pressed) {
+      setState(() {
+        _pressed = true;
+      });
+    }
   }
 
   Future<void> _up() async {
@@ -2389,7 +2428,11 @@ class _Button3DState extends State<Button3D> {
       }
     }
 
-    if (mounted && _pressed) setState(() => _pressed = false);
+    if (mounted && _pressed) {
+      setState(() {
+        _pressed = false;
+      });
+    }
   }
 
   Future<void> _tap() async {
@@ -2403,7 +2446,6 @@ class _Button3DState extends State<Button3D> {
       widget.onTap?.call();
     } else {
       widget.onTap?.call();
-
       _up();
     }
   }
@@ -2411,7 +2453,9 @@ class _Button3DState extends State<Button3D> {
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(widget.radius);
+
     final lip = widget.lipColor ?? _darken(widget.color);
+
     final border = widget.borderColor;
 
     return Listener(
@@ -2429,7 +2473,6 @@ class _Button3DState extends State<Button3D> {
                 decoration: BoxDecoration(color: lip, borderRadius: radius),
               ),
             ),
-
             AnimatedContainer(
               duration: const Duration(milliseconds: 80),
               curve: Curves.easeOut,
@@ -2509,30 +2552,24 @@ class _PressableButtonState extends State<PressableButton> {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-
       onTapDown: (_) {
         pressDown();
       },
-
       onTapUp: (_) {
         pressUp();
         handleTap();
       },
-
       onTapCancel: () {
         pressUp();
       },
-
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 80),
         curve: Curves.easeOut,
-
         transform: Matrix4.translationValues(
           0,
           isPressed ? widget.pressedOffset : 0,
           0,
         ),
-
         child: widget.child,
       ),
     );
@@ -2566,9 +2603,7 @@ class OutOfHeartsScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         buildHeartIcon(),
-
                         const SizedBox(height: 30),
-
                         const Text(
                           'Oh tidak!',
                           textAlign: TextAlign.center,
@@ -2578,9 +2613,7 @@ class OutOfHeartsScreen extends StatelessWidget {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-
                         const SizedBox(height: 10),
-
                         const Text(
                           'Hati kamu habis',
                           textAlign: TextAlign.center,
@@ -2590,12 +2623,9 @@ class OutOfHeartsScreen extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                         const SizedBox(height: 14),
-
                         const Text(
-                          'Kamu perlu mengulang '
-                          'untuk menyelesaikan pelajaran ini.',
+                          'Kamu perlu mengulang untuk menyelesaikan pelajaran ini.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white60,
@@ -2603,16 +2633,13 @@ class OutOfHeartsScreen extends StatelessWidget {
                             height: 1.5,
                           ),
                         ),
-
                         const SizedBox(height: 30),
-
                         buildHeartCounter(),
                       ],
                     ),
                   ),
                 ),
               ),
-
               buildBottomButtons(),
             ],
           ),
@@ -2648,9 +2675,7 @@ class OutOfHeartsScreen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.favorite, color: _red, size: 27),
-
           SizedBox(width: 10),
-
           Text(
             '0 / 5',
             style: TextStyle(
@@ -2691,9 +2716,7 @@ class OutOfHeartsScreen extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 8),
-
           TextButton(
             onPressed: onExit,
             child: const Text(
@@ -2759,9 +2782,7 @@ class LessonCompleteScreen extends StatelessWidget {
                             height: 240,
                           ),
                         ),
-
                         const SizedBox(height: 20),
-
                         Text(
                           variant.title,
                           textAlign: TextAlign.center,
@@ -2771,9 +2792,7 @@ class LessonCompleteScreen extends StatelessWidget {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-
                         const SizedBox(height: 10),
-
                         Text(
                           variant.subtitle,
                           textAlign: TextAlign.center,
@@ -2783,16 +2802,13 @@ class LessonCompleteScreen extends StatelessWidget {
                             height: 1.5,
                           ),
                         ),
-
                         const SizedBox(height: 36),
-
                         buildStats(),
                       ],
                     ),
                   ),
                 ),
               ),
-
               buildContinueButton(),
             ],
           ),
@@ -2814,9 +2830,7 @@ class LessonCompleteScreen extends StatelessWidget {
             value: '$xpEarned',
           ),
         ),
-
         const SizedBox(width: 10),
-
         Expanded(
           child: _ResultStatCard(
             label: accuracyLabel(accuracy),
@@ -2826,9 +2840,7 @@ class LessonCompleteScreen extends StatelessWidget {
             value: '$accuracy%',
           ),
         ),
-
         const SizedBox(width: 10),
-
         Expanded(
           child: _ResultStatCard(
             label: timeLabel(secondsPerQuestion),
@@ -2910,7 +2922,6 @@ class _ResultStatCard extends StatelessWidget {
               ),
             ),
           ),
-
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
@@ -2922,9 +2933,7 @@ class _ResultStatCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(icon, color: accent, size: 24),
-
                 const SizedBox(width: 5),
-
                 Flexible(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,

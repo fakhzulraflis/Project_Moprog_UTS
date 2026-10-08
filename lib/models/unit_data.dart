@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'guide_block.dart';
+
 class UnitData {
   final int section;
   final int unit;
@@ -9,6 +11,7 @@ class UnitData {
   final List<String> lessonTitles;
   final List<int> lessonIds;
   final List<int> chestAfter;
+  final List<GuideBlock> guidebook;
 
   const UnitData({
     required this.section,
@@ -19,6 +22,7 @@ class UnitData {
     required this.lessonTitles,
     required this.lessonIds,
     this.chestAfter = const [],
+    this.guidebook = const [],
   });
 
   int get lessonCount => lessonTitles.length;
