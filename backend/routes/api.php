@@ -54,8 +54,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/users/{id}/block', [UserController::class, 'toggleBlock'])->whereNumber('id');
     Route::post('/users/{id}/report', [UserController::class, 'report'])->whereNumber('id');
     Route::put('/profile/avatar', [ProfileController::class, 'updateAvatar']);
-    Route::put('/profile/xp', [ProfileController::class, 'updateXp']);
-    Route::get('/profile/suggestions', [ProfileController::class, 'suggestions']);
     Route::post('/users/{id}/follow', [ProfileController::class, 'toggleFollow'])->whereNumber('id');
     Route::get('/posts', [ProfileController::class, 'posts']);
     Route::post('/posts/{id}/like', [ProfileController::class, 'toggleLike'])->whereNumber('id');

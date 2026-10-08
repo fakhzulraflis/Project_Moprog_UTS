@@ -11,8 +11,10 @@ import '../pages/share_profile_page.dart';
 import '../services/avatar_catalog.dart';
 import '../services/date_format.dart';
 import '../services/language_asset_service.dart';
+import '../services/player_progress.dart';
 import '../services/profile_service.dart';
 import '../widgets/animated_avatar.dart';
+import '../widgets/overview_stats_card.dart';
 import '../widgets/press_button.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -57,6 +59,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _scroll.addListener(_onScroll);
+    PlayerProgress.instance.load();
     _loadProfile();
   }
 
@@ -342,12 +345,40 @@ class _ProfilePageState extends State<ProfilePage> {
         const SizedBox(height: 30),
         Container(height: 2, color: _line),
         const SizedBox(height: 30),
+        _buildOverviewCard(profile),
+        const SizedBox(height: 24),
         if (!profile.isComplete) ...[
           _buildCompleteProfileCard(profile),
           const SizedBox(height: 24),
         ],
         _buildCurrentLanguageCard(),
       ],
+    );
+  }
+
+  // Ringkasan statistik. Angkanya dari progres di HP (selalu yang terbaru dan
+  // berubah langsung saat kita belajar); peringkat dari server.
+  Widget _buildOverviewCard(UserProfile profile) {
+    final progress = PlayerProgress.instance;
+
+    return ListenableBuilder(
+      listenable: progress,
+      builder: (context, _) {
+        final loaded = progress.isLoaded;
+
+        return OverviewStatsCard(
+          xp: loaded
+              ? (progress.totalXp > profile.xp ? progress.totalXp : profile.xp)
+              : profile.xp,
+          streak: loaded ? progress.streak : 0,
+          bestStreak: loaded ? progress.bestStreak : 0,
+          gems: loaded ? progress.gems : 0,
+          hearts: 5 + (loaded ? progress.bonusHearts : 0),
+          lessons: loaded ? progress.completedLessonIds.length : 0,
+          rank: profile.rank,
+          totalPlayers: profile.totalPlayers,
+        );
+      },
     );
   }
 

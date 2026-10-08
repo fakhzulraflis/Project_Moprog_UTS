@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\User;
+use App\Models\UserProgress;
+use App\Support\Leaderboard;
+use App\Support\ProgressStats;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,43 +44,7 @@ class ProfileController extends Controller
         return response()->json(['data' => $this->payload($me)]);
     }
 
-    // PUT /api/profile/xp
-    public function updateXp(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'xp' => ['required', 'integer', 'min:0'],
-        ]);
-
-        $me = $request->user();
-        $me->update(['xp' => $validated['xp']]);
-
-        return response()->json(['data' => $this->payload($me)]);
-    }
-
-    // GET /api/profile/suggestions
-    public function suggestions(Request $request): JsonResponse
-    {
-        $me = $request->user();
-        $followingIds = $me->following()->pluck('users.id');
-
-        $users = User::query()
-            ->where('id', '!=', $me->id)
-            ->whereNotIn('id', UserController::hiddenIds($me->id))
-            ->orderByDesc('id')
-            ->limit(20)
-            ->get()
-            ->map(fn (User $user) => [
-                'id' => $user->id,
-                'fullname' => $user->name,
-                'username' => $user->username,
-                'learning_language' => $user->learning_language ?? 'English',
-                'is_following' => $followingIds->contains($user->id),
-            ]);
-
-        return response()->json(['data' => $users]);
-    }
-
-    // PATCH /api/profile/language (ganti bahasa yang dipelajari)
+    // PATCH /api/profile/language  (ganti bahasa yang dipelajari)
     public function updateLanguage(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -194,7 +161,10 @@ class ProfileController extends Controller
             'country' => $user->country,
             'avatar_path' => $user->avatar_path,
             'avatar_character' => $user->avatar_character,
-            'xp' => $user->xp,
+            'xp' => (int) $user->xp,
+            'rank' => Leaderboard::rankOf($user),
+            'total_players' => Leaderboard::visible($user->id)->count(),
+            'stats' => ProgressStats::fromData(UserProgress::where('user_id', $user->id)->value('data')),
             'joined_at' => optional($user->created_at)->toIso8601String(),
             'following_count' => $user->following()->count(),
             'followers_count' => $user->followers()->count(),

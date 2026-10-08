@@ -3,44 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../services/avatar_catalog.dart';
 import '../services/profile_service.dart';
+import 'avatar_thumb.dart';
 import 'press_button.dart';
-
-// Foto bulat karakter (bagian wajah) di atas latar kuning.
-class AvatarBubble extends StatelessWidget {
-  final AvatarCharacter character;
-  final double size;
-
-  const AvatarBubble({super.key, required this.character, this.size = 54});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFF0A8),
-        shape: BoxShape.circle,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: OverflowBox(
-        alignment: Alignment.topCenter,
-        minWidth: 0,
-        maxWidth: double.infinity,
-        minHeight: 0,
-        maxHeight: double.infinity,
-        child: Padding(
-          padding: EdgeInsets.only(top: size * 0.1),
-          child: Image.asset(
-            character.asset,
-            height: size * 1.9,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.none,
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // Satu baris user: foto, nama, username, dan tombol aksi di kanan.
 class FriendTile extends StatelessWidget {
@@ -72,7 +36,7 @@ class FriendTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          AvatarBubble(character: character),
+          AvatarThumb(character: character, size: 58),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

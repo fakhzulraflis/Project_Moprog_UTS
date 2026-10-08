@@ -19,6 +19,11 @@ class UserProfile {
   final bool hasFollowed;
   final bool hasLiked;
 
+  // XP akun di server, peringkat di leaderboard, dan jumlah pemain.
+  final int xp;
+  final int rank;
+  final int totalPlayers;
+
   const UserProfile({
     required this.id,
     required this.fullname,
@@ -31,6 +36,9 @@ class UserProfile {
     required this.followersCount,
     required this.hasFollowed,
     required this.hasLiked,
+    this.xp = 0,
+    this.rank = 0,
+    this.totalPlayers = 0,
   });
 
   int get stepsDone => (hasFollowed ? 1 : 0) + (hasLiked ? 1 : 0);
@@ -55,6 +63,9 @@ class UserProfile {
       followersCount: (json['followers_count'] as num?)?.toInt() ?? 0,
       hasFollowed: done('follow'),
       hasLiked: done('like'),
+      xp: (json['xp'] as num?)?.toInt() ?? 0,
+      rank: (json['rank'] as num?)?.toInt() ?? 0,
+      totalPlayers: (json['total_players'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -72,6 +83,8 @@ class FriendUser {
   final int likeCount;
   final bool isFollowing;
   final bool liked;
+  final int xp;
+  final int streak;
 
   const FriendUser({
     required this.id,
@@ -85,6 +98,8 @@ class FriendUser {
     this.likeCount = 0,
     this.isFollowing = false,
     this.liked = false,
+    this.xp = 0,
+    this.streak = 0,
   });
 
   FriendUser copyWith({
@@ -104,6 +119,8 @@ class FriendUser {
     likeCount: likeCount ?? this.likeCount,
     isFollowing: isFollowing ?? this.isFollowing,
     liked: liked ?? this.liked,
+    xp: xp,
+    streak: streak,
   );
 
   factory FriendUser.fromJson(Map<String, dynamic> json) => FriendUser(
@@ -119,6 +136,8 @@ class FriendUser {
     likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
     isFollowing: json['is_following'] == true,
     liked: json['liked'] == true,
+    xp: (json['xp'] as num?)?.toInt() ?? 0,
+    streak: (json['streak'] as num?)?.toInt() ?? 0,
   );
 }
 

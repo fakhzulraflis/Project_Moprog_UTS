@@ -169,7 +169,7 @@ void main() {
     expect(progress.gems, 10);
     expect(inventory.unusedCount, 1);
     expect(progress.isXpBoostActive, isFalse);
-    expect(await progress.completeLesson(), PlayerProgress.xpPerLesson);
+    expect(await progress.completeLesson(101), PlayerProgress.xpPerLesson);
   });
 
   test('XP Ganda yang dipakai dari inventori membuat XP 2x lipat', () async {
@@ -179,7 +179,7 @@ void main() {
     expect(await inventory.use(inventory.items.first), isNull);
     expect(progress.isXpBoostActive, isTrue);
     expect(progress.xpBoostLeft.inMinutes, greaterThanOrEqualTo(14));
-    expect(await progress.completeLesson(), PlayerProgress.xpPerLesson * 2);
+    expect(await progress.completeLesson(102), PlayerProgress.xpPerLesson * 2);
   });
 
   test('beli barang gagal: gem tidak dipotong', () async {
@@ -195,8 +195,8 @@ void main() {
 
   test('barang dari peti masuk inventori, gagal = diganti gem', () async {
     await start();
-    for (var i = 0; i < 3; i++) {
-      await progress.completeLesson();
+    for (var i = 1; i <= 3; i++) {
+      await progress.completeLesson(i);
     }
     final before = progress.gems;
     await progress.claimQuest(

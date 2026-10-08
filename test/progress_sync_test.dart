@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moprog_uts/services/auth_session.dart';
 import 'package:moprog_uts/services/duck_pet.dart';
 import 'package:moprog_uts/services/inventory_service.dart';
+import 'package:moprog_uts/services/mistake_service.dart';
 import 'package:moprog_uts/services/player_progress.dart';
 import 'package:moprog_uts/services/progress_sync.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,16 +13,22 @@ import 'fake_inventory_api.dart';
 // user_progress di backend.
 class FakeProgressApi implements ProgressApi {
   final Map<int, Map<String, dynamic>> byUser = {};
+
+  // XP akun di server (users.xp), bisa lebih besar dari isi progres
+  final Map<int, int> xpByUser = {};
   bool failing = false;
   int saveCount = 0;
 
   int get currentUser => AuthSession.instance.userId!;
 
   @override
-  Future<Map<String, dynamic>?> fetch() async {
+  Future<RemoteProgress> fetch() async {
     if (failing) throw Exception('server mati');
     final data = byUser[currentUser];
-    return data == null ? null : Map<String, dynamic>.from(data);
+    return RemoteProgress(
+      progress: data == null ? null : Map<String, dynamic>.from(data),
+      xp: xpByUser[currentUser] ?? 0,
+    );
   }
 
   @override
@@ -163,5 +170,153 @@ void main() {
     await progress.spendGems(10);
     await sync.flush();
     expect(server.saveCount, 0);
+  });
+
+  test(
+    'lesson yang sudah selesai tersimpan di akun dan kembali saat login',
+    () async {
+      await start();
+      await loginAs(1);
+
+      await progress.completeLesson(5);
+      await progress.completeLesson(6);
+      await sync.flush();
+
+      expect(server.byUser[1]!['completedLessonIds'], containsAll(['5', '6']));
+      expect(server.byUser[1]!['totalXp'], 20);
+
+      // Ganti akun lalu kembali: progres belajar user 1 masih ada
+      await sync.onLogout();
+      await loginAs(2);
+      expect(progress.isLessonCompleted(5), isFalse);
+      await sync.onLogout();
+
+      await loginAs(1);
+      expect(progress.isLessonCompleted(5), isTrue);
+      expect(progress.isLessonCompleted(6), isTrue);
+      expect(progress.totalXp, 20);
+    },
+  );
+
+  test(
+    'peti yang sudah dibuka tidak bisa dibuka lagi setelah login ulang',
+    () async {
+      await start();
+      await loginAs(1);
+
+      expect(await progress.markChestOpened(7), isTrue);
+      expect(await progress.markChestOpened(7), isFalse);
+      await sync.onLogout();
+
+      await loginAs(1);
+      expect(progress.isChestOpened(7), isTrue);
+      expect(await progress.markChestOpened(7), isFalse);
+
+      // User lain punya peti sendiri
+      await sync.onLogout();
+      await loginAs(2);
+      expect(progress.isChestOpened(7), isFalse);
+    },
+  );
+
+  test('XP bertambah dari XP akun di server, bukan dari 0', () async {
+    await start();
+    server.xpByUser[1] = 300;
+
+    await loginAs(1);
+    expect(progress.totalXp, 300);
+
+    await progress.completeLesson(1);
+    await sync.flush();
+
+    expect(progress.totalXp, 310);
+    expect(server.byUser[1]!['totalXp'], 310);
+  });
+
+  test('XP tidak lebih kecil dari XP lesson yang sudah selesai', () async {
+    // Data lama: 12 lesson selesai tetapi XP belum pernah dicatat
+    await start({'completedLessonIds': List.generate(12, (i) => '${i + 1}')});
+    await loginAs(1);
+
+    expect(progress.totalXp, 120);
+    expect(server.byUser[1]!['totalXp'], 120);
+
+    await progress.completeLesson(13);
+    expect(progress.totalXp, 130);
+  });
+
+  test(
+    'main saat offline: progres tidak tertimpa data lama di server',
+    () async {
+      await start();
+      await loginAs(1);
+      await progress.completeLesson(1);
+      await sync.flush();
+
+      // Server mati: lesson berikutnya hanya tersimpan di HP
+      server.failing = true;
+      await progress.completeLesson(2);
+      await progress.completeLesson(3);
+      expect(server.byUser[1]!['completedLessonIds'], ['1']);
+
+      // Server hidup lagi dan user login: lesson 2 dan 3 tidak hilang
+      server.failing = false;
+      await loginAs(1);
+
+      expect(progress.isLessonCompleted(2), isTrue);
+      expect(progress.isLessonCompleted(3), isTrue);
+      expect(progress.totalXp, 30);
+      expect(
+        server.byUser[1]!['completedLessonIds'],
+        containsAll(['1', '2', '3']),
+      );
+    },
+  );
+
+  test('kosakata yang salah dikirim ke akun dan terpisah antar user', () async {
+    await start();
+    await loginAs(1);
+
+    await MistakeService.addMistake(9);
+    await MistakeService.addMistake(12);
+    await sync.flush();
+    expect(
+      server.byUser[1]!['practice_mistake_vocabulary_ids'],
+      containsAll(['9', '12']),
+    );
+
+    await sync.onLogout();
+    await loginAs(2);
+    expect(await MistakeService.getMistakeIds(), isEmpty);
+    await sync.onLogout();
+
+    await loginAs(1);
+    expect(await MistakeService.getMistakeIds(), {9, 12});
+  });
+
+  test('penggabungan: kunci yang hanya bertambah tidak bisa berkurang', () {
+    final merged = ProgressSync.mergeProgress(
+      local: {
+        'gems': 20,
+        'totalXp': 50,
+        'completedLessonIds': ['1', '4'],
+      },
+      remote: {
+        'gems': 90,
+        'totalXp': 80,
+        'bestStreak': 6,
+        'completedLessonIds': ['1', '2', '3'],
+      },
+    );
+
+    expect(merged['gems'], 20); // nilai HP lebih baru
+    expect(merged['totalXp'], 80); // XP tidak turun
+    expect(merged['bestStreak'], 6);
+    expect((merged['completedLessonIds'] as List).toSet(), {
+      '1',
+      '2',
+      '3',
+      '4',
+    });
   });
 }

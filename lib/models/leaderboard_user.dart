@@ -1,58 +1,57 @@
 class LeaderboardUser {
   final String id;
   final int rank;
-  final String name;
+  final String name; // nama lengkap
+  final String username;
   final int xp;
   final bool isMe;
-  final String? avatarUrl;
+  final String? avatarCharacter;
+  final String learningLanguage;
 
   const LeaderboardUser({
     required this.id,
     required this.rank,
     required this.name,
     required this.xp,
+    this.username = '',
     this.isMe = false,
-    this.avatarUrl,
+    this.avatarCharacter,
+    this.learningLanguage = 'English',
   });
 
+  // [currentUserId] dipakai sebagai cadangan kalau server tidak mengirim is_me.
   factory LeaderboardUser.fromJson(
     Map<String, dynamic> json, {
     String? currentUserId,
   }) {
     final id = json['id'].toString();
+
     return LeaderboardUser(
       id: id,
       rank: (json['rank'] as num).toInt(),
-      name: json['name'] as String,
-      xp: (json['xp'] as num).toInt(),
-      isMe: currentUserId != null && currentUserId == id,
-      avatarUrl: (json['avatarUrl'] ?? json['avatar_url']) as String?,
+      name: (json['name'] ?? json['username'] ?? '').toString(),
+      username: (json['username'] ?? '').toString(),
+      xp: (json['xp'] as num?)?.toInt() ?? 0,
+      isMe:
+          json['is_me'] == true ||
+          (currentUserId != null && currentUserId == id),
+      avatarCharacter: json['avatar_character'] as String?,
+      learningLanguage: (json['learning_language'] ?? 'English').toString(),
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'rank': rank,
-    'name': name,
-    'xp': xp,
-    'avatarUrl': avatarUrl,
-  };
+  int get userId => int.tryParse(id) ?? 0;
 
-  LeaderboardUser copyWith({
-    String? id,
-    int? rank,
-    String? name,
-    int? xp,
-    bool? isMe,
-    String? avatarUrl,
-  }) {
+  LeaderboardUser copyWith({int? rank, int? xp, bool? isMe}) {
     return LeaderboardUser(
-      id: id ?? this.id,
+      id: id,
       rank: rank ?? this.rank,
-      name: name ?? this.name,
+      name: name,
+      username: username,
       xp: xp ?? this.xp,
       isMe: isMe ?? this.isMe,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
+      avatarCharacter: avatarCharacter,
+      learningLanguage: learningLanguage,
     );
   }
 }
