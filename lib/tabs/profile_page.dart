@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../pages/add_friends_page.dart';
 import '../pages/complete_profile_page.dart';
 import '../pages/edit_avatar_page.dart';
+import '../pages/friends_page.dart';
+import '../pages/settings_page.dart';
+import '../pages/share_profile_page.dart';
 import '../services/avatar_catalog.dart';
-import '../widgets/animated_avatar.dart';
+import '../services/date_format.dart';
 import '../services/language_asset_service.dart';
 import '../services/profile_service.dart';
+import '../widgets/animated_avatar.dart';
+import '../widgets/press_button.dart';
 
 class ProfilePage extends StatefulWidget {
   // Bahasa cadangan sebelum data profil dari backend selesai dimuat.
@@ -26,29 +33,42 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
+  static const _bg = Color(0xFF272F33);
+  static const _card = Color(0xFF20272B);
+  static const _line = Color(0xFF38474C);
+  static const _yellow = Color(0xFFFFF0A8);
+  static const _blue = Color(0xFF55B6E8);
+  static const _ink = Color(0xFF343A37); // teks gelap di atas kuning
+
+  // Tinggi bar atas (di bawah status bar) dan area potret kuning.
+  static const double _barHeight = 60;
+  static const double _portraitHeight = 290;
+
+  final _scroll = ScrollController();
 
   UserProfile? _profile;
   bool _loading = true;
   String? _error;
 
+  // true selama bar atas masih berada di atas area kuning
+  bool _overYellow = true;
+
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(_onScroll);
     _loadProfile();
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final over = _scroll.offset < _portraitHeight - _barHeight;
+    if (over != _overYellow) setState(() => _overYellow = over);
   }
 
   Future<void> _loadProfile() async {
@@ -73,53 +93,36 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Bahasa yang dipelajari user (dari database), cadangan dari login.
-  String get selectedLanguage =>
-      _profile?.learningLanguage ?? widget.fallbackLanguage;
+  String get _language => _profile?.learningLanguage ?? widget.fallbackLanguage;
 
   AvatarCharacter get _avatar => AvatarCatalog.resolve(
     character: _profile?.avatarCharacter,
-    language: selectedLanguage,
+    language: _language,
   );
 
-  Future<void> _openEditAvatar() async {
+  // Membuka halaman lain, lalu memuat ulang profil kalau ada yang berubah.
+  Future<void> _open(Widget page) async {
     final changed = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => EditAvatarPage(currentKey: _avatar.key),
-      ),
-    );
-    if (changed == true) _loadProfile();
-  }
-
-  String get _fullname => _profile?.fullname ?? '';
-  String get _username => _profile?.username ?? '';
-
-  String get _memberSince {
-    final date = _profile?.joinedAt;
-    if (date == null) return '-';
-    return '${_months[date.month - 1]} ${date.year}';
-  }
-
-  Future<void> _openCompleteProfile() async {
-    final changed = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const CompleteProfilePage()),
+      MaterialPageRoute(builder: (_) => page),
     );
     if (changed == true) _loadProfile();
   }
 
   @override
   Widget build(BuildContext context) {
+    final profile = _profile;
+
     if (_loading) {
       return const Scaffold(
-        backgroundColor: Color(0xFF272F33),
+        backgroundColor: _bg,
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (_profile == null) {
+    if (profile == null) {
       return Scaffold(
-        backgroundColor: const Color(0xFF272F33),
+        backgroundColor: _bg,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -135,9 +138,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: _loadProfile,
-                  child: const Text('Retry'),
+                PressButton.primary(
+                  label: 'RETRY',
+                  width: 140,
+                  onTap: _loadProfile,
                 ),
               ],
             ),
@@ -146,214 +150,284 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF272F33),
+    final topInset = MediaQuery.of(context).padding.top;
 
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadProfile,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-
-                  const SizedBox(height: 24),
-
-                  _buildProfileIdentity(),
-
-                  const SizedBox(height: 4),
-
-                  _buildProfileInfo(),
-
-                  const SizedBox(height: 24),
-
-                  _buildStats(),
-
-                  const SizedBox(height: 30),
-
-                  _buildProfileDivider(),
-
-                  const SizedBox(height: 30),
-
-                  if (!_profile!.isComplete) ...[
-                    _buildCompleteProfileCard(),
-
-                    const SizedBox(height: 24),
+    // Ikon status bar menyesuaikan latar di bawahnya (kuning = ikon gelap)
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: _overYellow
+            ? Brightness.dark
+            : Brightness.light,
+        statusBarBrightness: _overYellow ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: _bg,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: Stack(
+          children: [
+            RefreshIndicator(
+              onRefresh: _loadProfile,
+              edgeOffset: topInset + _barHeight,
+              child: SingleChildScrollView(
+                controller: _scroll,
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildPortrait(topInset),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 18, 24, 32),
+                      child: _buildContent(profile),
+                    ),
                   ],
-
-                  _buildCurrentLanguageCard(),
-
-                  const SizedBox(height: 24),
-
-                  _buildAccountInformationCard(),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return AspectRatio(
-      aspectRatio: 1.6,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF0A8),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Positioned.fill(child: _buildAvatar()),
-            Positioned(top: 14, right: 14, child: _buildEditButton()),
+            _buildTopBar(profile, topInset),
           ],
         ),
       ),
     );
   }
 
-  // Potret karakter: lebih besar dari kartu supaya bagian kaki terpotong
-  // dan wajahnya terlihat jelas. Hanya wajah yang dianimasikan.
-  Widget _buildAvatar() {
-    return LayoutBuilder(
-      builder: (context, c) => OverflowBox(
-        alignment: Alignment.topCenter,
-        minWidth: 0,
-        maxWidth: double.infinity,
-        minHeight: 0,
-        maxHeight: double.infinity,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 14),
-          child: AnimatedAvatar(
-            key: ValueKey(_avatar.key),
-            character: _avatar,
-            height: c.maxHeight * 1.3,
-            bodyMotion: false,
+  // ---------- Bar atas yang tetap di tempat ----------
+
+  Widget _buildTopBar(UserProfile profile, double topInset) {
+    final fg = _overYellow ? _ink : Colors.white;
+
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: topInset + _barHeight,
+        padding: EdgeInsets.only(top: topInset, left: 24, right: 12),
+        decoration: BoxDecoration(
+          color: _overYellow ? _yellow : _bg,
+          border: Border(
+            bottom: BorderSide(
+              color: _overYellow ? Colors.transparent : _line,
+              width: 2,
+            ),
           ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 180),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.baloo2(
+                  color: fg,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                ),
+                child: Text(profile.fullname.toUpperCase()),
+              ),
+            ),
+            _barIcon(
+              Icons.ios_share_rounded,
+              'Share',
+              fg,
+              () => _open(ShareProfilePage(profile: profile)),
+            ),
+            _barIcon(
+              Icons.settings_rounded,
+              'Settings',
+              fg,
+              () => _open(SettingsPage(profile: profile)),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileInfo() {
-    return Text(
-      "Joined $_memberSince",
-      style: GoogleFonts.baloo2(color: Colors.white70, fontSize: 16),
+  Widget _barIcon(
+    IconData icon,
+    String tooltip,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onTap,
+      icon: Icon(icon, color: color, size: 28),
     );
   }
 
-  Widget _buildStats() {
+  // ---------- Potret karakter (kuning) ----------
+
+  Widget _buildPortrait(double topInset) {
+    final visible = _portraitHeight - _barHeight;
+
+    return Container(
+      width: double.infinity,
+      height: topInset + _portraitHeight,
+      color: _yellow,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          // Lebih besar dari area kuning supaya kaki terpotong dan wajah jelas.
+          Positioned.fill(
+            top: topInset + _barHeight,
+            child: ClipRect(
+              child: OverflowBox(
+                alignment: Alignment.topCenter,
+                minWidth: 0,
+                maxWidth: double.infinity,
+                minHeight: 0,
+                maxHeight: double.infinity,
+                child: AnimatedAvatar(
+                  key: ValueKey('portrait-${_avatar.key}'),
+                  character: _avatar,
+                  height: visible * 1.32,
+                  bodyMotion: false,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 20,
+            bottom: 14,
+            child: PressButton(
+              width: 52,
+              height: 46,
+              depth: 4,
+              radius: 14,
+              color: _yellow,
+              shadowColor: const Color(0xFFD9C97A),
+              borderColor: const Color(0xFFB7A85E),
+              textColor: _ink,
+              icon: Icons.edit_rounded,
+              fontSize: 17,
+              padding: EdgeInsets.zero,
+              onTap: () => _open(EditAvatarPage(currentKey: _avatar.key)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------- Isi halaman ----------
+
+  Widget _buildContent(UserProfile profile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '@${profile.username.toUpperCase()}  ·  JOINED ${monthYear(profile.joinedAt).toUpperCase()}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.baloo2(
+            color: Colors.white54,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 14),
+        _buildStats(profile),
+        const SizedBox(height: 22),
+        PressButton.outline(
+          label: 'ADD FRIENDS',
+          icon: Icons.person_add_alt_1_rounded,
+          onTap: () => _open(AddFriendsPage(profile: profile)),
+        ),
+        const SizedBox(height: 30),
+        Container(height: 2, color: _line),
+        const SizedBox(height: 30),
+        if (!profile.isComplete) ...[
+          _buildCompleteProfileCard(profile),
+          const SizedBox(height: 24),
+        ],
+        _buildCurrentLanguageCard(),
+      ],
+    );
+  }
+
+  // Tiga kolom sama lebar: nilai di atas, label di bawah, rata kiri.
+  Widget _buildStats(UserProfile profile) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: _statItem("${_profile!.followingCount}", "Following")),
-        Expanded(child: _statItem("${_profile!.followersCount}", "Followers")),
-        Expanded(child: _buildCoursesStatItem()),
+        Expanded(
+          child: _stat(
+            title: 'Courses',
+            value: Image.asset(
+              LanguageAssetService.flagFor(_language),
+              width: 34,
+              height: 34,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+        Expanded(
+          child: _stat(
+            title: 'Following',
+            value: _statNumber(profile.followingCount),
+            onTap: () => _open(FriendsPage(profile: profile)),
+          ),
+        ),
+        Expanded(
+          child: _stat(
+            title: 'Followers',
+            value: _statNumber(profile.followersCount),
+            onTap: () => _open(FriendsPage(profile: profile, initialTab: 1)),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _statItem(String value, String title) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.baloo2(
-            color: const Color(0xFF55B6E8),
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          title,
-          style: GoogleFonts.pixelifySans(
-            color: const Color(0xFF55B6E8),
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _statNumber(int count) => Text(
+    '$count',
+    style: GoogleFonts.baloo2(
+      color: _blue,
+      fontSize: 26,
+      fontWeight: FontWeight.bold,
+      height: 1,
+    ),
+  );
 
-  Widget _buildEditButton() {
-    return Container(
-      width: 54,
-      height: 54,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF0A8),
-        border: Border.all(color: const Color(0xFFB7A85E), width: 2),
-        borderRadius: BorderRadius.circular(16),
+  Widget _stat({
+    required String title,
+    required Widget value,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 36,
+            child: Align(alignment: Alignment.centerLeft, child: value),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            style: GoogleFonts.pixelifySans(color: _blue, fontSize: 14),
+          ),
+        ],
       ),
-      child: IconButton(
-        tooltip: "Edit profile",
-        onPressed: _openEditAvatar,
-        icon: const Icon(Icons.edit_rounded),
-        color: const Color(0xFF343A37),
-        iconSize: 24,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints.expand(),
-      ),
     );
   }
 
-  Widget _buildProfileIdentity() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _fullname,
-          style: GoogleFonts.baloo2(
-            color: Colors.white,
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          _username,
-          style: GoogleFonts.baloo2(color: Colors.white54, fontSize: 18),
-        ),
-      ],
-    );
-  }
+  Widget _buildCompleteProfileCard(UserProfile profile) {
+    final left = profile.stepsLeft;
 
-  Widget _buildCoursesStatItem() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Image.asset(
-          _getCurrentLanguageFlag(),
-          width: 35,
-          height: 35,
-          fit: BoxFit.contain,
-        ),
-        Text(
-          "Courses",
-          style: GoogleFonts.pixelifySans(
-            color: const Color(0xFF55B6E8),
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _getCurrentLanguageFlag() =>
-      LanguageAssetService.flagFor(selectedLanguage);
-
-  Widget _buildCompleteProfileCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF20272B),
+        color: _card,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -365,7 +439,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Complete your profile!",
+                      'Complete your profile!',
                       style: GoogleFonts.baloo2(
                         color: Colors.white,
                         fontSize: 24,
@@ -374,7 +448,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "${_profile!.stepsLeft} ${_profile!.stepsLeft == 1 ? "STEP" : "STEPS"} LEFT",
+                      '$left ${left == 1 ? 'STEP' : 'STEPS'} LEFT',
                       style: GoogleFonts.pixelifySans(
                         color: Colors.white54,
                         fontSize: 14,
@@ -392,33 +466,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
           const SizedBox(height: 15),
-          GestureDetector(
-            onTap: _openCompleteProfile,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF55B6E8),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0xFF3895C5),
-                    offset: Offset(0, 4),
-                    blurRadius: 0,
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  "CONTINUE",
-                  style: GoogleFonts.baloo2(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-              ),
-            ),
+          PressButton.primary(
+            label: 'CONTINUE',
+            onTap: () => _open(const CompleteProfilePage()),
           ),
         ],
       ),
@@ -426,21 +476,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildCurrentLanguageCard() {
-    final String currentLanguage = selectedLanguage;
-    final String currentFlag = _getCurrentLanguageFlag();
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF20272B),
+        color: _card,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Current Learning Language",
+            'Current Learning Language',
             style: GoogleFonts.pixelifySans(
               color: Colors.white54,
               fontSize: 14,
@@ -449,15 +496,15 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Container(
+              SizedBox(
                 width: 56,
                 height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(currentFlag, fit: BoxFit.contain),
+                  child: Image.asset(
+                    LanguageAssetService.flagFor(_language),
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -466,7 +513,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      currentLanguage,
+                      _language,
                       style: GoogleFonts.baloo2(
                         color: Colors.white,
                         fontSize: 24,
@@ -474,7 +521,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     Text(
-                      "Beginner Level",
+                      'Beginner Level',
                       style: GoogleFonts.pixelifySans(color: Colors.white70),
                     ),
                   ],
@@ -483,135 +530,13 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
           const SizedBox(height: 20),
-          GestureDetector(
+          PressButton.outline(
+            label: 'CONTINUE LEARNING',
+            fontSize: 16,
             onTap: widget.onContinueLearning,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white24),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Center(
-                child: Text(
-                  "CONTINUE LEARNING",
-                  style: GoogleFonts.baloo2(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAccountInformationCard() {
-    final String username = _username;
-    final String memberSince = _memberSince;
-    final String currentLanguage = selectedLanguage;
-    final String currentFlag = _getCurrentLanguageFlag();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF20272B),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Account Information",
-            style: GoogleFonts.baloo2(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Username",
-                      style: GoogleFonts.pixelifySans(
-                        color: Colors.white54,
-                        fontSize: 12,
-                      ),
-                    ),
-                    Text(
-                      username,
-                      style: GoogleFonts.baloo2(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      "Member Since",
-                      style: GoogleFonts.pixelifySans(color: Colors.white54),
-                    ),
-                    Text(
-                      memberSince,
-                      style: GoogleFonts.baloo2(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      "Learning Language",
-                      style: GoogleFonts.pixelifySans(color: Colors.white54),
-                    ),
-                    Row(
-                      children: [
-                        Image.asset(
-                          currentFlag,
-                          width: 20,
-                          height: 20,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          currentLanguage,
-                          style: GoogleFonts.baloo2(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              AnimatedAvatar(
-                key: ValueKey('account-${_avatar.key}'),
-                character: _avatar,
-                height: 170,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileDivider() {
-    return Container(
-      width: double.infinity,
-      height: 2,
-      color: const Color(0xFF38474C),
     );
   }
 }

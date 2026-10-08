@@ -19,11 +19,15 @@ class AnimatedAvatar extends StatefulWidget {
   final double height;
   final bool bodyMotion;
 
+  // false = gambar diam tanpa animasi (dipakai saat diekspor jadi PNG)
+  final bool animate;
+
   const AnimatedAvatar({
     super.key,
     required this.character,
     required this.height,
     this.bodyMotion = true,
+    this.animate = true,
   });
 
   @override
@@ -71,6 +75,7 @@ class _AnimatedAvatarState extends State<AnimatedAvatar>
   @override
   void initState() {
     super.initState();
+    if (!widget.animate) return;
     _enter.forward();
     _idle.repeat(reverse: true);
     _scheduleBlink();
@@ -130,6 +135,16 @@ class _AnimatedAvatarState extends State<AnimatedAvatar>
     final metrics = _metrics;
     final h = widget.height;
     final w = metrics != null ? h * metrics.aspect : h;
+
+    if (!widget.animate) {
+      return Image.asset(
+        widget.character.asset,
+        width: w,
+        height: h,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.none,
+      );
+    }
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

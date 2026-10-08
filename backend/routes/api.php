@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\LessonController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\LanguageController;
 use App\Http\Controllers\Api\VocabularyController;
@@ -33,8 +34,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Profil user + syarat "Complete your profile"
     Route::get('/profile', [ProfileController::class, 'show']);
+    Route::post('/logout', [LoginController::class, 'logout']);
+    Route::patch('/profile/language', [ProfileController::class, 'updateLanguage']);
+    Route::get('/profile/following', [UserController::class, 'following']);
+    Route::get('/profile/followers', [UserController::class, 'followers']);
+    Route::get('/profile/blocked', [UserController::class, 'blocked']);
+    Route::get('/users/search', [UserController::class, 'search']);
+    Route::get('/users/{id}', [UserController::class, 'show'])->whereNumber('id');
+    Route::post('/users/{id}/like', [UserController::class, 'toggleLike'])->whereNumber('id');
+    Route::post('/users/{id}/block', [UserController::class, 'toggleBlock'])->whereNumber('id');
+    Route::post('/users/{id}/report', [UserController::class, 'report'])->whereNumber('id');
     Route::put('/profile/avatar', [ProfileController::class, 'updateAvatar']);
-    Route::get('/profile/suggestions', [ProfileController::class, 'suggestions']);
     Route::post('/users/{id}/follow', [ProfileController::class, 'toggleFollow'])->whereNumber('id');
     Route::get('/posts', [ProfileController::class, 'posts']);
     Route::post('/posts/{id}/like', [ProfileController::class, 'toggleLike'])->whereNumber('id');

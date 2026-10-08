@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'inventory_service.dart';
+import 'profile_service.dart';
 
 // Menyimpan siapa yang sedang login, beserta token dari backend.
 // Token dikirim ke API yang butuh login (misalnya inventory), supaya
@@ -45,6 +46,24 @@ class AuthSession {
     token = p.getString('auth_token');
     userId = p.getInt('auth_user_id');
     username = p.getString('auth_username');
+  }
+
+  // Keluar: cabut token di server (kalau bisa), lalu hapus sesi di HP.
+  Future<void> signOut() async {
+    await ProfileService.signOutOnServer();
+    token = null;
+    userId = null;
+    username = null;
+
+    final p = await SharedPreferences.getInstance();
+    await p.remove('auth_token');
+    await p.remove('auth_user_id');
+    await p.remove('auth_username');
+
+    final inventory = InventoryService.instance;
+    inventory.items = [];
+    inventory.active = [];
+    inventory.isLoaded = false;
   }
 
   @visibleForTesting
