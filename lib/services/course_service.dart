@@ -31,7 +31,52 @@ class CourseService {
     _UnitTheme(Color(0xFF58CC02), Color(0xFFFF9600)),
   ];
 
-  static Future<CoursePath> getPath(String code) async {
+  static final Map<String, CoursePath> _cache = {};
+  static final Map<String, Future<CoursePath>> _inflight = {};
+
+  static CoursePath? peek(String code) => _cache[code];
+
+  static Future<CoursePath> getPath(String code, {bool forceRefresh = false}) {
+    if (!forceRefresh) {
+      final cached = _cache[code];
+
+      if (cached != null) {
+        return Future.value(cached);
+      }
+
+      final pending = _inflight[code];
+
+      if (pending != null) {
+        return pending;
+      }
+    }
+
+    final request = _fetchPath(code)
+        .then((path) {
+          if (path.units.isNotEmpty) {
+            _cache[code] = path;
+          }
+
+          return path;
+        })
+        .whenComplete(() {
+          _inflight.remove(code);
+        });
+
+    _inflight[code] = request;
+
+    return request;
+  }
+
+  static void clearCache([String? code]) {
+    if (code == null) {
+      _cache.clear();
+    } else {
+      _cache.remove(code);
+    }
+  }
+
+  static Future<CoursePath> _fetchPath(String code) async {
     final response = await http.get(
       Uri.parse('${ApiService.baseUrl}/languages/$code/path'),
       headers: {'Accept': 'application/json'},
