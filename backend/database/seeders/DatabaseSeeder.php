@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             KoreanQuestionSeeder::class,
             VocabularySeeder::class,
             GuidebookSeeder::class,
+            CommunitySeeder::class,
         ]);
     }
 }

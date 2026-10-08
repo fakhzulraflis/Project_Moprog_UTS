@@ -1,14 +1,20 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:moprog_uts/services/auth_session.dart';
 import 'package:moprog_uts/services/duck_pet.dart';
+import 'package:moprog_uts/services/inventory_service.dart';
 import 'package:moprog_uts/services/player_progress.dart';
 import 'package:moprog_uts/widgets/reward_chest.dart';
 import 'package:moprog_uts/widgets/spin_wheel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'fake_inventory_api.dart';
+
 void main() {
   final progress = PlayerProgress.instance;
+  final inventory = InventoryService.instance;
+  late FakeInventoryApi server;
 
   DailyQuest questById(String id) => QuestPool.byId(id)!;
 
@@ -23,7 +29,9 @@ void main() {
 
     progress.resetForTest();
     DuckPet.instance.resetForTest();
-
+    server = FakeInventoryApi();
+    inventory.resetForTest(server);
+    AuthSession.instance.setForTest(token: 'token-test', userId: 1);
     await progress.load();
   }
 
@@ -154,17 +162,54 @@ void main() {
     expect(progress.monthlyChestState, ChestState.claimed);
   });
 
-  test('XP Boost membuat XP lesson jadi 2x lipat', () async {
+  test('XP Ganda dari toko masuk inventori dulu, belum aktif', () async {
     await start();
 
-    expect(await progress.buyXpBoost(40), isTrue);
-
+    expect(await progress.buyItem('xp_boost_15', 40), isNull);
     expect(progress.gems, 10);
+    expect(inventory.unusedCount, 1);
+    expect(progress.isXpBoostActive, isFalse);
+    expect(await progress.completeLesson(), PlayerProgress.xpPerLesson);
+  });
+
+  test('XP Ganda yang dipakai dari inventori membuat XP 2x lipat', () async {
+    await start();
+    await progress.buyItem('xp_boost_15', 40);
+
+    expect(await inventory.use(inventory.items.first), isNull);
     expect(progress.isXpBoostActive, isTrue);
+    expect(progress.xpBoostLeft.inMinutes, greaterThanOrEqualTo(14));
+    expect(await progress.completeLesson(), PlayerProgress.xpPerLesson * 2);
+  });
 
-    expect(await progress.completeLesson(1), PlayerProgress.xpPerLesson * 2);
+  test('beli barang gagal: gem tidak dipotong', () async {
+    await start({'gems': 10});
+    expect(await progress.buyItem('xp_boost_15', 40), 'Gem kamu belum cukup.');
+    expect(inventory.unusedCount, 0);
 
-    expect(await progress.buyXpBoost(0), isFalse);
+    await start();
+    server.failing = true;
+    expect(await progress.buyItem('xp_boost_15', 40), isNotNull);
+    expect(progress.gems, 50);
+  });
+
+  test('barang dari peti masuk inventori, gagal = diganti gem', () async {
+    await start();
+    for (var i = 0; i < 3; i++) {
+      await progress.completeLesson();
+    }
+    final before = progress.gems;
+    await progress.claimQuest(
+      questById('complete_lessons'),
+      const ChestLoot.item('unlimited_hearts_30'),
+    );
+    expect(inventory.items.single.key, 'unlimited_hearts_30');
+    expect(progress.gems, before);
+
+    // Kalau server mati, hadiahnya diganti gem supaya tidak hilang
+    server.failing = true;
+    await progress.addLoot(const ChestLoot.item('xp_boost_60'));
+    expect(progress.gems, before + PlayerProgress.itemFallbackGems);
   });
 
   test('pembelian gagal kalau gem tidak cukup', () async {
@@ -365,14 +410,12 @@ void main() {
       expect(progress.canSpin, isTrue);
     });
 
-    test('hadiah XP Boost dari roda mengaktifkan boost', () async {
+    test('hadiah XP Ganda dari roda masuk ke inventori', () async {
       await start();
 
       await progress.claimSpin(indexOf(PrizeType.xpBoost, 15));
-
-      expect(progress.isXpBoostActive, isTrue);
-
-      expect(progress.xpBoostLeft.inMinutes, greaterThanOrEqualTo(14));
+      expect(inventory.items.single.key, PlayerProgress.spinBoostItem);
+      expect(progress.isXpBoostActive, isFalse);
     });
   });
 

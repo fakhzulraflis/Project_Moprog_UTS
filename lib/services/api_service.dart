@@ -8,6 +8,8 @@ import '../models/vocabulary.dart';
 
 class ApiService {
   static String get baseUrl {
+    const override = String.fromEnvironment('API_URL');
+    if (override.isNotEmpty) return override;
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       return 'http://192.168.68.118:8000/api';
     }
@@ -216,5 +218,19 @@ class ApiService {
     } else {
       throw Exception('Failed to load vocabularies: ${response.statusCode}');
     }
+  }
+
+  static Future<List<Map<String, dynamic>>> getLeaderboard() async {
+    final response = await http.get(Uri.parse('$baseUrl/leaderboard'));
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+
+      final List<dynamic> data = jsonData['data'];
+
+      return data.map((item) => Map<String, dynamic>.from(item)).toList();
+    }
+
+    throw Exception('Failed to load leaderboard: ${response.statusCode}');
   }
 }

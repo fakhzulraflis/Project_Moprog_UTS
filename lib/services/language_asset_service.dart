@@ -11,4 +11,17 @@ class LanguageAssetService {
         return 'assets/app/wavingduck.gif';
     }
   }
+
+  static String flagFor(String? language) {
+    switch (language?.toLowerCase()) {
+      case 'japanese':
+      case 'jepang':
+        return 'assets/flags/japan.png';
+      case 'korean':
+      case 'korea':
+        return 'assets/flags/korea.png';
+      default:
+        return 'assets/flags/inggris.png';
+    }
+  }
 }

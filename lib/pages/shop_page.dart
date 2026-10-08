@@ -1,9 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../pages/inventory_page.dart';
+import '../services/inventory_service.dart';
 import '../services/player_progress.dart';
+import '../widgets/inventory_button.dart';
 import '../widgets/reward_chest.dart';
 
 // Toko untuk membelanjakan gem yang didapat dari peti quest.
@@ -19,27 +20,21 @@ class _ShopPageState extends State<ShopPage> {
   static const Color cardColor = Color(0xFF20272B);
   static const Color gemColor = Color(0xFF1CB0F6);
 
-  static const int xpBoostPrice = 40;
+  // Barang inventory yang dijual: [kunci barang, harga]
+  static const List<(String, int)> inventoryItems = [
+    ('xp_boost_15', 40),
+    ('unlimited_hearts_30', 60),
+  ];
   static const int heartPackPrice = 25;
   static const int heartPackAmount = 2;
   static const int mysteryChestPrice = 30;
 
   final progress = PlayerProgress.instance;
 
-  // Memperbarui sisa waktu XP Boost.
-  Timer? clock;
-
   @override
   void initState() {
     super.initState();
     progress.load();
-    clock = Timer.periodic(const Duration(seconds: 30), (_) => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    clock?.cancel();
-    super.dispose();
   }
 
   void showMessage(String text) {
@@ -55,12 +50,12 @@ class _ShopPageState extends State<ShopPage> {
       );
   }
 
-  Future<void> buyXpBoost() async {
-    final ok = await progress.buyXpBoost(xpBoostPrice);
+  // Barang inventory tidak langsung aktif. Masuk ke Inventori dulu, lalu
+  // user sendiri yang memilih kapan memakainya.
+  Future<void> buyInventoryItem(ItemInfo info, int price) async {
+    final error = await progress.buyItem(info.key, price);
     if (!mounted) return;
-    showMessage(
-      ok ? 'XP Ganda aktif selama 15 menit!' : 'Gem kamu belum cukup.',
-    );
+    showMessage(error ?? '${info.name} masuk ke Inventori!');
   }
 
   Future<void> buyHeartPack() async {
@@ -89,6 +84,7 @@ class _ShopPageState extends State<ShopPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
+      floatingActionButton: const InventoryButton(),
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 0,
@@ -111,26 +107,23 @@ class _ShopPageState extends State<ShopPage> {
             );
           }
 
-          final boostActive = progress.isXpBoostActive;
-
           return ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
             children: [
               buildBalance(),
 
               const SizedBox(height: 24),
 
-              buildItem(
-                icon: Image.asset('assets/icons/xp.png', height: 44),
-                title: 'XP Ganda',
-                description: boostActive
-                    ? 'Sedang aktif, sisa '
-                          '${progress.xpBoostLeft.inMinutes + 1} menit.'
-                    : 'XP dari lesson jadi 2x lipat selama 15 menit.',
-                price: xpBoostPrice,
-                enabled: !boostActive,
-                onBuy: buyXpBoost,
-              ),
+              for (final (key, price) in inventoryItems)
+                buildItem(
+                  icon: ItemTile(info: ItemInfo.of(key)!, size: 56),
+                  title: ItemInfo.of(key)!.name,
+                  description:
+                      '${ItemInfo.of(key)!.description} Masuk ke Inventori, '
+                      'pakai kapan saja.',
+                  price: price,
+                  onBuy: () => buyInventoryItem(ItemInfo.of(key)!, price),
+                ),
 
               buildItem(
                 icon: Image.asset('assets/icons/hearts.png', height: 44),
@@ -149,8 +142,8 @@ class _ShopPageState extends State<ShopPage> {
                 ),
                 title: 'Peti Misteri',
                 description:
-                    'Peti perak berisi gem, XP, atau hati. '
-                    'Isinya acak!',
+                    'Peti perak berisi gem, XP, hati, atau barang '
+                    'Inventori. Isinya acak!',
                 price: mysteryChestPrice,
                 onBuy: buyMysteryChest,
               ),

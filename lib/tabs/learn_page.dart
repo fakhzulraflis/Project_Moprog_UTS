@@ -9,6 +9,7 @@ import '../services/course_service.dart';
 import '../services/player_progress.dart';
 import '../widgets/chest_node.dart';
 import '../widgets/gem_burst.dart';
+import '../widgets/inventory_button.dart';
 import '../widgets/lesson_node.dart';
 import '../widgets/lesson_popup.dart';
 import '../widgets/unit_header.dart';
@@ -323,6 +324,7 @@ class _LearnPageState extends State<LearnPage> {
       builder: (context, child) {
         return Scaffold(
           backgroundColor: backgroundColor,
+          floatingActionButton: const InventoryButton(),
           body: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {

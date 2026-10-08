@@ -19,340 +19,329 @@ class EnglishQuestionSeeder extends LanguageQuestionSeeder
         ];
     }
 
+    // ---------------- Pelajaran 1: Makanan Dasar ----------------
     private function lessonOne(): array
     {
         return [
             $this->q(
                 1,
                 'image_choice',
-                'Pilih gambar yang menunjukkan "nasi".',
+                'Rice',
                 'nasi',
                 [
                     $this->pic('nasi', 'rice'),
-                    $this->pic('ayam', 'chicken'),
-                    $this->pic('ikan', 'fish'),
+                    $this->pic('air', 'water'),
                     $this->pic('roti', 'bread'),
+                    $this->pic('ikan', 'fish'),
                 ],
-                'rice',
-                null,
-                'nasi'
+                audio: 'Rice',
+                meaning: 'nasi'
             ),
 
             $this->q(
                 2,
                 'multiple_choice',
-                'Apa bahasa Inggris dari "nasi"?',
+                'nasi',
                 'rice',
                 [
-                    $this->o('chicken', ''),
-                    $this->o('rice', ''),
                     $this->o('bread', ''),
+                    $this->o('rice', ''),
                     $this->o('fish', ''),
-                ],
-                'rice',
-                null,
-                'nasi'
+                    $this->o('meat', ''),
+                ]
             ),
 
             $this->q(
                 3,
                 'image_choice',
-                'Pilih gambar yang menunjukkan "ayam".',
+                'Chicken',
                 'ayam',
                 [
-                    $this->pic('roti', 'bread'),
                     $this->pic('ayam', 'chicken'),
-                    $this->pic('telur', 'egg'),
                     $this->pic('ikan', 'fish'),
+                    $this->pic('telur', 'egg'),
+                    $this->pic('nasi', 'rice'),
                 ],
-                'chicken',
-                null,
-                'ayam'
+                audio: 'Chicken',
+                meaning: 'ayam'
             ),
 
             $this->q(
                 4,
                 'listening',
-                'Dengarkan kata berikut.',
-                'chicken',
+                'I eat rice.',
+                'I eat rice.',
                 [
-                    $this->o('fish', ''),
                     $this->o('bread', ''),
-                    $this->o('chicken', ''),
+                    $this->o('eat', ''),
                     $this->o('rice', ''),
+                    $this->o('drink', ''),
+                    $this->o('I', ''),
                 ],
-                'chicken',
-                null,
-                'ayam'
+                audio: 'I eat rice.',
+                meaning: 'Saya makan nasi.'
             ),
 
             $this->q(
                 5,
                 'word_bank',
-                'Susun kata berikut menjadi kalimat yang benar.',
-                'I eat rice.',
+                'Saya makan roti.',
+                'I eat bread.',
                 [
-                    $this->o('rice', ''),
-                    $this->o('I', ''),
                     $this->o('eat', ''),
-                    $this->o('drink', ''),
+                    $this->o('rice', ''),
                     $this->o('bread', ''),
-                ],
-                'I eat rice.',
-                null,
-                'Saya makan nasi.'
+                    $this->o('I', ''),
+                    $this->o('drink', ''),
+                ]
             ),
 
             $this->q(
                 6,
                 'multiple_choice',
-                'Apa bahasa Inggris dari "ikan"?',
-                'fish',
+                'Fish',
+                'ikan',
                 [
-                    $this->o('egg', ''),
-                    $this->o('fish', ''),
-                    $this->o('chicken', ''),
-                    $this->o('rice', ''),
+                    'nasi',
+                    'ikan',
+                    'sup',
+                    'roti',
                 ],
-                'fish',
-                null,
-                'ikan'
+                audio: 'Fish',
+                meaning: 'ikan'
             ),
 
             $this->q(
                 7,
                 'matching',
-                'Cocokkan kata bahasa Inggris dengan artinya.',
-                'rice=nasi,chicken=ayam,fish=ikan',
+                'Cocokkan kata bahasa Indonesia dengan bahasa Inggris.',
+                'nasi=rice,ayam=chicken,ikan=fish',
                 [
                     [
-                        'left' => 'rice',
-                        'right' => 'nasi',
+                        'left' => 'nasi',
+                        'right' => 'rice',
                     ],
                     [
-                        'left' => 'chicken',
-                        'right' => 'ayam',
+                        'left' => 'ayam',
+                        'right' => 'chicken',
                     ],
                     [
-                        'left' => 'fish',
-                        'right' => 'ikan',
+                        'left' => 'ikan',
+                        'right' => 'fish',
                     ],
                 ]
             ),
 
             $this->q(
                 8,
-                'translation',
-                'Terjemahkan kalimat berikut ke bahasa Inggris.',
-                'I eat bread.',
-                null,
-                'I eat bread.',
-                null,
-                'Saya makan roti.'
+                'word_bank',
+                'Saya makan telur.',
+                'I eat an egg.',
+                [
+                    $this->o('I', ''),
+                    $this->o('eat', ''),
+                    $this->o('egg', ''),
+                    $this->o('an', ''),
+                    $this->o('rice', ''),
+                    $this->o('bread', ''),
+                ]
             ),
 
             $this->q(
                 9,
                 'image_choice',
-                'Pilih gambar yang menunjukkan "telur".',
+                'Egg',
                 'telur',
                 [
-                    $this->pic('ikan', 'fish'),
+                    $this->pic('pisang', 'banana'),
                     $this->pic('telur', 'egg'),
                     $this->pic('nasi', 'rice'),
-                    $this->pic('ayam', 'chicken'),
+                    $this->pic('roti', 'bread'),
                 ],
-                'egg',
-                null,
-                'telur'
+                audio: 'Egg',
+                meaning: 'telur'
             ),
 
             $this->q(
                 10,
                 'listening',
-                'Dengarkan kata berikut.',
-                'bread',
+                'I eat bread.',
+                'I eat bread.',
                 [
-                    $this->o('rice', ''),
-                    $this->o('egg', ''),
+                    $this->o('eat', ''),
+                    $this->o('I', ''),
                     $this->o('bread', ''),
-                    $this->o('fish', ''),
+                    $this->o('rice', ''),
+                    $this->o('drink', ''),
                 ],
-                'bread',
-                null,
-                'roti'
+                audio: 'I eat bread.',
+                meaning: 'Saya makan roti.'
             ),
 
             $this->q(
                 11,
                 'fill_blank',
-                'I eat ___ for breakfast.',
-                'egg',
+                'I ___ rice.',
+                'eat',
                 [
-                    $this->o('fish', ''),
-                    $this->o('egg', ''),
-                    $this->o('rice', ''),
+                    $this->o('drink', ''),
+                    $this->o('eat', ''),
                     $this->o('bread', ''),
+                    $this->o('rice', ''),
                 ],
-                'I eat egg for breakfast.',
-                null,
-                'Saya makan telur untuk sarapan.'
+                meaning: 'makan'
             ),
 
             $this->q(
                 12,
                 'multiple_choice',
-                'Apa bahasa Inggris dari "roti"?',
-                'bread',
+                'Banana',
+                'pisang',
                 [
-                    $this->o('fish', ''),
-                    $this->o('rice', ''),
-                    $this->o('bread', ''),
-                    $this->o('egg', ''),
+                    'apel',
+                    'pisang',
+                    'nasi',
+                    'sup',
                 ],
-                'bread',
-                null,
-                'roti'
+                audio: 'Banana',
+                meaning: 'pisang'
             ),
         ];
     }
 
+    // ---------------- Pelajaran 2: Minuman Dasar ----------------
     private function lessonTwo(): array
     {
         return [
             $this->q(
                 1,
                 'image_choice',
-                'Pilih gambar yang menunjukkan "air".',
+                'Water',
                 'air',
                 [
-                    $this->pic('kopi', 'coffee'),
                     $this->pic('air', 'water'),
                     $this->pic('susu', 'milk'),
-                    $this->pic('jus', 'juice'),
+                    $this->pic('kopi', 'coffee'),
+                    $this->pic('teh', 'tea'),
                 ],
-                'water',
-                null,
-                'air'
+                audio: 'Water',
+                meaning: 'air'
             ),
 
             $this->q(
                 2,
                 'multiple_choice',
-                'Apa bahasa Inggris dari "air"?',
-                'water',
+                'kopi',
+                'coffee',
                 [
+                    $this->o('tea', ''),
                     $this->o('coffee', ''),
                     $this->o('water', ''),
                     $this->o('milk', ''),
-                    $this->o('juice', ''),
-                ],
-                'water',
-                null,
-                'air'
+                ]
             ),
 
             $this->q(
                 3,
                 'image_choice',
-                'Pilih gambar yang menunjukkan "kopi".',
-                'kopi',
+                'Tea',
+                'teh',
                 [
-                    $this->pic('teh', 'tea'),
-                    $this->pic('jus', 'juice'),
                     $this->pic('kopi', 'coffee'),
+                    $this->pic('jus', 'juice'),
+                    $this->pic('teh', 'tea'),
                     $this->pic('air', 'water'),
                 ],
-                'coffee',
-                null,
-                'kopi'
+                audio: 'Tea',
+                meaning: 'teh'
             ),
 
             $this->q(
                 4,
                 'listening',
-                'Dengarkan kata berikut.',
-                'milk',
+                'I drink water.',
+                'I drink water.',
                 [
-                    $this->o('juice', ''),
-                    $this->o('coffee', ''),
+                    $this->o('drink', ''),
+                    $this->o('eat', ''),
                     $this->o('water', ''),
                     $this->o('milk', ''),
+                    $this->o('I', ''),
                 ],
-                'milk',
-                null,
-                'susu'
+                audio: 'I drink water.',
+                meaning: 'Saya minum air.'
             ),
 
             $this->q(
                 5,
                 'word_bank',
-                'Susun kata berikut menjadi kalimat yang benar.',
-                'I drink water.',
+                'Saya minum kopi.',
+                'I drink coffee.',
                 [
-                    $this->o('water', ''),
                     $this->o('drink', ''),
-                    $this->o('I', ''),
                     $this->o('coffee', ''),
-                    $this->o('milk', ''),
-                ],
-                'I drink water.',
-                null,
-                'Saya minum air.'
+                    $this->o('I', ''),
+                    $this->o('water', ''),
+                    $this->o('eat', ''),
+                    $this->o('tea', ''),
+                ]
             ),
 
             $this->q(
                 6,
                 'multiple_choice',
-                'Apa bahasa Inggris dari "teh"?',
-                'tea',
+                'Milk',
+                'susu',
                 [
-                    $this->o('juice', ''),
-                    $this->o('tea', ''),
-                    $this->o('milk', ''),
-                    $this->o('coffee', ''),
+                    'jus',
+                    'susu',
+                    'kopi',
+                    'air',
                 ],
-                'tea',
-                null,
-                'teh'
+                audio: 'Milk',
+                meaning: 'susu'
             ),
 
             $this->q(
                 7,
                 'matching',
-                'Cocokkan kata bahasa Inggris dengan artinya.',
-                'water=air,coffee=kopi,milk=susu',
+                'Cocokkan kata bahasa Indonesia dengan bahasa Inggris.',
+                'air=water,kopi=coffee,teh=tea',
                 [
                     [
-                        'left' => 'water',
-                        'right' => 'air',
+                        'left' => 'air',
+                        'right' => 'water',
                     ],
                     [
-                        'left' => 'coffee',
-                        'right' => 'kopi',
+                        'left' => 'kopi',
+                        'right' => 'coffee',
                     ],
                     [
-                        'left' => 'milk',
-                        'right' => 'susu',
+                        'left' => 'teh',
+                        'right' => 'tea',
                     ],
                 ]
             ),
 
             $this->q(
                 8,
-                'translation',
-                'Terjemahkan kalimat berikut ke bahasa Inggris.',
-                'I drink coffee.',
-                null,
-                'I drink coffee.',
-                null,
-                'Saya minum kopi.'
+                'word_bank',
+                'Saya minum jus.',
+                'I drink juice.',
+                [
+                    $this->o('juice', ''),
+                    $this->o('drink', ''),
+                    $this->o('I', ''),
+                    $this->o('water', ''),
+                    $this->o('eat', ''),
+                    $this->o('milk', ''),
+                ]
             ),
 
             $this->q(
                 9,
                 'image_choice',
-                'Pilih gambar yang menunjukkan "jus".',
+                'Juice',
                 'jus',
                 [
                     $this->pic('susu', 'milk'),
@@ -360,68 +349,66 @@ class EnglishQuestionSeeder extends LanguageQuestionSeeder
                     $this->pic('jus', 'juice'),
                     $this->pic('kopi', 'coffee'),
                 ],
-                'juice',
-                null,
-                'jus'
+                audio: 'Juice',
+                meaning: 'jus'
             ),
 
             $this->q(
                 10,
                 'listening',
-                'Dengarkan kata berikut.',
-                'coffee',
+                'I drink milk.',
+                'I drink milk.',
                 [
-                    $this->o('tea', ''),
-                    $this->o('juice', ''),
-                    $this->o('coffee', ''),
+                    $this->o('drink', ''),
+                    $this->o('milk', ''),
+                    $this->o('I', ''),
                     $this->o('water', ''),
+                    $this->o('coffee', ''),
+                    $this->o('eat', ''),
                 ],
-                'coffee',
-                null,
-                'kopi'
+                audio: 'I drink milk.',
+                meaning: 'Saya minum susu.'
             ),
 
             $this->q(
                 11,
                 'fill_blank',
-                'I drink ___ every morning.',
-                'milk',
+                'I ___ tea.',
+                'drink',
                 [
-                    $this->o('juice', ''),
-                    $this->o('milk', ''),
-                    $this->o('coffee', ''),
+                    $this->o('drink', ''),
+                    $this->o('eat', ''),
                     $this->o('water', ''),
+                    $this->o('tea', ''),
                 ],
-                'I drink milk every morning.',
-                null,
-                'Saya minum susu setiap pagi.'
+                meaning: 'minum'
             ),
 
             $this->q(
                 12,
                 'multiple_choice',
-                'Apa bahasa Inggris dari "jus"?',
-                'juice',
+                'Please',
+                'tolong',
                 [
-                    $this->o('water', ''),
-                    $this->o('tea', ''),
-                    $this->o('juice', ''),
-                    $this->o('milk', ''),
+                    'terima kasih',
+                    'tolong',
+                    'maaf',
+                    'selamat pagi',
                 ],
-                'juice',
-                null,
-                'jus'
+                audio: 'Please',
+                meaning: 'tolong'
             ),
         ];
     }
 
+    // ---------------- Pelajaran 3: Sapaan ----------------
     private function lessonThree(): array
     {
         return [
             $this->q(
                 1,
                 'image_choice',
-                'Pilih gambar yang menunjukkan "halo".',
+                'Hello',
                 'halo',
                 [
                     $this->pic('halo', 'hello'),
@@ -429,109 +416,98 @@ class EnglishQuestionSeeder extends LanguageQuestionSeeder
                     $this->pic('terima kasih', 'thank_you'),
                     $this->pic('maaf', 'sorry'),
                 ],
-                'Hello',
-                null,
-                'halo'
+                audio: 'Hello',
+                meaning: 'halo'
             ),
 
             $this->q(
                 2,
                 'multiple_choice',
-                'Apa bahasa Inggris dari "halo"?',
+                'halo',
                 'hello',
                 [
                     $this->o('goodbye', ''),
                     $this->o('hello', ''),
                     $this->o('thank you', ''),
                     $this->o('sorry', ''),
-                ],
-                'Hello',
-                null,
-                'halo'
+                ]
             ),
 
             $this->q(
                 3,
                 'image_choice',
-                'Pilih gambar yang menunjukkan "selamat tinggal".',
+                'Goodbye',
                 'selamat tinggal',
                 [
-                    $this->pic('terima kasih', 'thank_you'),
-                    $this->pic('maaf', 'sorry'),
-                    $this->pic('selamat tinggal', 'goodbye'),
                     $this->pic('halo', 'hello'),
+                    $this->pic('terima kasih', 'thank_you'),
+                    $this->pic('selamat tinggal', 'goodbye'),
+                    $this->pic('maaf', 'sorry'),
                 ],
-                'Goodbye',
-                null,
-                'selamat tinggal'
+                audio: 'Goodbye',
+                meaning: 'selamat tinggal'
             ),
 
             $this->q(
                 4,
                 'listening',
-                'Dengarkan kata berikut.',
-                'Hello!',
+                'Hello',
+                'Hello',
                 [
-                    $this->o('Goodbye', ''),
-                    $this->o('Hello', ''),
-                    $this->o('Thank you', ''),
-                    $this->o('Sorry', ''),
+                    $this->o('goodbye', ''),
+                    $this->o('hello', ''),
+                    $this->o('thank you', ''),
+                    $this->o('sorry', ''),
                 ],
-                'Hello!',
-                null,
-                'Halo!'
+                audio: 'Hello',
+                meaning: 'Halo.'
             ),
 
             $this->q(
                 5,
                 'word_bank',
-                'Susun kata berikut menjadi kalimat yang benar.',
-                'Hello see you.',
+                'Terima kasih.',
+                'Thank you.',
                 [
-                    $this->o('you', ''),
-                    $this->o('Hello', ''),
-                    $this->o('goodbye', ''),
-                    $this->o('see', ''),
                     $this->o('Thank', ''),
-                ],
-                'Hello see you.',
-                null,
-                'Halo, sampai jumpa.'
+                    $this->o('you', ''),
+                    $this->o('hello', ''),
+                    $this->o('goodbye', ''),
+                ]
             ),
 
             $this->q(
                 6,
                 'multiple_choice',
-                'Apa bahasa Inggris dari "terima kasih"?',
-                'thank you',
-                [
-                    $this->o('sorry', ''),
-                    $this->o('goodbye', ''),
-                    $this->o('thank you', ''),
-                    $this->o('hello', ''),
-                ],
                 'Thank you',
-                null,
-                'terima kasih'
+                'terima kasih',
+                [
+                    'maaf',
+                    'selamat tinggal',
+                    'terima kasih',
+                    'halo',
+                ],
+                audio: 'Thank you',
+                meaning: 'terima kasih'
             ),
 
             $this->q(
                 7,
                 'matching',
-                'Cocokkan kata bahasa Inggris dengan artinya.',
-                'hello=halo,goodbye=selamat tinggal,thank you=terima kasih',
+                'Cocokkan kata bahasa Indonesia dengan bahasa Inggris.',
+                'halo=hello,selamat tinggal=goodbye,terima kasih=thank you',
                 [
                     [
-                        'left' => 'hello',
-                        'right' => 'halo',
+                        'left' => 'halo',
+                        'right' => 'hello',
                     ],
                     [
-                        'left' => 'goodbye',
-                        'right' => 'selamat tinggal',
+                        'left' => 'selamat tinggal',
+                        'right' => 'goodbye',
                     ],
                     [
-                        'left' => 'thank you',
-                        'right' => 'terima kasih',
+                        'left' => 'terima kasih',
+                        'right' => 'thank you',
                     ],
                 ]
             ),
@@ -539,226 +515,204 @@ class EnglishQuestionSeeder extends LanguageQuestionSeeder
             $this->q(
                 8,
                 'translation',
-                'Terjemahkan kalimat berikut ke bahasa Inggris.',
-                'I am sorry.',
-                null,
-                'I am sorry.',
-                null,
-                'Saya minta maaf.'
+                'Terima kasih.',
+                'Thank you.'
             ),
 
             $this->q(
                 9,
                 'image_choice',
-                'Pilih gambar yang menunjukkan "terima kasih".',
+                'Thank you',
                 'terima kasih',
                 [
                     $this->pic('maaf', 'sorry'),
-                    $this->pic('halo', 'hello'),
                     $this->pic('terima kasih', 'thank_you'),
+                    $this->pic('halo', 'hello'),
                     $this->pic('selamat tinggal', 'goodbye'),
                 ],
-                'Thank you',
-                null,
-                'terima kasih'
+                audio: 'Thank you',
+                meaning: 'terima kasih'
             ),
 
             $this->q(
                 10,
                 'listening',
-                'Dengarkan kata berikut.',
-                'Thank you!',
+                'Thank you',
+                'Thank you',
                 [
-                    $this->o('Sorry', ''),
-                    $this->o('Hello', ''),
-                    $this->o('Thank you', ''),
-                    $this->o('Goodbye', ''),
+                    $this->o('sorry', ''),
+                    $this->o('hello', ''),
+                    $this->o('thank you', ''),
+                    $this->o('goodbye', ''),
                 ],
-                'Thank you!',
-                null,
-                'Terima kasih!'
+                audio: 'Thank you',
+                meaning: 'Terima kasih.'
             ),
 
             $this->q(
                 11,
                 'fill_blank',
-                'Good ___!',
-                'morning',
+                'Good morning, ___!',
+                'good',
                 [
-                    $this->o('morning', ''),
-                    $this->o('goodbye', ''),
+                    $this->o('good', ''),
                     $this->o('thank', ''),
-                    $this->o('sorry', ''),
+                    $this->o('hello', ''),
+                    $this->o('goodbye', ''),
                 ],
-                'Good morning!',
-                null,
-                'Selamat pagi!'
+                meaning: 'selamat pagi'
             ),
 
             $this->q(
                 12,
                 'multiple_choice',
-                'Apa bahasa Inggris dari "maaf"?',
-                'sorry',
-                [
-                    $this->o('hello', ''),
-                    $this->o('thank you', ''),
-                    $this->o('sorry', ''),
-                    $this->o('goodbye', ''),
-                ],
                 'Sorry',
-                null,
-                'maaf'
+                'maaf',
+                [
+                    'halo',
+                    'terima kasih',
+                    'maaf',
+                    'selamat tinggal',
+                ],
+                audio: 'Sorry',
+                meaning: 'maaf'
             ),
         ];
     }
 
+    // ---------------- Pelajaran 4: Tantangan Dasar ----------------
     private function lessonFour(): array
     {
         return [
             $this->q(
                 1,
                 'image_choice',
-                'Pilih gambar yang menunjukkan "nasi".',
+                'Rice',
                 'nasi',
                 [
-                    $this->pic('kopi', 'coffee'),
                     $this->pic('nasi', 'rice'),
-                    $this->pic('halo', 'hello'),
-                    $this->pic('jus', 'juice'),
+                    $this->pic('ayam', 'chicken'),
+                    $this->pic('ikan', 'fish'),
+                    $this->pic('telur', 'egg'),
                 ],
-                'rice',
-                null,
-                'nasi'
+                audio: 'Rice',
+                meaning: 'nasi'
             ),
 
             $this->q(
                 2,
                 'multiple_choice',
-                'Apa bahasa Inggris dari "susu"?',
+                'susu',
                 'milk',
                 [
                     $this->o('water', ''),
-                    $this->o('juice', ''),
                     $this->o('milk', ''),
+                    $this->o('coffee', ''),
                     $this->o('tea', ''),
-                ],
-                'milk',
-                null,
-                'susu'
+                ]
             ),
 
             $this->q(
                 3,
-                'listening',
-                'Dengarkan kata berikut.',
-                'Goodbye',
+                'image_choice',
+                'Thank you',
+                'terima kasih',
                 [
-                    $this->o('Hello', ''),
-                    $this->o('Sorry', ''),
-                    $this->o('Goodbye', ''),
-                    $this->o('Thank you', ''),
+                    $this->pic('maaf', 'sorry'),
+                    $this->pic('terima kasih', 'thank_you'),
+                    $this->pic('halo', 'hello'),
+                    $this->pic('selamat tinggal', 'goodbye'),
                 ],
-                'Goodbye',
-                null,
-                'Selamat tinggal'
+                audio: 'Thank you',
+                meaning: 'terima kasih'
             ),
 
             $this->q(
                 4,
-                'word_bank',
-                'Susun kata berikut menjadi kalimat yang benar.',
-                'I drink milk.',
+                'listening',
+                'Dengarkan kalimat berikut.',
+                'I drink water.',
                 [
-                    $this->o('milk', ''),
-                    $this->o('I', ''),
+                    $this->o('water', ''),
                     $this->o('drink', ''),
                     $this->o('rice', ''),
                     $this->o('eat', ''),
+                    $this->o('I', ''),
                 ],
-                'I drink milk.',
-                null,
-                'Saya minum susu.'
+                audio: 'I drink water.',
+                meaning: 'Saya minum air.'
             ),
 
             $this->q(
                 5,
-                'translation',
-                'Terjemahkan kalimat berikut ke bahasa Inggris.',
+                'word_bank',
+                'Saya makan nasi.',
                 'I eat rice.',
-                null,
-                'I eat rice.',
-                null,
-                'Saya makan nasi.'
+                [
+                    $this->o('I', ''),
+                    $this->o('eat', ''),
+                    $this->o('rice', ''),
+                    $this->o('drink', ''),
+                    $this->o('bread', ''),
+                ]
             ),
 
             $this->q(
                 6,
-                'image_choice',
-                'Pilih gambar yang menunjukkan "terima kasih".',
-                'terima kasih',
+                'multiple_choice',
+                'Goodbye',
+                'selamat tinggal',
                 [
-                    $this->pic('halo', 'hello'),
-                    $this->pic('maaf', 'sorry'),
-                    $this->pic('terima kasih', 'thank_you'),
-                    $this->pic('selamat tinggal', 'goodbye'),
+                    'halo',
+                    'terima kasih',
+                    'selamat tinggal',
+                    'maaf',
                 ],
-                'Thank you',
-                null,
-                'terima kasih'
+                audio: 'Goodbye',
+                meaning: 'selamat tinggal'
             ),
 
             $this->q(
                 7,
-                'multiple_choice',
-                'Apa arti dari "I drink water"?',
-                'Saya minum air.',
-                [
-                    $this->o('Saya makan nasi', ''),
-                    $this->o('Saya minum air', ''),
-                    $this->o('Saya minum kopi', ''),
-                    $this->o('Saya makan roti', ''),
-                ],
-                'I drink water.',
-                null,
-                'Saya minum air.'
-            ),
-
-            $this->q(
-                8,
                 'matching',
-                'Cocokkan kata bahasa Inggris dengan artinya.',
-                'coffee=kopi,bread=roti,hello=halo',
+                'Cocokkan kata bahasa Indonesia dengan bahasa Inggris.',
+                'nasi=rice,air=water,terima kasih=thank you',
                 [
                     [
-                        'left' => 'coffee',
-                        'right' => 'kopi',
+                        'left' => 'nasi',
+                        'right' => 'rice',
                     ],
                     [
-                        'left' => 'bread',
-                        'right' => 'roti',
+                        'left' => 'air',
+                        'right' => 'water',
                     ],
                     [
-                        'left' => 'hello',
-                        'right' => 'halo',
+                        'left' => 'terima kasih',
+                        'right' => 'thank you',
                     ],
                 ]
             ),
 
             $this->q(
+                8,
+                'translation',
+                'Saya minum kopi.',
+                'I drink coffee.'
+            ),
+
+            $this->q(
                 9,
-                'fill_blank',
-                'Good ___!',
-                'morning',
+                'image_choice',
+                'Banana',
+                'pisang',
                 [
-                    $this->o('morning', ''),
-                    $this->o('hello', ''),
-                    $this->o('sorry', ''),
-                    $this->o('goodbye', ''),
+                    $this->pic('pisang', 'banana'),
+                    $this->pic('roti', 'bread'),
+                    $this->pic('telur', 'egg'),
+                    $this->pic('nasi', 'rice'),
                 ],
-                'Good morning!',
-                null,
-                'Selamat pagi!'
+                audio: 'Banana',
+                meaning: 'pisang'
             ),
 
             $this->q(
@@ -767,41 +721,43 @@ class EnglishQuestionSeeder extends LanguageQuestionSeeder
                 'Dengarkan kalimat berikut.',
                 'I eat bread.',
                 [
-                    $this->o('I drink water', ''),
-                    $this->o('I eat bread', ''),
-                    $this->o('I drink milk', ''),
-                    $this->o('I eat rice', ''),
+                    $this->o('bread', ''),
+                    $this->o('eat', ''),
+                    $this->o('drink', ''),
+                    $this->o('rice', ''),
+                    $this->o('I', ''),
                 ],
-                'I eat bread.',
-                null,
-                'Saya makan roti.'
+                audio: 'I eat bread.',
+                meaning: 'Saya makan roti.'
             ),
 
             $this->q(
                 11,
-                'translation',
-                'Terjemahkan kalimat berikut ke bahasa Inggris.',
-                'I am sorry.',
-                null,
-                'I am sorry.',
-                null,
-                'Saya minta maaf.'
+                'fill_blank',
+                'Good morning, ___!',
+                'good',
+                [
+                    $this->o('good', ''),
+                    $this->o('thank', ''),
+                    $this->o('hello', ''),
+                    $this->o('goodbye', ''),
+                ],
+                meaning: 'selamat pagi'
             ),
 
             $this->q(
                 12,
                 'multiple_choice',
-                'Apa arti dari "Thank you"?',
-                'Terima kasih',
+                'Sorry',
+                'maaf',
                 [
-                    $this->o('Halo', ''),
-                    $this->o('Maaf', ''),
-                    $this->o('Selamat tinggal', ''),
-                    $this->o('Terima kasih', ''),
+                    'halo',
+                    'terima kasih',
+                    'maaf',
+                    'selamat tinggal',
                 ],
-                'Thank you',
-                null,
-                'Terima kasih'
+                audio: 'Sorry',
+                meaning: 'maaf'
             ),
         ];
     }

@@ -7,18 +7,13 @@ import '../services/mistake_service.dart';
 class MistakeReviewPage extends StatefulWidget {
   final String selectedLanguage;
 
-  const MistakeReviewPage({
-    super.key,
-    required this.selectedLanguage,
-  });
+  const MistakeReviewPage({super.key, required this.selectedLanguage});
 
   @override
-  State<MistakeReviewPage> createState() =>
-      _MistakeReviewPageState();
+  State<MistakeReviewPage> createState() => _MistakeReviewPageState();
 }
 
-class _MistakeReviewPageState
-    extends State<MistakeReviewPage> {
+class _MistakeReviewPageState extends State<MistakeReviewPage> {
   List<Vocabulary> allVocabularies = [];
   List<Vocabulary> mistakeVocabularies = [];
   List<String> answerOptions = [];
@@ -44,9 +39,7 @@ class _MistakeReviewPageState
     loadMistakes();
   }
 
-  String getTranslation(
-    Vocabulary vocabulary,
-  ) {
+  String getTranslation(Vocabulary vocabulary) {
     switch (widget.selectedLanguage) {
       case 'Japanese':
         return vocabulary.japanese;
@@ -60,21 +53,16 @@ class _MistakeReviewPageState
     }
   }
 
-  int get totalAnswers =>
-      correctAnswers + wrongAnswers;
+  int get totalAnswers => correctAnswers + wrongAnswers;
 
-  int get remainingMistakes =>
-      mistakeVocabularies.length -
-      correctAnswers;
+  int get remainingMistakes => mistakeVocabularies.length - correctAnswers;
 
   double get accuracy {
     if (totalAnswers == 0) {
       return 0;
     }
 
-    return correctAnswers /
-        totalAnswers *
-        100;
+    return correctAnswers / totalAnswers * 100;
   }
 
   Future<void> loadMistakes() async {
@@ -94,34 +82,22 @@ class _MistakeReviewPageState
     });
 
     try {
-      final vocabularies =
-          await ApiService
-              .getVocabularies();
+      final vocabularies = await ApiService.getVocabularies();
 
-      final mistakeIds =
-          await MistakeService
-              .getMistakeIds();
+      final mistakeIds = await MistakeService.getMistakeIds();
 
       if (!mounted) return;
 
       final mistakes =
           vocabularies
-              .where(
-                (vocabulary) =>
-                    mistakeIds
-                        .contains(
-                  vocabulary.id,
-                ),
-              )
+              .where((vocabulary) => mistakeIds.contains(vocabulary.id))
               .toList()
             ..shuffle();
 
       setState(() {
-        allVocabularies =
-            vocabularies;
+        allVocabularies = vocabularies;
 
-        mistakeVocabularies =
-            mistakes;
+        mistakeVocabularies = mistakes;
 
         if (mistakes.isNotEmpty) {
           generateQuestion();
@@ -133,8 +109,7 @@ class _MistakeReviewPageState
       if (!mounted) return;
 
       setState(() {
-        errorMessage =
-            'Gagal mengambil data kesalahan.';
+        errorMessage = 'Gagal mengambil data kesalahan.';
         isLoading = false;
       });
     }
@@ -145,42 +120,23 @@ class _MistakeReviewPageState
       return;
     }
 
-    currentVocabulary =
-        mistakeVocabularies[
-            questionIndex];
+    currentVocabulary = mistakeVocabularies[questionIndex];
 
-    final correctAnswer =
-        getTranslation(
-      currentVocabulary!,
-    );
+    final correctAnswer = getTranslation(currentVocabulary!);
 
     final distractors =
         allVocabularies
-            .where(
-              (vocabulary) =>
-                  vocabulary.id !=
-                  currentVocabulary!.id,
-            )
+            .where((vocabulary) => vocabulary.id != currentVocabulary!.id)
             .toList()
           ..shuffle();
 
-    final options = <String>[
-      correctAnswer,
-    ];
+    final options = <String>[correctAnswer];
 
-    for (final vocabulary
-        in distractors) {
-      final translation =
-          getTranslation(
-        vocabulary,
-      );
+    for (final vocabulary in distractors) {
+      final translation = getTranslation(vocabulary);
 
-      if (!options.contains(
-        translation,
-      )) {
-        options.add(
-          translation,
-        );
+      if (!options.contains(translation)) {
+        options.add(translation);
       }
 
       if (options.length == 4) {
@@ -197,9 +153,7 @@ class _MistakeReviewPageState
     isAnswerCorrect = null;
   }
 
-  void selectAnswer(
-    String answer,
-  ) {
+  void selectAnswer(String answer) {
     if (isAnswerChecked) {
       return;
     }
@@ -216,14 +170,9 @@ class _MistakeReviewPageState
       return;
     }
 
-    final vocabulary =
-        currentVocabulary!;
+    final vocabulary = currentVocabulary!;
 
-    final correct =
-        selectedAnswer ==
-            getTranslation(
-              vocabulary,
-            );
+    final correct = selectedAnswer == getTranslation(vocabulary);
 
     setState(() {
       isAnswerChecked = true;
@@ -237,18 +186,12 @@ class _MistakeReviewPageState
     });
 
     if (correct) {
-      await MistakeService
-          .removeMistake(
-        vocabulary.id,
-      );
+      await MistakeService.removeMistake(vocabulary.id);
     }
   }
 
   void nextQuestion() {
-    if (questionIndex >=
-        mistakeVocabularies
-                .length -
-            1) {
+    if (questionIndex >= mistakeVocabularies.length - 1) {
       setState(() {
         isFinished = true;
       });
@@ -263,109 +206,65 @@ class _MistakeReviewPageState
     });
   }
 
-  Color getOptionColor(
-    String option,
-  ) {
+  Color getOptionColor(String option) {
     if (!isAnswerChecked) {
-      return selectedAnswer ==
-              option
-          ? const Color(
-              0xFFE7C249,
-            )
-          : const Color(
-              0xFF20272B,
-            );
+      return selectedAnswer == option
+          ? const Color(0xFFE7C249)
+          : const Color(0xFF20272B);
     }
 
-    final correctAnswer =
-        getTranslation(
-      currentVocabulary!,
-    );
+    final correctAnswer = getTranslation(currentVocabulary!);
 
-    if (option ==
-        correctAnswer) {
-      return const Color(
-        0xFF356859,
-      );
+    if (option == correctAnswer) {
+      return const Color(0xFF356859);
     }
 
-    if (option ==
-        selectedAnswer) {
-      return const Color(
-        0xFF8B3A3A,
-      );
+    if (option == selectedAnswer) {
+      return const Color(0xFF8B3A3A);
     }
 
-    return const Color(
-      0xFF20272B,
-    );
+    return const Color(0xFF20272B);
   }
 
   Widget buildEmpty() {
     return Center(
       child: Padding(
-        padding:
-            const EdgeInsets.all(
-          30,
-        ),
+        padding: const EdgeInsets.all(30),
         child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment
-                  .center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(
-              Icons
-                  .check_circle_rounded,
-              color:
-                  Color(
-                0xFFE7C249,
-              ),
+              Icons.check_circle_rounded,
+              color: Color(0xFFE7C249),
               size: 90,
             ),
 
-            const SizedBox(
-              height: 20,
-            ),
+            const SizedBox(height: 20),
 
             const Text(
               'Semua Aman!',
               style: TextStyle(
-                color:
-                    Colors.white,
+                color: Colors.white,
                 fontSize: 27,
-                fontWeight:
-                    FontWeight.bold,
+                fontWeight: FontWeight.bold,
               ),
             ),
 
-            const SizedBox(
-              height: 10,
-            ),
+            const SizedBox(height: 10),
 
             const Text(
               'Belum ada kosakata yang perlu direview.',
-              textAlign:
-                  TextAlign.center,
-              style: TextStyle(
-                color:
-                    Colors.white70,
-              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70),
             ),
 
-            const SizedBox(
-              height: 25,
-            ),
+            const SizedBox(height: 25),
 
             TextButton(
               onPressed: () {
-                Navigator.pop(
-                  context,
-                );
+                Navigator.pop(context);
               },
-              child:
-                  const Text(
-                'KEMBALI KE LATIHAN',
-              ),
+              child: const Text('KEMBALI KE LATIHAN'),
             ),
           ],
         ),
@@ -375,139 +274,77 @@ class _MistakeReviewPageState
 
   Widget buildGame() {
     return SingleChildScrollView(
-      padding:
-          const EdgeInsets.all(
-        20,
-      ),
+      padding: const EdgeInsets.all(20),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment
-                    .spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 'Review Kesalahan',
-                style:
-                    TextStyle(
-                  color:
-                      Colors.white,
+                style: TextStyle(
+                  color: Colors.white,
                   fontSize: 23,
-                  fontWeight:
-                      FontWeight.bold,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
 
               Text(
                 '${questionIndex + 1}/${mistakeVocabularies.length}',
-                style:
-                    const TextStyle(
-                  color:
-                      Color(
-                    0xFFE7C249,
-                  ),
-                  fontWeight:
-                      FontWeight.bold,
+                style: const TextStyle(
+                  color: Color(0xFFE7C249),
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
 
-          const SizedBox(
-            height: 50,
-          ),
+          const SizedBox(height: 50),
 
           const Center(
             child: Text(
               'Apa terjemahan dari:',
-              style: TextStyle(
-                color:
-                    Colors.white70,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
           ),
 
-          const SizedBox(
-            height: 12,
-          ),
+          const SizedBox(height: 12),
 
           Center(
             child: Text(
-              currentVocabulary!
-                  .indonesian,
-              style:
-                  const TextStyle(
-                color:
-                    Colors.white,
+              currentVocabulary!.indonesian,
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: 34,
-                fontWeight:
-                    FontWeight.bold,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
 
-          const SizedBox(
-            height: 35,
-          ),
+          const SizedBox(height: 35),
 
           ...answerOptions.map(
-            (option) =>
-                Padding(
-              padding:
-                  const EdgeInsets
-                      .only(
-                bottom: 12,
-              ),
-              child:
-                  GestureDetector(
-                onTap: () =>
-                    selectAnswer(
-                  option,
-                ),
-                child:
-                    AnimatedContainer(
-                  duration:
-                      const Duration(
-                    milliseconds:
-                        200,
-                  ),
-                  width:
-                      double.infinity,
-                  padding:
-                      const EdgeInsets
-                          .all(18),
-                  decoration:
-                      BoxDecoration(
-                    color:
-                        getOptionColor(
-                      option,
-                    ),
-                    borderRadius:
-                        BorderRadius
-                            .circular(
-                      16,
-                    ),
+            (option) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: GestureDetector(
+                onTap: () => selectAnswer(option),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: getOptionColor(option),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     option,
-                    style:
-                        TextStyle(
-                      color:
-                          !isAnswerChecked &&
-                                  selectedAnswer ==
-                                      option
-                              ? const Color(
-                                  0xFF272F33,
-                                )
-                              : Colors
-                                  .white,
+                    style: TextStyle(
+                      color: !isAnswerChecked && selectedAnswer == option
+                          ? const Color(0xFF272F33)
+                          : Colors.white,
                       fontSize: 17,
-                      fontWeight:
-                          FontWeight
-                              .bold,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -516,92 +353,50 @@ class _MistakeReviewPageState
           ),
 
           if (isAnswerChecked) ...[
-            const SizedBox(
-              height: 10,
-            ),
+            const SizedBox(height: 10),
 
             Container(
-              width:
-                  double.infinity,
-              padding:
-                  const EdgeInsets
-                      .all(16),
-              decoration:
-                  BoxDecoration(
-                color:
-                    isAnswerCorrect ==
-                            true
-                        ? const Color(
-                            0xFF356859,
-                          )
-                        : const Color(
-                            0xFF8B3A3A,
-                          ),
-                borderRadius:
-                    BorderRadius
-                        .circular(
-                  14,
-                ),
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isAnswerCorrect == true
+                    ? const Color(0xFF356859)
+                    : const Color(0xFF8B3A3A),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
-                isAnswerCorrect ==
-                        true
+                isAnswerCorrect == true
                     ? 'Benar! Kata ini sudah dihapus dari daftar kesalahan.'
                     : 'Masih salah. Kata ini akan tetap muncul saat review berikutnya.',
-                style:
-                    const TextStyle(
-                  color:
-                      Colors.white,
-                  fontWeight:
-                      FontWeight.bold,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
 
-          const SizedBox(
-            height: 20,
-          ),
+          const SizedBox(height: 20),
 
           SizedBox(
-            width:
-                double.infinity,
-            child:
-                ElevatedButton(
-              onPressed:
-                  isAnswerChecked
-                      ? nextQuestion
-                      : selectedAnswer !=
-                              null
-                          ? () {
-                              checkAnswer();
-                            }
-                          : null,
-              style:
-                  ElevatedButton
-                      .styleFrom(
-                backgroundColor:
-                    const Color(
-                  0xFFE7C249,
-                ),
-                padding:
-                    const EdgeInsets
-                        .symmetric(
-                  vertical: 16,
-                ),
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: isAnswerChecked
+                  ? nextQuestion
+                  : selectedAnswer != null
+                  ? () {
+                      checkAnswer();
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE7C249),
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: Text(
-                isAnswerChecked
-                    ? 'LANJUT'
-                    : 'PERIKSA JAWABAN',
-                style:
-                    const TextStyle(
-                  color:
-                      Color(
-                    0xFF272F33,
-                  ),
-                  fontWeight:
-                      FontWeight.bold,
+                isAnswerChecked ? 'LANJUT' : 'PERIKSA JAWABAN',
+                style: const TextStyle(
+                  color: Color(0xFF272F33),
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -617,54 +412,27 @@ class _MistakeReviewPageState
     required IconData icon,
   }) {
     return Container(
-      padding:
-          const EdgeInsets.all(
-        16,
-      ),
-      decoration:
-          BoxDecoration(
-        color:
-            const Color(
-          0xFF20272B,
-        ),
-        borderRadius:
-            BorderRadius
-                .circular(14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF20272B),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color:
-                const Color(
-              0xFFE7C249,
-            ),
-          ),
+          Icon(icon, color: const Color(0xFFE7C249)),
 
-          const SizedBox(
-            width: 12,
-          ),
+          const SizedBox(width: 12),
 
           Expanded(
-            child: Text(
-              title,
-              style:
-                  const TextStyle(
-                color:
-                    Colors.white70,
-              ),
-            ),
+            child: Text(title, style: const TextStyle(color: Colors.white70)),
           ),
 
           Text(
             value,
-            style:
-                const TextStyle(
-              color:
-                  Colors.white,
+            style: const TextStyle(
+              color: Colors.white,
               fontSize: 18,
-              fontWeight:
-                  FontWeight.bold,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -674,175 +442,100 @@ class _MistakeReviewPageState
 
   Widget buildResult() {
     return SingleChildScrollView(
-      padding:
-          const EdgeInsets.all(
-        30,
-      ),
+      padding: const EdgeInsets.all(30),
       child: Column(
         children: [
-          const SizedBox(
-            height: 20,
-          ),
+          const SizedBox(height: 20),
 
           const Icon(
-            Icons
-                .task_alt_rounded,
-            color:
-                Color(
-              0xFFE7C249,
-            ),
+            Icons.task_alt_rounded,
+            color: Color(0xFFE7C249),
             size: 90,
           ),
 
-          const SizedBox(
-            height: 20,
-          ),
+          const SizedBox(height: 20),
 
           const Text(
             'Review Selesai!',
             style: TextStyle(
-              color:
-                  Colors.white,
+              color: Colors.white,
               fontSize: 29,
-              fontWeight:
-                  FontWeight.bold,
+              fontWeight: FontWeight.bold,
             ),
           ),
 
-          const SizedBox(
-            height: 8,
-          ),
+          const SizedBox(height: 8),
 
           const Text(
             'Berikut hasil review kesalahan kamu.',
-            textAlign:
-                TextAlign.center,
-            style: TextStyle(
-              color:
-                  Colors.white70,
-            ),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70),
           ),
 
-          const SizedBox(
-            height: 30,
-          ),
+          const SizedBox(height: 30),
 
           buildResultBox(
-            title:
-                'Berhasil Dikuasai',
-            value:
-                correctAnswers
-                    .toString(),
-            icon:
-                Icons
-                    .check_circle_rounded,
+            title: 'Berhasil Dikuasai',
+            value: correctAnswers.toString(),
+            icon: Icons.check_circle_rounded,
           ),
 
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
 
           buildResultBox(
-            title:
-                'Masih Salah',
-            value:
-                wrongAnswers
-                    .toString(),
-            icon:
-                Icons
-                    .cancel_rounded,
+            title: 'Masih Salah',
+            value: wrongAnswers.toString(),
+            icon: Icons.cancel_rounded,
           ),
 
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
 
           buildResultBox(
             title: 'Akurasi',
-            value:
-                '${accuracy.toStringAsFixed(0)}%',
-            icon:
-                Icons
-                    .percent_rounded,
+            value: '${accuracy.toStringAsFixed(0)}%',
+            icon: Icons.percent_rounded,
           ),
 
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
 
           buildResultBox(
-            title:
-                'Tersisa untuk Review',
-            value:
-                remainingMistakes
-                    .toString(),
-            icon:
-                Icons
-                    .replay_rounded,
+            title: 'Tersisa untuk Review',
+            value: remainingMistakes.toString(),
+            icon: Icons.replay_rounded,
           ),
 
-          const SizedBox(
-            height: 30,
-          ),
+          const SizedBox(height: 30),
 
-          if (remainingMistakes >
-              0)
+          if (remainingMistakes > 0)
             SizedBox(
-              width:
-                  double.infinity,
-              child:
-                  ElevatedButton(
-                onPressed:
-                    loadMistakes,
-                style:
-                    ElevatedButton
-                        .styleFrom(
-                  backgroundColor:
-                      const Color(
-                    0xFFE7C249,
-                  ),
-                  padding:
-                      const EdgeInsets
-                          .symmetric(
-                    vertical: 16,
-                  ),
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: loadMistakes,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE7C249),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child:
-                    const Text(
+                child: const Text(
                   'REVIEW LAGI',
-                  style:
-                      TextStyle(
-                    color:
-                        Color(
-                      0xFF272F33,
-                    ),
-                    fontWeight:
-                        FontWeight
-                            .bold,
+                  style: TextStyle(
+                    color: Color(0xFF272F33),
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
 
-          const SizedBox(
-            height: 10,
-          ),
+          const SizedBox(height: 10),
 
           TextButton(
             onPressed: () {
-              Navigator.pop(
-                context,
-              );
+              Navigator.pop(context);
             },
-            child:
-                const Text(
+            child: const Text(
               'KEMBALI KE LATIHAN',
-              style:
-                  TextStyle(
-                color:
-                    Colors.white70,
-                fontWeight:
-                    FontWeight.bold,
+              style: TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -852,63 +545,35 @@ class _MistakeReviewPageState
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          const Color(
-        0xFF272F33,
-      ),
+      backgroundColor: const Color(0xFF272F33),
       appBar: AppBar(
-        backgroundColor:
-            const Color(
-          0xFF272F33,
-        ),
+        backgroundColor: const Color(0xFF272F33),
         elevation: 0,
-        iconTheme:
-            const IconThemeData(
-          color: Colors.white,
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'Review Kesalahan',
-          style: TextStyle(
-            color:
-                Colors.white,
-            fontWeight:
-                FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
       body: SafeArea(
         child: isLoading
             ? const Center(
-                child:
-                    CircularProgressIndicator(
-                  color:
-                      Color(
-                    0xFFE7C249,
-                  ),
+                child: CircularProgressIndicator(color: Color(0xFFE7C249)),
+              )
+            : errorMessage != null
+            ? Center(
+                child: Text(
+                  errorMessage!,
+                  style: const TextStyle(color: Colors.white),
                 ),
               )
-            : errorMessage !=
-                    null
-                ? Center(
-                    child: Text(
-                      errorMessage!,
-                      style:
-                          const TextStyle(
-                        color:
-                            Colors.white,
-                      ),
-                    ),
-                  )
-                : mistakeVocabularies
-                        .isEmpty
-                    ? buildEmpty()
-                    : isFinished
-                        ? buildResult()
-                        : buildGame(),
+            : mistakeVocabularies.isEmpty
+            ? buildEmpty()
+            : isFinished
+            ? buildResult()
+            : buildGame(),
       ),
     );
   }

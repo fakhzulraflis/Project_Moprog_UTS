@@ -31,12 +31,12 @@ class LeaderboardUser {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'rank': rank,
-        'name': name,
-        'xp': xp,
-        'avatarUrl': avatarUrl,
-      };
+    'id': id,
+    'rank': rank,
+    'name': name,
+    'xp': xp,
+    'avatarUrl': avatarUrl,
+  };
 
   LeaderboardUser copyWith({
     String? id,

@@ -10,6 +10,14 @@ use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
+    // POST /api/logout  (hanya mencabut token perangkat ini)
+    public function logout(Request $request): JsonResponse
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json(['message' => 'Signed out.']);
+    }
+
     public function login(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -32,6 +40,8 @@ class LoginController extends Controller
 
         return response()->json([
             'message' => 'Login successful.',
+            // Token untuk API yang butuh login (misalnya inventory)
+            'token' => $user->createToken('mobile')->plainTextToken,
             'user' => [
                 'id' => $user->id,
                 'fullname' => $user->name,

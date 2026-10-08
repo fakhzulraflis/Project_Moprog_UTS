@@ -1,5 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Simpan kartu profil ke galeri (hanya perlu di Android 9 ke bawah) -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
     <queries>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />

@@ -1,9 +1,15 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../widgets/reward_chest.dart';
 import '../widgets/spin_wheel.dart';
+import 'api_service.dart';
+import 'auth_session.dart';
 import 'duck_pet.dart';
+import 'inventory_service.dart';
 import 'quest_pool.dart';
 
 export 'quest_pool.dart' show DailyQuest, QuestPool;
@@ -16,8 +22,9 @@ class PlayerProgress extends ChangeNotifier {
   static const int xpPerLesson = 10;
   static const int monthlyTarget = 30;
   static const int weeklyTarget = 20;
-  static const Duration xpBoostDuration = Duration(minutes: 15);
   static const int rerollPrice = 20;
+  static const int itemFallbackGems = 20;
+  static const String spinBoostItem = 'xp_boost_15';
 
   SharedPreferences? prefs;
   Future<void>? loading;
@@ -318,15 +325,22 @@ class PlayerProgress extends ChangeNotifier {
         : ChestState.locked;
   }
 
-  Future<void> claimQuest(DailyQuest quest, ChestLoot loot) {
-    return update(() {
+  Future<void> claimQuest(DailyQuest quest, ChestLoot loot) async {
+    var claimed = false;
+
+    await update(() {
       if (chestStateOf(quest) != ChestState.ready) {
         return;
       }
 
       claimedToday.add(quest.id);
       applyLoot(loot);
+      claimed = true;
     });
+
+    if (claimed) {
+      await deliverItem(loot);
+    }
   }
 
   ChestState get weeklyChestState {
@@ -339,26 +353,55 @@ class PlayerProgress extends ChangeNotifier {
         : ChestState.locked;
   }
 
-  Future<void> claimWeekly(ChestLoot loot) {
-    return update(() {
+  Future<void> claimWeekly(ChestLoot loot) async {
+    var claimed = false;
+
+    await update(() {
       if (weeklyChestState != ChestState.ready) {
         return;
       }
 
       weeklyClaimed = true;
       applyLoot(loot);
+      claimed = true;
     });
+
+    if (claimed) {
+      await deliverItem(loot);
+    }
   }
 
-  Future<void> claimMonthly(ChestLoot loot) {
-    return update(() {
+  Future<void> claimMonthly(ChestLoot loot) async {
+    var claimed = false;
+
+    await update(() {
       if (monthlyChestState != ChestState.ready) {
         return;
       }
 
       monthlyClaimed = true;
       applyLoot(loot);
+      claimed = true;
     });
+
+    if (claimed) {
+      await deliverItem(loot);
+    }
+  }
+
+  Future<void> deliverItem(ChestLoot loot) async {
+    if (loot.type != LootType.item) {
+      return;
+    }
+
+    final saved = await InventoryService.instance.add(
+      loot.itemKey!,
+      source: 'chest',
+    );
+
+    if (!saved) {
+      await update(() => gems += itemFallbackGems);
+    }
   }
 
   void applyLoot(ChestLoot loot) {
@@ -370,15 +413,27 @@ class PlayerProgress extends ChangeNotifier {
         xpToday += loot.amount;
       case LootType.hearts:
         bonusHearts += loot.amount;
+      case LootType.item:
+        break;
     }
   }
 
   bool get isXpBoostActive =>
-      xpBoostUntil != null && DateTime.now().isBefore(xpBoostUntil!);
+      InventoryService.instance.isActive(ItemEffect.xpBoost) ||
+      (xpBoostUntil != null && DateTime.now().isBefore(xpBoostUntil!));
 
-  Duration get xpBoostLeft => isXpBoostActive
-      ? xpBoostUntil!.difference(DateTime.now())
-      : Duration.zero;
+  Duration get xpBoostLeft {
+    final fromInventory = InventoryService.instance.timeLeft(
+      ItemEffect.xpBoost,
+    );
+
+    final legacy =
+        xpBoostUntil != null && DateTime.now().isBefore(xpBoostUntil!)
+        ? xpBoostUntil!.difference(DateTime.now())
+        : Duration.zero;
+
+    return fromInventory > legacy ? fromInventory : legacy;
+  }
 
   bool isLessonCompleted(int lessonId) {
     return completedLessonIds.contains(lessonId);
@@ -425,9 +480,28 @@ class PlayerProgress extends ChangeNotifier {
 
     if (completedNow) {
       await DuckPet.instance.onLessonCompleted(earned);
+      await _syncXpToServer();
     }
 
     return earned;
+  }
+
+  Future<void> _syncXpToServer() async {
+    if (!AuthSession.instance.isLoggedIn) {
+      return;
+    }
+
+    try {
+      await http.put(
+        Uri.parse('${ApiService.baseUrl}/profile/xp'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${AuthSession.instance.token}',
+        },
+        body: jsonEncode({'xp': totalXp}),
+      );
+    } catch (_) {}
   }
 
   Future<void> recordCorrectAnswer() {
@@ -514,12 +588,16 @@ class PlayerProgress extends ChangeNotifier {
   Future<bool> claimSpin(int index) async {
     var ok = false;
 
+    if (index < 0 || index >= SpinPrize.all.length) {
+      return false;
+    }
+
+    final prize = SpinPrize.all[index];
+
     await update(() {
       if (!canSpin) {
         return;
       }
-
-      final prize = SpinPrize.all[index];
 
       lastSpinDay = dayKey(DateTime.now());
       lastSpinPrize = index;
@@ -532,15 +610,17 @@ class PlayerProgress extends ChangeNotifier {
         case PrizeType.xp:
           applyLoot(ChestLoot(LootType.xp, prize.amount));
         case PrizeType.xpBoost:
-          final from = isXpBoostActive ? xpBoostUntil! : DateTime.now();
-
-          xpBoostUntil = from.add(Duration(minutes: prize.amount));
+          break;
         case PrizeType.none:
           break;
       }
 
       ok = true;
     });
+
+    if (ok && prize.type == PrizeType.xpBoost) {
+      await deliverItem(const ChestLoot.item(spinBoostItem));
+    }
 
     return ok;
   }
@@ -560,21 +640,25 @@ class PlayerProgress extends ChangeNotifier {
     return ok;
   }
 
-  Future<bool> buyXpBoost(int price) async {
-    var ok = false;
+  Future<String?> buyItem(String itemKey, int price) async {
+    await load();
+
+    if (gems < price) {
+      return 'Gem kamu belum cukup.';
+    }
+
+    final saved = await InventoryService.instance.add(itemKey, source: 'shop');
+
+    if (!saved) {
+      return InventoryService.instance.error ?? 'Gagal menyimpan barang.';
+    }
 
     await update(() {
-      if (gems < price || isXpBoostActive) {
-        return;
-      }
-
       gems -= price;
-      xpBoostUntil = DateTime.now().add(xpBoostDuration);
       purchasesToday++;
-      ok = true;
     });
 
-    return ok;
+    return null;
   }
 
   Future<bool> buyBonusHearts(int price, int amount) async {
@@ -610,8 +694,9 @@ class PlayerProgress extends ChangeNotifier {
     return ok;
   }
 
-  Future<void> addLoot(ChestLoot loot) {
-    return update(() => applyLoot(loot));
+  Future<void> addLoot(ChestLoot loot) async {
+    await update(() => applyLoot(loot));
+    await deliverItem(loot);
   }
 
   @visibleForTesting
